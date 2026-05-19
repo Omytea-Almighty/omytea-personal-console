@@ -37,12 +37,28 @@ streamlit run app.py
 
 Camera frames stream into the substrate's detector + IoUTracker on a background thread. Every 8 frames (tunable) the joint wavefunction rebuilds and is evolved under the Lindblad operator — the live coherence-decay chart updates each rerender. Nothing leaves your machine.
 
-**Native bundle.** Build a self-contained folder that launches the Console without any Python install:
+**Native bundle.** Pre-built binaries are attached to each release on GitHub. No Python install needed:
+
+| Platform | Variant | Download |
+|---|---|---|
+| macOS arm64 | one-folder | [omytea-console-Darwin-arm64.tar.gz](https://github.com/Adonyth/omytea-personal-console/releases/latest) |
+| macOS arm64 | single binary | [omytea-console-onefile-Darwin-arm64.gz](https://github.com/Adonyth/omytea-personal-console/releases/latest) |
+| Linux x86_64 | one-folder | [omytea-console-Linux-x86_64.tar.gz](https://github.com/Adonyth/omytea-personal-console/releases/latest) |
+| Docker | multi-arch image | `docker build -t omytea-console:0.3 . && docker run -p 8501:8501 omytea-console:0.3` |
 
 ```bash
-bash scripts/build_native.sh
-# → dist/omytea-console/omytea-console      (the launcher binary)
-# A browser tab opens at http://127.0.0.1:8501.
+# Pick a platform, then:
+tar xzf omytea-console-*.tar.gz
+./omytea-console/omytea-console
+# Browser opens at http://127.0.0.1:8501.
+```
+
+To build a bundle from source for your own platform:
+
+```bash
+bash scripts/build_native.sh             # one-folder (default)
+bash scripts/build_native.sh --onefile   # single binary (slower startup)
+# → dist/omytea-console/  or  dist/omytea-console
 ```
 
 The bundle still expects Ollama for the vision LLM (multi-GB models aren't worth embedding); the Console runs in mock mode if Ollama isn't present.
