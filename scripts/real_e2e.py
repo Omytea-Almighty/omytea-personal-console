@@ -153,13 +153,16 @@ def main() -> int:
     print(f"  substrate present:   {result.used_omytea_substrate}")
     print(f"  elapsed:             {t_console:.3f}s")
 
-    # Print branches summary
+    # Print branches summary. ConsoleHypothesis attrs (per console.py):
+    # label, narrative, probability, key_uncertainty_driver,
+    # depends_on_decision, branch_type.
     print("\n  Branches:")
     for i, h in enumerate(result.hypotheses[:8]):
-        title = (h.summary or "<no summary>")[:60]
-        prob = getattr(h, "probability_prior", None) or h.weight
-        btype = getattr(h, "branch_type", "?")
-        print(f"    {i+1}. [{btype:>8s}]  p={prob:.2%}  {title}")
+        narrative = (getattr(h, "narrative", "") or "")[:60]
+        prob = float(getattr(h, "probability", 0.0))
+        btype = getattr(h, "branch_type", "?") or "?"
+        label = getattr(h, "label", "")
+        print(f"    {i+1}. [{btype:>10s}]  p={prob:.2%}  {label}  {narrative}")
 
     out["step3_console"] = {
         "elapsed_seconds": round(t_console, 3),
@@ -170,9 +173,9 @@ def main() -> int:
             {
                 "rank": i + 1,
                 "branch_type": getattr(h, "branch_type", ""),
-                "probability_prior":
-                    getattr(h, "probability_prior", None) or h.weight,
-                "summary": (h.summary or "")[:80],
+                "label": getattr(h, "label", ""),
+                "probability": float(getattr(h, "probability", 0.0)),
+                "narrative": (getattr(h, "narrative", "") or "")[:120],
             }
             for i, h in enumerate(result.hypotheses)
         ],
@@ -227,6 +230,16 @@ def main() -> int:
             "skipped": evo.get("skipped", False),
             "n_ticks": len(evo.get("snapshots", [])),
         }
+
+    # Defensive: write artifact early in case downstream steps fail
+    _early_artifact_dir = ROOT / "docs" / "papers" / "real_e2e_runs"
+    _early_artifact_dir.mkdir(parents=True, exist_ok=True)
+    _early_artifact_path = (
+        _early_artifact_dir / f"real_e2e_partial_{int(time.time())}.json"
+    )
+    _early_artifact_path.write_text(
+        json.dumps(out, indent=2, default=str), encoding="utf-8"
+    )
 
     # ----- Totals -----
     total = sum(

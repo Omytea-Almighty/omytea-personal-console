@@ -163,7 +163,15 @@ We ran the full pipeline against `samples/walking_demo.mp4` (80 KB, 5-second, 10
 
 The vision-LLM timeout demonstrates the **honest-fallback design pattern** (§3.5): rather than hang indefinitely, the system surfaces a fallback stub of 7 branches plus an explicit `_fallback_reason` field, and the UI shows a banner with the failure cause and remediation hints. The rest of the pipeline runs to completion regardless.
 
-**Configuration B — 2 sampled frames, llava:7b (warm model):** populated by the v0.2 of this draft once the rerun completes.
+**Configuration B — 2 sampled frames, llava:7b (warm model):**
+
+| Step | Wall-clock | Notes |
+|---|---|---|
+| Substrate ingest + tracking | 0.35 s | 3 tracked entities (fewer frames → fewer tracked entities than Config A's 6) |
+| Vision-LLM scene compile | 602 s (timeout) | Same 600 s honest-fallback ceiling; halving the frames did not bring the call under the timeout |
+| BeliefProgram → ConsoleResult | 0.02 s | |
+
+The 2-frame measurement confirms the timeout is not a sampling-count issue — llava:7b CPU-only on an Apple Silicon 16 GB machine consistently exceeds 600 s for the scene-compile prompt. **The honest-fallback path is the operative default on this hardware class.** A GPU-accelerated or smaller vision model (~3B parameters) is the right next step to bring real numbers under the ceiling.
 
 ### 6.3 What the timing implies for product design
 

@@ -20,7 +20,7 @@ from __future__ import annotations
 
 BRAND_NAME: str = "Omytea Personal Future Console"
 BRAND_NAME_SHORT: str = "Omytea Console"
-BRAND_VERSION: str = "0.3.3"
+BRAND_VERSION: str = "0.3.4"
 BRAND_TAGLINE: str = (
     "Probability-calibrated decision support · local-first · open source"
 )
