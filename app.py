@@ -130,62 +130,161 @@ def render_sidebar() -> str:
 
 def render_new_prediction() -> None:
     """Form input → compile → display branches + off-diagonal + evidence."""
-    st.title("New prediction")
-    st.write(
-        "Enter a structured description of your decision below. "
-        "The system compiles your input into a probabilistic hypothesis "
-        "space and stores the snapshot so you can come back and report "
-        "what actually happened."
-    )
+    st.title("🔮 New prediction · 新预测")
 
+    # Bilingual intro banner — collapsed by default so it doesn't dominate
+    # the page for repeat visitors but is one click away for first-timers.
+    with st.expander(
+        "ℹ️ What is this? · 这是什么? (click to expand · 点开看)",
+        expanded=False,
+    ):
+        st.markdown(
+            """
+**这个工具做什么 / What this does**
+
+你给它一个你正在纠结的决定（比如要不要回国、要不要接 offer），它会:
+
+1. 把你的输入编译成一个**概率假设空间** (几个未来可能分支 + 每个分支的发生概率)
+2. **存下来快照**，给你一个 prediction ID
+3. 几周/几个月后你回来填「实际发生了什么」，系统给你**校准评分** (Brier score)
+
+You give it a decision you're wrestling with. The system:
+
+1. Compiles it into a **probabilistic hypothesis space** (several future branches with calibrated probabilities)
+2. **Stores the snapshot** with a prediction ID
+3. Weeks/months later, you come back and report what actually happened — system scores your prediction's **calibration** (Brier score)
+
+**这不是什么 / What this isn't**
+
+- ❌ 不是占卜、不是算命、不是「肯定会发生什么」
+- ❌ 不是医疗 / 法律 / 财务建议
+- ❌ 不会把你的数据发到外部 API (除非你装了 Ollama 用 vision LLM)
+
+- ❌ Not fortune-telling, not "what will happen"
+- ❌ Not medical / legal / financial advice
+- ❌ Doesn't send your data to external APIs (unless you've installed Ollama for vision LLM)
+
+**测试者注意 / For testers**
+
+测试这个工具最快的方法是点下面的「📝 自动填示例数据」按钮，然后直接按 Generate。无需自己想数据。
+The fastest way to test: click the **📝 Fill with sample data** button below, then hit Generate. No typing needed.
+"""
+        )
+
+    # Auto-suggested user handle, regenerated per session so different
+    # visitors don't collide. Stored in session_state so the field
+    # keeps a stable value across re-renders.
+    if "_default_user_id" not in st.session_state:
+        import random
+        import string
+        rand_tail = "".join(
+            random.choices(string.ascii_lowercase + string.digits, k=4)
+        )
+        st.session_state._default_user_id = f"tester-{rand_tail}"
+
+    # Scenario selection (only one scenario today — career_decision)
     scenario = st.selectbox(
-        "Scenario",
+        "Scenario / 场景",
         options=list(AVAILABLE_SCENARIOS.keys()),
         format_func=lambda k: f"{k} — {AVAILABLE_SCENARIOS[k]['description'][:80]}…",
     )
 
-    st.markdown(f"**Description**: {AVAILABLE_SCENARIOS[scenario]['description']}")
+    st.caption(AVAILABLE_SCENARIOS[scenario]["description"])
+
+    # "Fill with sample data" — one-click flow for testers. Writes the
+    # `example_value` of each InputField into the matching session_state
+    # key BEFORE the form renders, so the form picks them up on this rerun.
+    col_a, col_b = st.columns([3, 2])
+    with col_a:
+        if st.button(
+            "📝 Fill with sample data · 自动填示例数据",
+            help=(
+                "一键填入合理的示例数据；然后直接按下面的 Generate 按钮就能看到完整效果。"
+                " | Click once → see the full prediction flow without any typing."
+            ),
+            use_container_width=True,
+        ):
+            for field in AVAILABLE_SCENARIOS[scenario]["input_fields"]:
+                if field.example_value:
+                    st.session_state[f"input_{field.key}"] = field.example_value
+            # Also set the handle field's example_value if blank
+            handle_field_key = "input_user_id"
+            if not st.session_state.get(handle_field_key):
+                st.session_state[handle_field_key] = (
+                    st.session_state._default_user_id
+                )
+            st.rerun()
+    with col_b:
+        if st.button(
+            "🧹 Clear form · 清空表单",
+            help="Reset all fields to empty. / 清空所有字段。",
+            use_container_width=True,
+        ):
+            for field in AVAILABLE_SCENARIOS[scenario]["input_fields"]:
+                st.session_state.pop(f"input_{field.key}", None)
+            st.rerun()
+
     st.divider()
 
-    # Render form fields
+    # Render form fields. Each text/textarea field now gets a placeholder
+    # (greyed-out example inside the empty box) on top of the help-tooltip
+    # so users see a concrete example without having to read the tooltip.
     form_data: dict[str, Any] = {}
     with st.form(key=f"form_{scenario}"):
         for field in AVAILABLE_SCENARIOS[scenario]["input_fields"]:
+            field_key = f"input_{field.key}"
+            # Auto-suggest handle on first render
+            if field.key == "user_id" and not st.session_state.get(field_key):
+                st.session_state[field_key] = st.session_state._default_user_id
+
+            placeholder = getattr(field, "placeholder", "") or ""
+
             if field.field_type == "textarea":
                 form_data[field.key] = st.text_area(
-                    field.label, help=field.hint, key=f"input_{field.key}",
+                    field.label,
+                    help=field.hint,
+                    key=field_key,
+                    placeholder=placeholder,
                 )
             elif field.field_type == "text":
                 form_data[field.key] = st.text_input(
-                    field.label, help=field.hint, key=f"input_{field.key}",
+                    field.label,
+                    help=field.hint,
+                    key=field_key,
+                    placeholder=placeholder,
                 )
             elif field.field_type == "select":
                 form_data[field.key] = st.selectbox(
                     field.label, options=field.options,
-                    help=field.hint, key=f"input_{field.key}",
+                    help=field.hint, key=field_key,
                 )
             else:
                 form_data[field.key] = st.text_input(
-                    field.label, help=field.hint, key=f"input_{field.key}",
+                    field.label,
+                    help=field.hint,
+                    key=field_key,
+                    placeholder=placeholder,
                 )
 
         # v4.16 P8: opt-in self-test flag so aggregate calibration view
         # can separate owner data from real-user data.
         form_data["is_owner_bias_flagged"] = st.checkbox(
-            "I am the project owner / this is a self-test "
-            "(track separately to remove ownership bias)",
+            "🧪 I am the project owner / this is a self-test · 我是项目作者/自测",
             value=False,
             help=(
-                "Check this if you are the project founder or running "
-                "an internal self-test. Your data will still be stored "
-                "and counted in calibration aggregates, but the "
-                "'Calibration history' tab will let viewers see the "
-                "distribution both with and without owner-tagged "
-                "data points — honest meta-analysis."
+                "勾选后这条预测会在 calibration 聚合视图里被单独标记，"
+                "外部 reviewer 可以选择「只看非作者数据」做诚实分析。 | "
+                "Check this if you are the project founder or running an internal "
+                "self-test. Your data still counts in calibration aggregates, but "
+                "the Calibration history tab lets viewers see the distribution "
+                "both with and without owner-tagged data points."
             ),
         )
 
-        submit = st.form_submit_button("Generate prediction")
+        submit = st.form_submit_button(
+            "🚀 Generate prediction · 生成预测",
+            use_container_width=True,
+        )
 
     # v4.16 P2: persist the latest prediction in st.session_state so
     # post-submit interactions (drill-down clicks, view-mode toggles,
