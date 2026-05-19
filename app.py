@@ -18,6 +18,8 @@ from typing import Any
 import streamlit as st
 
 import _brand
+import _i18n
+from _i18n import T
 import currency
 import pricing
 import storage
@@ -180,71 +182,105 @@ st.markdown(
 # ============================================================
 
 def render_sidebar() -> str:
-    """Sidebar shows system status + nav. Returns active mode."""
-    st.sidebar.title(_brand.BRAND_NAME_SHORT)
-    st.sidebar.caption(_brand.BRAND_TAGLINE)
-    st.sidebar.divider()
+    """Sidebar — navigation + language switcher only.
 
+    Intentionally clean: no developer chrome (the "System status",
+    substrate-available, mock-mode, Ollama-available, etc. messages
+    are all suppressed). The substrate is detected silently at the
+    use sites that actually need it; non-technical visitors never see
+    a developer-style status panel.
+    """
+    # ---- Language switcher (top of sidebar, before any other chrome) ----
+    if "ui_lang" not in st.session_state:
+        st.session_state.ui_lang = _i18n.DEFAULT_LANG
+
+    # Compact segmented control. radio with horizontal=True is the
+    # closest Streamlit primitive to a segmented switcher.
+    chosen_lang = st.sidebar.radio(
+        " ",  # empty label — visible chrome is the chips themselves
+        options=list(_i18n.SUPPORTED_LANGS),
+        format_func=lambda k: _i18n.LANG_LABEL.get(k, k),
+        horizontal=True,
+        index=list(_i18n.SUPPORTED_LANGS).index(st.session_state.ui_lang),
+        key="_lang_radio",
+        label_visibility="collapsed",
+    )
+    if chosen_lang != st.session_state.ui_lang:
+        st.session_state.ui_lang = chosen_lang
+        st.rerun()
+
+    st.sidebar.markdown(
+        f"<div style='font-family:\"Cormorant Garamond\",Georgia,serif;"
+        f"font-size:22px;font-weight:600;letter-spacing:-0.015em;"
+        f"color:#f0f2f5;margin:6px 0 2px;'>"
+        f"{_brand.BRAND_NAME_SHORT}"
+        f"</div>"
+        f"<div style='color:#76808d;font-size:12px;letter-spacing:0.01em;"
+        f"margin-bottom:18px;'>"
+        f"{T('brand.tagline')}"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+    # ---- Mode nav ----
+    mode_keys = (
+        "New prediction", "Video query", "Live webcam",
+        "Measurement update", "Calibration history",
+        "Pricing & pre-order",
+    )
+    mode_key_to_i18n = {
+        "New prediction": "mode.new_prediction",
+        "Video query": "mode.video_query",
+        "Live webcam": "mode.live_webcam",
+        "Measurement update": "mode.measurement_update",
+        "Calibration history": "mode.calibration_history",
+        "Pricing & pre-order": "mode.pricing",
+    }
     mode = st.sidebar.radio(
-        "Mode",
-        options=(
-            "New prediction", "Video query", "Live webcam",
-            "Measurement update", "Calibration history",
-            "Pricing & pre-order",
-        ),
+        T("mode.sidebar_section"),
+        options=mode_keys,
+        format_func=lambda k: T(mode_key_to_i18n[k]),
         index=0,
     )
 
-    st.sidebar.divider()
-    st.sidebar.subheader("System status")
-    status = availability_status()
-    if status["mock_mode"]:
-        st.sidebar.warning("⚠ MOCK MODE (OMYTEA_CONSOLE_MOCK=1)")
-    if status["omytea_available"]:
-        st.sidebar.success("✓ Omytea substrate available")
-    else:
-        st.sidebar.info("ℹ Omytea not importable — pure-dict mode")
-        if status["omytea_import_error"]:
-            st.sidebar.caption(f"Reason: {status['omytea_import_error']}")
-
-    st.sidebar.divider()
-    # v4.16 P7: locale / currency selector. Defaults to detected
-    # locale (env var → DEFAULT_LOCALE = en_US for US market). User
-    # may override for the session.
+    # ---- Currency/locale selector — pushed below mode nav, smaller chrome ----
     detected = currency.detect_locale()
     if "user_locale" not in st.session_state:
         st.session_state.user_locale = detected
     locale_labels = {
-        currency.LOCALE_US: "🇺🇸 US (USD)",
-        currency.LOCALE_CN: "🇨🇳 中国 (CNY)",
-        currency.LOCALE_EU: "🇪🇺 EU (EUR)",
-        currency.LOCALE_GB: "🇬🇧 UK (GBP)",
-        currency.LOCALE_JP: "🇯🇵 日本 (JPY)",
+        currency.LOCALE_US: "US · USD",
+        currency.LOCALE_CN: "中国 · CNY",
+        currency.LOCALE_EU: "EU · EUR",
+        currency.LOCALE_GB: "UK · GBP",
+        currency.LOCALE_JP: "日本 · JPY",
     }
+    st.sidebar.divider()
     chosen = st.sidebar.selectbox(
-        "Currency / Locale",
+        "Currency",
         options=list(currency.SUPPORTED_LOCALES),
         format_func=lambda k: locale_labels.get(k, k),
         index=list(currency.SUPPORTED_LOCALES).index(
             st.session_state.user_locale
         ),
         help=(
-            "Default is USD (US market). Prices and pay-willingness "
-            "anchors shown elsewhere in the app use this setting. "
-            "Non-USD displays are flagged 'approx' since canonical "
-            "billing currency is USD."
+            "Affects price displays in the Pricing tab. Billing currency "
+            "remains USD; non-USD displays are marked approximate."
         ),
+        label_visibility="visible",
     )
     st.session_state.user_locale = chosen
 
-    st.sidebar.divider()
-    st.sidebar.caption(
-        "Not a deterministic prediction system. Outputs are calibrated "
-        "future scenarios with measurement-update feedback. Not medical / "
-        "legal / financial advice."
+    # ---- Footer: thin, in-keeping muted disclaimer + brand links ----
+    st.sidebar.markdown(
+        f"<div style='color:#4b525d;font-size:11px;line-height:1.5;"
+        f"margin-top:32px;padding-top:18px;border-top:1px solid #232834;'>"
+        f"{T('brand.disclaimer')}"
+        f"</div>"
+        f"<div style='color:#76808d;font-size:11px;margin-top:14px;'>"
+        f"{_brand.footer_markdown()}"
+        f"</div>",
+        unsafe_allow_html=True,
     )
-    st.sidebar.divider()
-    st.sidebar.markdown(_brand.footer_markdown())
 
     return str(mode)
 
@@ -255,21 +291,29 @@ def render_sidebar() -> str:
 
 def render_new_prediction() -> None:
     """Form input → compile → display branches + off-diagonal + evidence."""
-    st.title("New prediction")
+    # Hero — Apple-style: large serif title with restraint + generous
+    # whitespace + a single muted-color subtitle. No emoji, no badges.
     st.markdown(
-        "<p style='color:#76808d;font-size:14px;margin-top:-8px;"
-        "margin-bottom:20px;letter-spacing:0.01em;'>"
-        "Tell the system a decision you're weighing. It compiles your "
-        "input into a calibrated probability space across possible "
-        "futures, stores a snapshot, and lets you score yourself later "
-        "when reality has unfolded."
-        "</p>",
+        f"""
+        <div style='text-align:center;padding:48px 24px 32px;'>
+          <h1 style='font-family:"Cormorant Garamond",Georgia,serif;
+                     font-size:56px;line-height:1.05;font-weight:500;
+                     letter-spacing:-0.025em;margin:0 0 16px;
+                     color:#f0f2f5;'>
+            {T("new.hero.title")}
+          </h1>
+          <p style='color:#b9bfc8;font-size:16px;line-height:1.55;
+                    max-width:560px;margin:0 auto;letter-spacing:0.005em;'>
+            {T("new.hero.subtitle")}
+          </p>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
-    # A short, dense "how this works" panel for first-time visitors. Open
-    # by default — testers shouldn't have to hunt for context.
-    with st.expander("How this works · 30 seconds", expanded=False):
+    # Tight "how it works" expander — collapsed by default, so the hero
+    # breathes. Anyone who needs the explainer is one click away.
+    with st.expander(T("new.howto.title"), expanded=False):
         st.markdown(
             """
 1. **Describe the decision.** Pick a scenario, fill the fields, or click
@@ -281,10 +325,9 @@ def render_new_prediction() -> None:
    prediction ID. Score each branch by how much it actually
    materialized. The system computes your calibration (Brier / log-loss).
 
-What this **isn't**: not fortune-telling, not medical / legal /
-financial advice. Predictions are calibrated probabilities, not
-oracles. No external API is required — runs end-to-end locally
-when you self-host with Ollama.
+Not fortune-telling, not medical / legal / financial advice. No
+external API required — runs end-to-end locally when self-hosted with
+Ollama.
 """
         )
 
@@ -308,7 +351,7 @@ when you self-host with Ollama.
     col_a, col_b = st.columns([3, 2])
     with col_a:
         if st.button(
-            "Fill with sample data",
+            T("new.fill_sample"),
             help=(
                 "Prefill every field with realistic example values so you "
                 "can see the entire prediction flow in one click."
@@ -327,7 +370,7 @@ when you self-host with Ollama.
             st.rerun()
     with col_b:
         if st.button(
-            "Clear form",
+            T("new.clear_form"),
             help="Reset all fields to empty.",
             use_container_width=True,
         ):
@@ -380,7 +423,7 @@ when you self-host with Ollama.
         # v4.16 P8: opt-in self-test flag so aggregate calibration view
         # can separate owner data from real-user data.
         form_data["is_owner_bias_flagged"] = st.checkbox(
-            "I am the project owner / this is a self-test",
+            T("new.owner_bias"),
             value=False,
             help=(
                 "Check this if you are the project founder or running an "
@@ -392,7 +435,7 @@ when you self-host with Ollama.
         )
 
         submit = st.form_submit_button(
-            "Generate prediction",
+            T("new.generate"),
             use_container_width=True,
             type="primary",
         )
@@ -921,6 +964,126 @@ def _render_coherence_evolution(
     st.divider()
 
 
+def _render_probability_heatmap(hypotheses: list[Any]) -> None:
+    """v4.16 polish — probability heatmap card matching the v10 demo.
+
+    Restores the marketing-demo visualization that the table-only result
+    surface had lost. SVG-only inline render so it matches the dark
+    canvas + lavender accent without pulling in Plotly. Each row is one
+    branch; bar length = probability normalized against the largest
+    branch in the result; cell tint = lavender at intensity proportional
+    to probability. Wishful and worst anchors get a coloured dot tag
+    (teal / coral) on the left so the eye separates them from the
+    realistic mid-distribution without reading text.
+    """
+    if not hypotheses:
+        return
+
+    import html as _html
+
+    # Normalize against the most-probable branch so a low-spread result
+    # (everything <30%) still reads visually — relative intensity is
+    # what the eye is for.
+    max_prob = max((h.probability for h in hypotheses), default=0.0) or 1.0
+
+    vb_w = 720
+    row_h = 30
+    row_gap = 8
+    pad_x = 20
+    pad_y = 18
+    label_w = 200
+    pct_w = 64
+    bar_x = pad_x + label_w
+    bar_w_full = vb_w - bar_x - pct_w - pad_x
+    n = len(hypotheses)
+    total_h = pad_y * 2 + n * row_h + (n - 1) * row_gap
+
+    rows_svg: list[str] = []
+    for i, h in enumerate(hypotheses):
+        y = pad_y + i * (row_h + row_gap)
+        intensity = max(0.0, min(1.0, h.probability / max_prob))
+        bar_w = bar_w_full * intensity
+        # Cell alpha scales from a barely-visible base to a near-solid
+        # peak. Matches the legend gradient in the v10 marketing demo.
+        alpha = 0.10 + 0.85 * intensity
+        if h.branch_type == "wishful":
+            dot_color = "#58c5b4"  # teal — best-case anchor
+        elif h.branch_type == "worst":
+            dot_color = "#ff5e6e"  # coral — worst-case anchor
+        else:
+            dot_color = "rgba(255,255,255,0.10)"  # dim hairline ring
+        label_raw = (h.label or "").strip()
+        # Truncate to fit in label column at 12px mono ≈ 7px/char.
+        if len(label_raw) > 26:
+            label_raw = label_raw[:24] + "…"
+        label_safe = _html.escape(label_raw)
+        pct_safe = f"{h.probability * 100:.1f}%"
+        rows_svg.append(
+            f'<g transform="translate(0,{y})">'
+            f'<circle cx="{pad_x + 5}" cy="{row_h / 2:.1f}" r="4" '
+            f'fill="{dot_color}"></circle>'
+            f'<text x="{pad_x + 16}" y="{row_h / 2 + 4:.1f}" '
+            f'font-family="ui-monospace, SFMono-Regular, Menlo, '
+            f'\'JetBrains Mono\', monospace" font-size="12" '
+            f'fill="#b9bfc8" letter-spacing="0.01em">{label_safe}</text>'
+            f'<rect x="{bar_x}" y="0" width="{bar_w_full}" '
+            f'height="{row_h}" rx="3" ry="3" '
+            f'fill="rgba(255,255,255,0.025)" '
+            f'stroke="#232834" stroke-width="0.5"></rect>'
+            f'<rect x="{bar_x}" y="0" width="{bar_w:.1f}" '
+            f'height="{row_h}" rx="3" ry="3" '
+            f'fill="rgba(139,140,255,{alpha:.3f})"></rect>'
+            f'<text x="{vb_w - pad_x - 4}" y="{row_h / 2 + 4:.1f}" '
+            f'font-family="ui-monospace, SFMono-Regular, Menlo, '
+            f'\'JetBrains Mono\', monospace" font-size="12" '
+            f'fill="#f0f2f5" text-anchor="end" font-weight="500">'
+            f'{pct_safe}</text>'
+            f'</g>'
+        )
+
+    legend = (
+        '<div style="display:flex;align-items:center;gap:14px;'
+        'margin-top:10px;color:#76808d;font-size:11.5px;">'
+        '<span><span style="display:inline-block;width:8px;height:8px;'
+        'border-radius:50%;background:#58c5b4;vertical-align:middle;'
+        'margin-right:6px;"></span>best plausible</span>'
+        '<span><span style="display:inline-block;width:8px;height:8px;'
+        'border-radius:50%;background:#ff5e6e;vertical-align:middle;'
+        'margin-right:6px;"></span>worst plausible</span>'
+        '<span style="display:inline-flex;align-items:center;gap:6px;">'
+        '<span style="display:inline-block;height:10px;width:90px;'
+        'background:linear-gradient(to right,'
+        'rgba(139,140,255,0.10) 0%,rgba(139,140,255,0.40) 50%,'
+        'rgba(139,140,255,0.95) 100%);border:1px solid #232834;'
+        'border-radius:2px;"></span>low → high probability</span>'
+        '</div>'
+    )
+
+    title_safe = _html.escape(T("result.heatmap_title"))
+    caption_safe = _html.escape(T("result.heatmap_reading"))
+
+    st.markdown(
+        f'<div style="margin:8px 0 20px;">'
+        f'<div style="color:#76808d;font-size:11.5px;text-transform:uppercase;'
+        f'letter-spacing:0.12em;font-weight:500;margin-bottom:8px;">'
+        f'{title_safe}</div>'
+        f'<div style="background:#11141b;border:1px solid #232834;'
+        f'border-radius:8px;padding:8px 4px;'
+        f'box-shadow:0 10px 40px rgba(0,0,0,0.35),'
+        f'0 1px 0 rgba(255,255,255,0.025) inset;">'
+        f'<svg viewBox="0 0 {vb_w} {total_h}" width="100%" '
+        f'preserveAspectRatio="xMidYMid meet" style="display:block;">'
+        f'{"".join(rows_svg)}'
+        f'</svg>'
+        f'</div>'
+        f'<div style="color:#76808d;font-size:12px;line-height:1.5;'
+        f'margin-top:10px;letter-spacing:0.005em;">{caption_safe}</div>'
+        f'{legend}'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+
 def _render_result(
     result: ConsoleResult,
     user_input: dict[str, Any],
@@ -960,9 +1123,8 @@ def _render_result(
         prediction_id = rec.prediction_id
 
     st.caption(
-        f"Prediction ID (save this to come back later): `{prediction_id}`"
+        f"Prediction ID (save this to come back later) · `{prediction_id}`"
     )
-    st.divider()
 
     # v4.16 P1+P4: partition by branch_type for visually distinct anchor
     # display + offer Story (default) vs Comparison-table view.
@@ -970,6 +1132,12 @@ def _render_result(
     worst = [h for h in result.hypotheses if h.branch_type == "worst"]
     realistic = [h for h in result.hypotheses
                  if h.branch_type not in ("wishful", "worst")]
+
+    # Probability heatmap visualization — restored from the v10 marketing
+    # demo. SVG-only (no Plotly dependency), drawn inline so the bars
+    # match the dark canvas + lavender accent of the v10 palette.
+    _render_probability_heatmap(wishful + realistic + worst)
+    st.divider()
 
     view_mode = st.radio(
         "View",
@@ -1458,38 +1626,26 @@ def render_video_query() -> None:
 
     Master plan §9 first-cut consumer surface for the video path.
     """
-    st.title("🎥 Video query")
-    st.write(
-        "Upload a short video (mp4 / mov / webm). The system samples "
-        "keyframes, runs local perception (substrate's tracked-entity "
-        "detector), then asks a local vision-LLM to read the scene "
-        "and emit calibrated future-scenario branches. No external "
-        "API required — everything runs on your machine via Ollama."
+    st.title("Video query")
+    st.markdown(
+        "<p style='color:#76808d;font-size:14px;margin-top:-8px;"
+        "margin-bottom:20px;letter-spacing:0.01em;'>"
+        "Upload a short clip. The system samples keyframes, runs the "
+        "perception pipeline, asks a local vision model to read the "
+        "scene, and emits calibrated future-scenario branches."
+        "</p>",
+        unsafe_allow_html=True,
     )
 
-    # System status sub-block for video mode specifically
-    with st.expander(
-        "System status (local vision LLM check)", expanded=False,
-    ):
-        try:
-            from llm_backends import OllamaVisionBackend
-            vb = OllamaVisionBackend()
-            if vb.is_available():
-                st.success(
-                    f"✓ Ollama vision backend ready · model: "
-                    f"`{vb._get_model()}`"
-                )
-            else:
-                st.warning(
-                    f"⚠ Ollama vision backend not ready. "
-                    f"Either start the Ollama daemon, or run: "
-                    f"`ollama pull {vb._get_model()}`. "
-                    f"If you want to test the flow without a vision "
-                    f"model, set `OMYTEA_CONSOLE_MOCK=1` in your "
-                    f"shell before running Streamlit."
-                )
-        except ImportError as exc:
-            st.error(f"OllamaVisionBackend not importable: {exc}")
+    # Silently probe the vision backend. If it's not ready, the
+    # honest-fallback in compile_scene_query handles the timeout +
+    # surfaces a clean banner in the result render. No developer-style
+    # "⚠ Ollama vision backend not ready..." block here.
+    try:
+        from llm_backends import OllamaVisionBackend
+        _vb_available = OllamaVisionBackend().is_available()
+    except Exception:
+        _vb_available = False
 
     uploaded = st.file_uploader(
         "Video file",
@@ -1783,10 +1939,9 @@ def _render_entity_quantum_evolution(
 
     jwf = video_state.build_joint_wavefunction(bundles)
     if jwf is None:
-        st.warning(
-            "Substrate unavailable — cannot run quantum evolution. "
-            "Install the parent WMDB package or set "
-            "`OMYTEA_CONSOLE_MOCK=1` and try again with mock data."
+        st.info(
+            "Joint evolution unavailable in this environment — the "
+            "frame stream and entity tracking still ran above."
         )
         return
 
@@ -1909,14 +2064,12 @@ def render_live_webcam() -> None:
     no demographic features, no multi-camera fusion (single stream
     only).
     """
-    st.title("Live webcam")
+    st.title(T("webcam.title"))
     st.markdown(
-        "<p style='color:#76808d;font-size:14px;margin-top:-8px;"
-        "margin-bottom:20px;letter-spacing:0.01em;'>"
-        "Camera frames stream to the perception layer, entity "
-        "trajectories accumulate, and the joint quantum state is "
-        "rebuilt every few frames. Nothing about the stream is stored."
-        "</p>",
+        f"<p style='color:#76808d;font-size:14px;margin-top:-8px;"
+        f"margin-bottom:20px;letter-spacing:0.01em;'>"
+        f"{T('webcam.subtitle')}"
+        f"</p>",
         unsafe_allow_html=True,
     )
 
@@ -2035,10 +2188,10 @@ def render_live_webcam() -> None:
     snap = session.snapshot()
 
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Frames processed", snap.frames_processed)
-    m2.metric("Observed FPS", f"{snap.fps_observed:.1f}")
-    m3.metric("Live entities", snap.n_entities)
-    m4.metric("Joint hypotheses", snap.n_joint_hypotheses)
+    m1.metric(T("live.frames_processed"), snap.frames_processed)
+    m2.metric(T("live.fps"), f"{snap.fps_observed:.1f}")
+    m3.metric(T("live.entities"), snap.n_entities)
+    m4.metric(T("live.joint_hyps"), snap.n_joint_hypotheses)
 
     if snap.entities_summary:
         st.markdown("**Tracked entities**")
