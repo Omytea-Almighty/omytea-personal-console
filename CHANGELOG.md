@@ -15,6 +15,28 @@ the public-facing version string (`_brand.BRAND_VERSION`).
 - iOS / Android via the Streamlit Cloud deploy (Path β)
 - Animated future-flow visualization
 
+## [0.4.0] — 2026-05-19
+
+### Changed
+- **Omytea quantum substrate is now an independent PyPI package.** `requirements.txt` installs `omytea-quantum-substrate>=0.1.1,<1.0` instead of carrying a vendored copy. The substrate lives at <https://github.com/Adonyth/omytea-quantum-substrate> and is published at <https://pypi.org/project/omytea-quantum-substrate/>.
+- `scripts/prepare_public_release.py`: substrate vendor step is now **off by default** (legacy `--vendor-omytea` flag still available for pre-v0.4 workflow). Public dist tree no longer carries an `omytea/` subdirectory.
+
+### Why
+This closes WORK_PLAN_V415 M3. The substrate gets:
+- Independent PyPI version + Zenodo DOI for paper citation
+- A clear cite-able identity separate from the Console product
+- Its own CI / release cadence (Trusted Publishing OIDC on tag push)
+- Lower barrier for downstream users who want just the math, not the Streamlit app
+
+### Migration
+
+- **Users**: pull v0.4.0 source and `pip install -r requirements.txt` — pip fetches `omytea-quantum-substrate` from PyPI automatically. No code changes needed; import paths (`from omytea.quantum import ...`) are unchanged.
+- **Devs in the WMDB monorepo**: editable install of WMDB no longer shadows PyPI substrate because requirements.txt now uses the PyPI name. Use a fresh venv when switching between vendored and PyPI modes.
+
+## [0.3.4] — 2026-05-19
+
+(see prior release notes)
+
 ## [0.3.2] — 2026-05-19
 
 ### Added

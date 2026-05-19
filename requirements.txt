@@ -28,6 +28,7 @@ requests>=2.28
 # Linux servers + macOS app bundles.
 opencv-python-headless>=4.8,<5.0
 
-# Omytea quantum substrate — install from the parent WMDB repo
-# (development) or via the vendored `omytea_quantum/` directory
-# (production deploy). Set OMYTEA_CONSOLE_MOCK=1 to skip this.
+# Omytea quantum substrate — now ships as an independent PyPI package
+# (as of v0.4.0). No more vendor copy in the dist tree; just `pip install`.
+# Set OMYTEA_CONSOLE_MOCK=1 if you want to run without substrate at all.
+omytea-quantum-substrate>=0.1.1,<1.0
