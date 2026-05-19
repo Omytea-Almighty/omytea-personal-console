@@ -1,0 +1,123 @@
+# Continuous integration for the Omytea Personal Future Console.
+#
+# Runs on every push + PR to main. Three jobs in matrix:
+#   - test-suite (Python 3.11 + 3.12 + 3.13 on Ubuntu)
+#   - build-native (PyInstaller one-folder bundle smoke build on macOS)
+#   - lint-paper (markdown lint + sanity check on the arXiv draft)
+#
+# Cost discipline: all jobs use ubuntu-latest / macos-latest with the
+# free public-repo minutes. No GPU runners. No cost.
+#
+# Mock mode (OMYTEA_CONSOLE_MOCK=1) keeps the suite hermetic — no
+# external API calls, no Ollama dep. The vision-pipeline tests that
+# need real LLMs are gated and skip cleanly in CI.
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Allow manual trigger from the Actions tab
+  workflow_dispatch:
+
+# Cancel in-flight runs when a new commit lands on the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-suite:
+    name: pytest (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run full test suite (mock mode — no LLM / no network)
+        env:
+          OMYTEA_CONSOLE_MOCK: '1'
+        run: |
+          python -m pytest -q --tb=short
+
+      - name: Run eval harness
+        env:
+          OMYTEA_CONSOLE_MOCK: '1'
+        run: |
+          python -m eval.run_eval --json
+
+  build-native:
+    name: PyInstaller bundle smoke (macOS)
+    runs-on: macos-latest
+    # Only run on push to main to save minutes; PRs get test-suite only.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install deps + PyInstaller
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install 'pyinstaller>=6.0,<7.0'
+
+      - name: Build one-folder bundle
+        run: bash scripts/build_native.sh --folder
+
+      - name: Verify bundle binary exists
+        run: |
+          test -x dist/omytea-console/omytea-console || (
+            echo "Bundle binary missing or not executable"
+            exit 1
+          )
+          du -sh dist/omytea-console
+
+      # Upload the bundle as a workflow artifact so it can be
+      # downloaded from the Actions UI even before a release tag.
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: omytea-console-macos-arm64
+          path: dist/omytea-console
+          retention-days: 14
+
+  lint-paper:
+    name: arXiv draft sanity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check paper draft is present + non-empty
+        run: |
+          test -f docs/papers/OMYTEA_VIDEO_CONSOLE_DRAFT.md
+          # Must mention 'Lindblad' (it's literally the methodology core)
+          grep -q "Lindblad" docs/papers/OMYTEA_VIDEO_CONSOLE_DRAFT.md
+          # Must use 'correlated futures' framing per master plan §15 Rule #11
+          grep -qi "correlated futures\\|classical correlation" \
+            docs/papers/OMYTEA_VIDEO_CONSOLE_DRAFT.md
+          # Should NOT claim literal entanglement in the public draft
+          if grep -i "claim.*entanglement\\|achieves.*entanglement\\|true.*entanglement" \
+            docs/papers/OMYTEA_VIDEO_CONSOLE_DRAFT.md; then
+            echo "Paper appears to claim literal entanglement — not allowed"
+            exit 1
+          fi

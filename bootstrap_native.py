@@ -67,20 +67,42 @@ def _open_browser_after_delay(host: str, port: int, delay: float) -> None:
 
 
 def main() -> None:
-    from streamlit.web import bootstrap  # noqa: WPS433 — late import is intentional
+    # ---- Set Streamlit config via env vars BEFORE importing the
+    # streamlit module. The flag_options arg of bootstrap.run is
+    # observed inconsistently across streamlit versions; env vars
+    # are read at config-import time which makes them the most
+    # reliable channel.
+    #
+    # Security: bind to loopback only. The bundle is desktop
+    # software — exposing the Streamlit server on 0.0.0.0 would
+    # let anyone on the user's local network read their predictions.
+    os.environ.setdefault("STREAMLIT_SERVER_ADDRESS", "127.0.0.1")
+    os.environ.setdefault("STREAMLIT_SERVER_PORT", "8501")
+    os.environ.setdefault("STREAMLIT_SERVER_HEADLESS", "true")
+    # Privacy first — opt the user out of telemetry by default.
+    os.environ.setdefault("STREAMLIT_BROWSER_GATHER_USAGE_STATS", "false")
+    # Allow generous video upload sizes; users may try real videos.
+    os.environ.setdefault("STREAMLIT_SERVER_MAX_UPLOAD_SIZE", "200")
+
+    # ---- Belt-and-suspenders: also call the Python-level set_option
+    # API after import, since some streamlit versions read env vars
+    # only at module-import (which has happened by the time the user
+    # script runs) and others read them lazily.
+    from streamlit import config as stconfig  # noqa: WPS433
+    from streamlit.web import bootstrap  # noqa: WPS433
+    stconfig.set_option("server.address", "127.0.0.1")
+    stconfig.set_option("server.port", 8501)
+    stconfig.set_option("server.headless", True)
+    stconfig.set_option("browser.gatherUsageStats", False)
+    stconfig.set_option("server.maxUploadSize", 200)
 
     app_path = _resolve_resource("app.py")
 
-    flag_options = {
-        # Bind to loopback only — never expose externally even if
-        # the user is on an open Wi-Fi network.
+    flag_options: dict[str, object] = {
         "server.address": "127.0.0.1",
         "server.port": 8501,
-        # We open the browser ourselves so we can pick the moment.
         "server.headless": True,
-        # Disable Streamlit's telemetry by default (privacy first).
         "browser.gatherUsageStats": False,
-        # Allow the user to upload videos up to 200 MB.
         "server.maxUploadSize": 200,
     }
 
@@ -93,6 +115,11 @@ def main() -> None:
     ).start()
 
     sys.argv = ["streamlit", "run", app_path]
+    # Note: streamlit's bootstrap.run signature varies across versions.
+    # Older: run(main_script_path, command_line, args, flag_options)
+    # Newer: run(main_script_path, is_hello, args, flag_options)
+    # An empty string in arg 2 is falsy, satisfying both bool and str
+    # contracts — works on both signatures.
     bootstrap.run(app_path, "", [], flag_options)
 
 

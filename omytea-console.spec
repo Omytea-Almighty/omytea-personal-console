@@ -21,10 +21,26 @@
 from PyInstaller.utils.hooks import (
     collect_data_files,
     collect_submodules,
+    copy_metadata,
 )
 
 
 block_cipher = None
+
+
+# ----- Package metadata — Streamlit does an
+# ``importlib.metadata.version('streamlit')`` lookup at import time,
+# and PyInstaller bundles don't ship dist-info by default. Without
+# this the bundle dies at launch with PackageNotFoundError. Same
+# rationale for the optional metadata copies below.
+metadata_datas = []
+metadata_datas += copy_metadata('streamlit')
+for opt_meta in ('altair', 'pandas', 'pyarrow', 'numpy', 'pillow',
+                 'requests', 'pydantic', 'opencv-python-headless'):
+    try:
+        metadata_datas += copy_metadata(opt_meta)
+    except Exception:
+        pass
 
 
 # ----- Data files: anything the app reads at runtime that PyInstaller
@@ -53,6 +69,7 @@ datas = [
 # that bootstrap.run() loads from the installed wheel. PyInstaller's
 # default analysis can miss them. ``collect_data_files`` pulls them in.
 datas += collect_data_files('streamlit')
+datas += metadata_datas
 
 # Some optional deps that get conditionally imported at runtime —
 # include their data files in case the user enables the corresponding

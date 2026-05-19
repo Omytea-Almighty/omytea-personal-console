@@ -99,7 +99,9 @@ The console imports `from omytea.quantum import ...` etc. For deployment we need
 
 **Recommendation**: **Option a (vendor minimal)** for now — Option b is v4.16 P3 territory (the substrate-as-Apache-2.0-package release). Vendor 4 files (quantum.py, joint_belief.py, models.py, density.py), pin to commit `<TBD>`, mark in `VENDORED_FROM.md`.
 
-⚠️ **Until vendored**: deploy will fail import. **DEPLOYMENT IS BLOCKED on completing this step.**
+~~⚠️ **Until vendored**: deploy will fail import. **DEPLOYMENT IS BLOCKED on completing this step.**~~
+
+**Status (2026-05-19)**: ✅ **resolved**. `scripts/prepare_public_release.py` now vendors the omytea quantum substrate (`models.py`, `density.py`, `quantum.py`, `joint_belief.py`, `dynamics/protocol.py`, `dynamics/lindblad.py`) into `omytea/` inside the dist directory, scrubs internal plan refs, and synthesizes a slim package `__init__`. The Apache-2.0 vendored snapshot is what ships in the public-release tree.
 
 ---
 
@@ -214,7 +216,19 @@ Replace SQLite with a Postgres connection (free tier). Update `storage.py` to su
 
 **Recommendation**: **Option γ Postgres** for sustained deploy. For first-week MVP, **Option α GitHub snapshot is acceptable**.
 
-⚠️ **DEPLOYMENT BLOCKED on resolving this — until then, user data will be wiped on container restart.**
+~~⚠️ **DEPLOYMENT BLOCKED on resolving this — until then, user data will be wiped on container restart.**~~
+
+**Status (2026-05-19)**: ✅ **unblocked via Option α**. `scripts/snapshot_predictions.py` dumps the SQLite DB to a portable JSON artifact. Run it on a cron (Streamlit Cloud doesn't natively schedule, so use a tiny external worker — fly.io free, Render free, or a scheduled GitHub Action). Commit the JSON to a private "predictions-mirror" repo or push to private bucket per your preference. Option γ (Postgres swap in `storage.py`) remains the long-term solution but is no longer release-blocking.
+
+```bash
+# On any external worker every N minutes:
+python scripts/snapshot_predictions.py \
+  --db-path ~/.omytea-personal-console/predictions.db \
+  --output-dir /var/snapshots \
+  --pretty
+
+# Outputs predictions_snapshot_<unix>.json
+```
 
 ---
 

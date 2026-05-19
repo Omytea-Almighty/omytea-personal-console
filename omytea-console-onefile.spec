@@ -34,10 +34,24 @@
 from PyInstaller.utils.hooks import (
     collect_data_files,
     collect_submodules,
+    copy_metadata,
 )
 
 
 block_cipher = None
+
+
+# Package metadata — see sibling spec for full rationale. Without
+# this the bundle dies at launch with PackageNotFoundError because
+# streamlit does importlib.metadata.version('streamlit') at import.
+metadata_datas = []
+metadata_datas += copy_metadata('streamlit')
+for opt_meta in ('altair', 'pandas', 'pyarrow', 'numpy', 'pillow',
+                 'requests', 'pydantic', 'opencv-python-headless'):
+    try:
+        metadata_datas += copy_metadata(opt_meta)
+    except Exception:
+        pass
 
 
 # Same data files as the one-folder spec — kept in sync intentionally.
@@ -62,6 +76,7 @@ datas = [
     ('README.md', '.'),
 ]
 datas += collect_data_files('streamlit')
+datas += metadata_datas
 for opt_pkg in ('altair', 'pandas', 'pyarrow'):
     try:
         datas += collect_data_files(opt_pkg)

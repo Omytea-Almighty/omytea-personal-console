@@ -137,23 +137,47 @@ These are reported in the Calibration history tab and persisted for longitudinal
 
 ## 6. Preliminary results
 
-> *Placeholder.*
->
-> Pipeline-invariant metrics on the bundled fixtures:
->
-> ```
-> Clip: two_entity_crossing  (12f, 320×240, 2 truth entities)
->   tracker_id_switches                0
->   joint_cardinality_matches_cartesian True
->   coherence_monotonic_decay          1.0
->
-> Clip: two_entity_crossing  (20f, 480×320, 2 truth entities)
->   tracker_id_switches                0
->   joint_cardinality_matches_cartesian True
->   coherence_monotonic_decay          1.0
-> ```
->
-> These confirm pipeline correctness on the synthetic baseline. Real-video accuracy results will be populated alongside the trained perception model in v0.2 of this paper.
+### 6.1 Pipeline-invariant metrics (synthetic fixtures)
+
+The bundled synthetic fixtures (`eval.synthetic_truth.build_two_entity_crossing_clip`) — two linear-motion entities crossing on a horizontal band — produce these `python -m eval.run_eval` numbers (single-machine, hermetic, reproducible):
+
+| Clip | Resolution | Truth entities | `tracker_id_switches` | `joint_cardinality_matches_cartesian` | `coherence_monotonic_decay` |
+|---|---|---|---|---|---|
+| `two_entity_crossing` (12 frames) | 320×240 | 2 | 0 | True | 1.0 |
+| `two_entity_crossing` (20 frames) | 480×320 | 2 | 0 | True | 1.0 |
+
+`tracker_id_switches = 0` because the synthetic-truth substitute in `eval/run_eval.py` currently uses identity matching against ground truth (real-perception output substitutes in when the trained model lands). `joint_cardinality_matches_cartesian = True` confirms `|JointWaveFunction| = 3^N_entities` (9 hypotheses for 2 entities), the invariant the substrate guarantees. `coherence_monotonic_decay = 1.0` confirms every off-diagonal magnitude transition under Lindblad evolution decreases (or stays equal) — i.e. the dissipation operator behaves as designed.
+
+### 6.2 End-to-end timing on real video
+
+We ran the full pipeline against `samples/walking_demo.mp4` (80 KB, 5-second, 10 fps, 50 frames) on an Apple M-series laptop (16 GB RAM, no GPU; Ollama CPU-only inference) using `scripts/real_e2e.py`. Two configurations:
+
+**Configuration A — 4 sampled frames, llava:7b (cold start):**
+
+| Step | Wall-clock | Notes |
+|---|---|---|
+| Substrate ingest + tracking | 0.32 s | `MotionFallbackDetector` + `IoUTracker`; 6 tracked entities found |
+| Vision-LLM scene compile | 600 s (timeout) | llava:7b CPU-only inference exceeded the 600 s honest-fallback ceiling → fallback stub returned |
+| BeliefProgram → ConsoleResult | < 0.01 s | pure-Python schema conversion |
+| Lindblad evolution | < 0.01 s | 27-cell joint state, 6-tick horizon |
+
+The vision-LLM timeout demonstrates the **honest-fallback design pattern** (§3.5): rather than hang indefinitely, the system surfaces a fallback stub of 7 branches plus an explicit `_fallback_reason` field, and the UI shows a banner with the failure cause and remediation hints. The rest of the pipeline runs to completion regardless.
+
+**Configuration B — 2 sampled frames, llava:7b (warm model):** populated by the v0.2 of this draft once the rerun completes.
+
+### 6.3 What the timing implies for product design
+
+- Substrate perception is the cheap step on CPU-only hardware: the 0.32 s ingest budget supports near-realtime per-frame processing for streaming use (Mode 6 live webcam) without GPU.
+- Vision-LLM inference is the cost driver. llava:7b CPU-only is a poor fit for short interactive sessions; on Apple-M GPU or a discrete GPU, real benchmark numbers populate quickly. The fallback design ensures users always see *some* prediction even when the LLM call is unreliable.
+- For the live mode, the design choice to call the vision LLM only on user `📸 Capture & predict` (not per-frame) is validated: per-frame LLM calls would be infeasible on consumer CPUs.
+
+### 6.4 Open data
+
+Raw per-run JSON artifacts are written to `docs/papers/real_e2e_runs/` so each invocation is archivable + parseable for paper-revision-time aggregation. The eval-harness CLI emits `--json` for the same purpose.
+
+### 6.5 Limitations
+
+These numbers do not constitute a benchmark against any competing system. They establish (a) pipeline correctness on a controlled fixture, and (b) the cost profile of the current default backend. Per §5.3, real accuracy numbers wait on a trained perception model and a labelled scene-prediction dataset; v0.2 of this draft will incorporate both.
 
 ---
 
