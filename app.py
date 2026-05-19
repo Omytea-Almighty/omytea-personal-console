@@ -280,7 +280,13 @@ def render_sidebar() -> str:
         f"</div>"
         f"<div style='color:#76808d;font-size:11px;margin-top:14px;'>"
         f"{_brand.footer_markdown()}"
-        f"</div>",
+        f"</div>"
+        # Tiny build marker — lets the user confirm which build the
+        # Streamlit Cloud worker is actually serving, useful when
+        # debugging "I don't see any changes" reports.
+        f"<div style='color:#3a3f49;font-size:9.5px;margin-top:10px;"
+        f"letter-spacing:0.15em;text-transform:uppercase;'>"
+        f"build · v4.17.0 · mode-7 lens</div>",
         unsafe_allow_html=True,
     )
 
