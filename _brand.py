@@ -29,6 +29,7 @@ BRAND_PRIVACY_URL: str = (
     "https://github.com/Adonyth/omytea-personal-console/blob/main/PRIVACY_POLICY.md"
 )
 BRAND_HOMEPAGE: str = "https://console.omyteaai.com"
+BRAND_LIVE_DEMO_URL: str = "https://omytea-personal-console.streamlit.app"
 
 # Per-mode emoji palette. Centralised so adding a new mode is a
 # one-line change across all surfaces (sidebar, page header, README).
@@ -71,6 +72,7 @@ __all__ = [
     "BRAND_REPO_URL",
     "BRAND_PRIVACY_URL",
     "BRAND_HOMEPAGE",
+    "BRAND_LIVE_DEMO_URL",
     "MODE_EMOJI",
     "footer_markdown",
     "emoji_for",

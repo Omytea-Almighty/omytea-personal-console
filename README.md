@@ -1,5 +1,7 @@
 # Omytea Personal Future Console — MVP
 
+**🚀 Live demo: [omytea-personal-console.streamlit.app](https://omytea-personal-console.streamlit.app)** — open the URL, no install required. Mock mode + non-vision modes work fully in-browser. For real video/webcam prediction, follow the install steps below to run locally with Ollama.
+
 **A probability-calibrated decision-support tool for personal futures, with local video understanding.**
 
 Built on Omytea's quantum-enhanced world-model substrate. Type a decision **or** upload a short video; get multiple future scenarios with calibrated probabilities, watch the quantum-operator coherence between those scenarios decay over time, and see how new evidence shifts the predictions.
