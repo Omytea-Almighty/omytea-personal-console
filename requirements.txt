@@ -32,3 +32,13 @@ opencv-python-headless>=4.8,<5.0
 # (as of v0.4.0). No more vendor copy in the dist tree; just `pip install`.
 # Set OMYTEA_CONSOLE_MOCK=1 if you want to run without substrate at all.
 omytea-quantum-substrate>=0.1.1,<1.0
+
+# Mode 6 "Live webcam" — streamlit-webrtc bridges the visitor's
+# browser camera to the substrate's perception pipeline via WebRTC.
+# As of v0.4.1 this is a REQUIRED runtime dep (was optional in 0.3.x)
+# so that the live cloud demo at omytea-personal-console.streamlit.app
+# actually exposes the webcam mode to first-time visitors. Local
+# desktop installs that don't need the webcam can still skip these
+# two lines, but the install.sh + the public dist now bring them in.
+streamlit-webrtc>=0.47,<1.0
+av>=10.0,<14.0
