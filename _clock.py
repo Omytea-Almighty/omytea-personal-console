@@ -42,6 +42,7 @@ from _metaphysics import (
     WUXING_KEYS,
     ZIWEI_PALACE_HANZI,
     ZIWEI_PALACES,
+    ZIWEI_STARS,
     ZODIAC,
     BaZiPattern,
     Hexagram,
@@ -54,13 +55,21 @@ from _metaphysics import (
     ziwei_star_hanzi,
 )
 
+# Star-nature map (吉 +1 / 中 0 / 凶 −1) for 紫微 colour coding.
+_STAR_NATURE: dict[str, int] = {k: n for k, _h, n in ZIWEI_STARS}
+
 # ----------------------------------------------------------------------
-# Palette
+# Palette — a disciplined surface + hairline ladder (per the Linear
+# design study: carry depth with stepped surfaces + graded hairlines,
+# reserve the glow for the single focal element, never decorate).
 # ----------------------------------------------------------------------
 _CANVAS   = "#0a0c11"
-_SURFACE  = "#11141b"
-_SURFACE2 = "#181c25"
-_HAIRLINE = "#232834"
+_SURFACE  = "#11141b"   # surface-1 — default card
+_SURFACE2 = "#181c25"   # surface-2 — lifted tile
+_SURFACE3 = "#1f2530"   # surface-3 — nested / hovered
+_HAIRLINE = "#232834"   # structural divider
+_HAIR_SOFT   = "#1a1e26"  # faint nested hairline
+_HAIR_STRONG = "#343a47"  # emphasis hairline
 _INK0     = "#f0f2f5"
 _INK1     = "#b9bfc8"
 _INK2     = "#76808d"
@@ -167,11 +176,22 @@ def _common_defs() -> str:
         '<feGaussianBlur stdDeviation="1.6" result="b"/>'
         '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>'
         '</filter>',
-        # drop shadow for floating elements
+        # drop shadow for floating elements — restrained (depth comes
+        # mostly from the surface + hairline ladder, not heavy shadow)
         '<filter id="drop" x="-40%" y="-40%" width="180%" height="180%">'
-        '<feDropShadow dx="0" dy="3" stdDeviation="4" '
-        'flood-color="#000000" flood-opacity="0.55"/>'
+        '<feDropShadow dx="0" dy="2" stdDeviation="3" '
+        'flood-color="#000000" flood-opacity="0.40"/>'
         '</filter>',
+        # nested-cell vertical gradient (surface-2 → slightly deeper)
+        '<linearGradient id="cell-grad" x1="0%" y1="0%" x2="0%" y2="100%">'
+        f'<stop offset="0%" stop-color="#1a1f2a"/>'
+        f'<stop offset="100%" stop-color="#13161e"/>'
+        '</linearGradient>',
+        # tarot card face (top-lit)
+        '<linearGradient id="card-face" x1="0%" y1="0%" x2="0%" y2="100%">'
+        f'<stop offset="0%" stop-color="#20242f"/>'
+        f'<stop offset="100%" stop-color="#15181f"/>'
+        '</linearGradient>',
     ]
     # per-element radial gradients for the 五行 wedges
     for key in WUXING_KEYS:
@@ -368,7 +388,7 @@ def _render_bazi(reading: LensReading,
             f'<path d="{_arc_path(_CX, _CY, r_out, r_in, a0, a1)}" '
             f'fill="url(#wx-{key})" '
             f'fill-opacity="{0.92 if is_dom else 0.62}" '
-            f'stroke="{_CANVAS}" stroke-width="1.4"{glow}></path>'
+            f'stroke="{_CANVAS}" stroke-width="1.0"{glow}></path>'
         )
         # element glyph on a small recessed plate
         mr = (r_out + r_in_base) / 2 + 4
@@ -547,8 +567,12 @@ def _render_iching(reading: LensReading,
 # ======================================================================
 
 def _tarot_glyph(name: str, cx: float, cy: float, col: str) -> str:
-    """A compact line-art emblem for a Tarot card, ~46px tall."""
-    s = f'stroke="{col}" stroke-width="2" fill="none" ' \
+    """A compact line-art emblem for a Tarot card, ~46px tall.
+
+    Drawn inside a medallion by the caller; stroke kept fine (1.7px)
+    so the emblem reads as an engraved inlay, not a sketch.
+    """
+    s = f'stroke="{col}" stroke-width="1.7" fill="none" ' \
         'stroke-linecap="round" stroke-linejoin="round"'
     sf = f'fill="{col}" stroke="none"'
     if name == "star":
@@ -641,11 +665,11 @@ def _render_tarot(reading: LensReading,
         lift = 10 if is_present else 0
         cy0 = top - lift
         accent = _ACCENT if is_present else _HAIRLINE
-        # card plate + double frame
+        # card plate — top-lit face gradient + double frame
         body.append(
             f'<g filter="url(#drop)">'
             f'<rect x="{cx0:.1f}" y="{cy0:.1f}" width="{card_w}" '
-            f'height="{card_h}" rx="11" fill="{_SURFACE2}" '
+            f'height="{card_h}" rx="11" fill="url(#card-face)" '
             f'stroke="{accent}" stroke-width="{1.6 if is_present else 1.1}"></rect>'
             f'</g>'
             f'<rect x="{cx0+6:.1f}" y="{cy0+6:.1f}" width="{card_w-12}" '
@@ -665,11 +689,25 @@ def _render_tarot(reading: LensReading,
             f'font-size="15" fill="{_INK2}" text-anchor="middle" '
             f'font-weight="600">{_roman(card.number)}</text>'
         )
-        # emblem (rotated 180° if reversed)
-        gcx, gcy = ccx, cy0 + card_h / 2 - 6
+        # emblem — set inside a medallion so even a simple glyph reads
+        # as a crafted inlay. Reversed cards rotate the emblem 180°.
+        gcx, gcy = ccx, cy0 + card_h / 2 - 8
         glyph_col = _AMBER if not is_rev else _INK2
-        rot = f' transform="rotate(180 {gcx:.1f} {gcy:.1f})"' if is_rev else ""
-        body.append(f'<g{rot}>{_tarot_glyph(card.glyph, gcx, gcy, glyph_col)}</g>')
+        med_r = 35.0
+        body.append(
+            f'<circle cx="{gcx:.1f}" cy="{gcy:.1f}" r="{med_r}" '
+            f'fill="rgba(216,166,87,0.05)" stroke="{_HAIR_STRONG}" '
+            f'stroke-width="0.9"></circle>'
+            f'<circle cx="{gcx:.1f}" cy="{gcy:.1f}" r="{med_r-4:.1f}" '
+            f'fill="none" stroke="{_HAIR_SOFT}" stroke-width="0.7"></circle>'
+        )
+        # glyph scaled to 0.78 to sit comfortably within the medallion
+        rot = f'rotate(180 {gcx:.1f} {gcy:.1f}) ' if is_rev else ""
+        body.append(
+            f'<g transform="{rot}translate({gcx:.1f} {gcy:.1f}) '
+            f'scale(0.78) translate({-gcx:.1f} {-gcy:.1f})">'
+            f'{_tarot_glyph(card.glyph, gcx, gcy, glyph_col)}</g>'
+        )
         # card name
         body.append(
             f'<text x="{ccx:.1f}" y="{cy0+card_h-40:.1f}" font-family="{_SERIF}" '
@@ -720,6 +758,10 @@ _ZIWEI_CELL_XY: tuple[tuple[int, int], ...] = (
 )
 
 
+# 吉 / 中 / 凶 star-nature colours.
+_STAR_COLOR: dict[int, str] = {1: _INK0, 0: _INK1, -1: "#c98b92"}
+
+
 def _render_ziwei(reading: LensReading,
                   model_value: str, combined_value: str,
                   meta: str) -> str:
@@ -727,19 +769,22 @@ def _render_ziwei(reading: LensReading,
     body: list[str] = [_svg_open()]
 
     body.append(
-        f'<text x="{_CX}" y="58" font-family="{_MONO}" font-size="9.5" '
+        f'<text x="{_CX}" y="56" font-family="{_MONO}" font-size="9.5" '
         f'fill="{_INK2}" letter-spacing="0.26em" text-anchor="middle">'
         f'ZIWEI DOU SHU · 12 PALACES</text>'
     )
 
-    grid_x, grid_y = 56.0, 74.0
-    cell = 92.0
+    grid_x, grid_y = 58.0, 76.0
+    cell = 91.0
 
-    # outer frame
+    # outer frame — double hairline, the structural one stronger
     body.append(
-        f'<rect x="{grid_x-6}" y="{grid_y-6}" width="{cell*4+12}" '
-        f'height="{cell*4+12}" rx="12" fill="none" '
+        f'<rect x="{grid_x-7:.1f}" y="{grid_y-7:.1f}" width="{cell*4+14:.1f}" '
+        f'height="{cell*4+14:.1f}" rx="14" fill="none" '
         f'stroke="{_HAIRLINE}" stroke-width="1.1"></rect>'
+        f'<rect x="{grid_x-3:.1f}" y="{grid_y-3:.1f}" width="{cell*4+6:.1f}" '
+        f'height="{cell*4+6:.1f}" rx="11" fill="none" '
+        f'stroke="{_HAIR_SOFT}" stroke-width="0.8"></rect>'
     )
 
     for idx, (gx, gy) in enumerate(_ZIWEI_CELL_XY):
@@ -747,61 +792,92 @@ def _render_ziwei(reading: LensReading,
         x = grid_x + gx * cell
         y = grid_y + gy * cell
         is_ming = (palace == "ming")
-        fill = "rgba(139,140,255,0.10)" if is_ming else _SURFACE
-        stroke = _ACCENT if is_ming else _HAIRLINE
+        gap = 3.0
+        cw = cell - gap
+        # cell plate
+        glow = ' filter="url(#soft-glow)"' if is_ming else ""
         body.append(
-            f'<rect x="{x:.1f}" y="{y:.1f}" width="{cell}" height="{cell}" '
-            f'rx="7" fill="{fill}" stroke="{stroke}" '
-            f'stroke-width="{1.5 if is_ming else 0.9}"></rect>'
+            f'<rect x="{x+gap/2:.1f}" y="{y+gap/2:.1f}" width="{cw:.1f}" '
+            f'height="{cw:.1f}" rx="8" fill="url(#cell-grad)" '
+            f'stroke="{_ACCENT if is_ming else _HAIR_SOFT}" '
+            f'stroke-width="{1.4 if is_ming else 0.9}"{glow}></rect>'
         )
-        # palace name (top-left of cell)
-        body.append(
-            f'<text x="{x+9:.1f}" y="{y+19:.1f}" font-family="{_SERIF}" '
-            f'font-size="14" fill="{_ACCENT if is_ming else _INK1}" '
-            f'font-weight="600">{ZIWEI_PALACE_HANZI[palace]}</text>'
-        )
-        # stars in this palace (stacked, centred)
-        stars = chart.palace_stars.get(palace, [])
-        for si, star in enumerate(stars[:4]):
+        if is_ming:
+            # faint lavender wash + a top accent rule
             body.append(
-                f'<text x="{x+cell/2:.1f}" y="{y+40+si*17:.1f}" '
-                f'font-family="{_SERIF}" font-size="15" fill="{_INK0}" '
+                f'<rect x="{x+gap/2:.1f}" y="{y+gap/2:.1f}" width="{cw:.1f}" '
+                f'height="{cw:.1f}" rx="8" fill="rgba(139,140,255,0.07)"></rect>'
+            )
+        # top accent hairline inside the cell (craft detail)
+        body.append(
+            f'<line x1="{x+gap/2+10:.1f}" y1="{y+gap/2+0.5:.1f}" '
+            f'x2="{x+cw-gap/2:.1f}" y2="{y+gap/2+0.5:.1f}" '
+            f'stroke="{_ACCENT if is_ming else _HAIR_STRONG}" '
+            f'stroke-width="{1.4 if is_ming else 0.8}" '
+            f'opacity="{0.9 if is_ming else 0.5}"></line>'
+        )
+        # palace-name tab (small recessed pill, top-left)
+        tab_x, tab_y = x + gap / 2 + 7, y + gap / 2 + 8
+        body.append(
+            f'<rect x="{tab_x:.1f}" y="{tab_y:.1f}" width="34" height="18" '
+            f'rx="5" fill="{_SURFACE3}" '
+            f'stroke="{_ACCENT if is_ming else _HAIR_SOFT}" '
+            f'stroke-width="0.8" opacity="0.95"></rect>'
+            f'<text x="{tab_x+17:.1f}" y="{tab_y+13:.1f}" '
+            f'font-family="{_SERIF}" font-size="12.5" '
+            f'fill="{_ACCENT if is_ming else _INK1}" font-weight="600" '
+            f'text-anchor="middle">{ZIWEI_PALACE_HANZI[palace]}</text>'
+        )
+        # stars — centred column, coloured by 吉/中/凶 nature
+        stars = chart.palace_stars.get(palace, [])
+        scx = x + cell / 2
+        sy0 = y + gap / 2 + 48
+        for si, star in enumerate(stars[:4]):
+            col = _STAR_COLOR.get(_STAR_NATURE.get(star, 0), _INK1)
+            body.append(
+                f'<text x="{scx:.1f}" y="{sy0+si*16:.1f}" '
+                f'font-family="{_SERIF}" font-size="14.5" fill="{col}" '
                 f'text-anchor="middle" font-weight="500">'
                 f'{_esc(ziwei_star_hanzi(star),2)}</text>'
             )
         if not stars:
             body.append(
-                f'<text x="{x+cell/2:.1f}" y="{y+cell/2+8:.1f}" '
-                f'font-family="{_MONO}" font-size="9" fill="{_INK3}" '
-                f'text-anchor="middle">·</text>'
+                f'<circle cx="{scx:.1f}" cy="{y+cell/2+10:.1f}" r="1.6" '
+                f'fill="{_INK3}"></circle>'
             )
 
-    # centre summary plate (the 2×2 hole)
+    # centre summary plate — the engraved-core treatment
     cxp = grid_x + cell
     cyp = grid_y + cell
+    cw2 = cell * 2
     body.append(
-        f'<rect x="{cxp:.1f}" y="{cyp:.1f}" width="{cell*2}" '
-        f'height="{cell*2}" rx="10" fill="url(#core-grad)" '
-        f'stroke="{_HAIRLINE}" stroke-width="1.1"></rect>'
-        f'<text x="{_CX}" y="{cyp+44:.1f}" font-family="{_MONO}" '
-        f'font-size="9" fill="{_INK2}" letter-spacing="0.2em" '
+        f'<rect x="{cxp:.1f}" y="{cyp:.1f}" width="{cw2:.1f}" '
+        f'height="{cw2:.1f}" rx="12" fill="url(#core-grad)" '
+        f'stroke="{_HAIRLINE}" stroke-width="1.2"></rect>'
+        f'<rect x="{cxp+6:.1f}" y="{cyp+6:.1f}" width="{cw2-12:.1f}" '
+        f'height="{cw2-12:.1f}" rx="9" fill="none" '
+        f'stroke="rgba(255,255,255,0.05)" stroke-width="0.7"></rect>'
+        f'<text x="{_CX}" y="{cyp+46:.1f}" font-family="{_MONO}" '
+        f'font-size="9" fill="{_INK2}" letter-spacing="0.22em" '
         f'text-anchor="middle">MODEL</text>'
         f'<text x="{_CX}" y="{cyp+72:.1f}" font-family="{_SERIF}" '
         f'font-size="27" fill="{_INK0}" font-weight="600" '
         f'text-anchor="middle" filter="url(#num-glow)">'
         f'{_esc(model_value,8)}</text>'
-        f'<line x1="{_CX-30}" y1="{cyp+88:.1f}" x2="{_CX+30}" '
+        f'<line x1="{_CX-26}" y1="{cyp+88:.1f}" x2="{_CX+26}" '
         f'y2="{cyp+88:.1f}" stroke="{_HAIRLINE}" stroke-width="0.9"></line>'
+        f'<circle cx="{_CX-26}" cy="{cyp+88:.1f}" r="1.5" fill="{_INK3}"></circle>'
+        f'<circle cx="{_CX+26}" cy="{cyp+88:.1f}" r="1.5" fill="{_INK3}"></circle>'
         f'<text x="{_CX}" y="{cyp+108:.1f}" font-family="{_MONO}" '
-        f'font-size="9" fill="{_INK2}" letter-spacing="0.2em" '
+        f'font-size="9" fill="{_INK2}" letter-spacing="0.22em" '
         f'text-anchor="middle">COMBINED</text>'
-        f'<text x="{_CX}" y="{cyp+136:.1f}" font-family="{_SERIF}" '
+        f'<text x="{_CX}" y="{cyp+134:.1f}" font-family="{_SERIF}" '
         f'font-size="27" fill="{_ACCENT}" font-weight="600" '
         f'text-anchor="middle" filter="url(#num-glow)">'
         f'{_esc(combined_value,8)}</text>'
     )
     body.append(
-        f'<text x="{_CX}" y="{_VB-30:.1f}" font-family="{_MONO}" '
+        f'<text x="{_CX}" y="{_VB-28:.1f}" font-family="{_MONO}" '
         f'font-size="8.5" fill="{_INK3}" letter-spacing="0.18em" '
         f'text-anchor="middle">{_esc(meta,40)}</text>'
     )
@@ -864,7 +940,7 @@ def _render_astro(reading: LensReading,
         body.append(
             f'<path d="{_arc_path(_CX, _CY, r_out, r_in, a0, a1)}" '
             f'fill="{col}" fill-opacity="{alpha:.3f}" '
-            f'stroke="{_CANVAS}" stroke-width="1.4"{glow}></path>'
+            f'stroke="{_CANVAS}" stroke-width="1.0"{glow}></path>'
         )
         # zodiac glyph at sector midpoint
         mr = (r_out + r_in) / 2
