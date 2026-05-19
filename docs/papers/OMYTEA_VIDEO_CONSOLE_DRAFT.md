@@ -227,6 +227,7 @@ These numbers do not constitute a benchmark against any competing system. They e
 > - Bardes, A., et al. (2024). V-JEPA: latent video prediction for visual representation learning. arXiv:2404.08471.
 > - Liu, H., et al. (2024). Improved baselines with visual instruction tuning. arXiv:2310.03744.
 > - Cui, Y., & Ma, S. (2026). *World Models with Quantum-Information Substrates: A Lindblad-Form Formulation.* (Companion paper.)
+> - Chen, J. (2026). *Omytea Quantum Substrate: Open-System World-Model Math Core* (Version 0.1.2) [Computer software]. Zenodo. [doi:10.5281/zenodo.20293619](https://doi.org/10.5281/zenodo.20293619). The substrate library this paper's perception-to-belief-state pipeline (§3.2–§3.5) is built on. Source: <https://github.com/Adonyth/omytea-quantum-substrate>. PyPI: <https://pypi.org/project/omytea-quantum-substrate/>.
 
 ---
 
