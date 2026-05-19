@@ -63,10 +63,21 @@ jobs:
           python -m eval.run_eval --json
 
   build-native:
-    name: PyInstaller bundle smoke (macOS)
-    runs-on: macos-latest
-    # Only run on push to main to save minutes; PRs get test-suite only.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    name: PyInstaller bundle smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    # Only run on push to main + manual dispatch to save minutes; PRs
+    # get test-suite only.
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            artifact: omytea-console-macos-arm64
+          - os: ubuntu-latest
+            artifact: omytea-console-linux-x86_64
     steps:
       - uses: actions/checkout@v4
 
@@ -80,6 +91,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install 'pyinstaller>=6.0,<7.0'
+
+      - name: Install OpenCV runtime libs (Linux only)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1 libglib2.0-0
 
       - name: Build one-folder bundle
         run: bash scripts/build_native.sh --folder
@@ -97,7 +114,7 @@ jobs:
       - name: Upload bundle artifact
         uses: actions/upload-artifact@v4
         with:
-          name: omytea-console-macos-arm64
+          name: ${{ matrix.artifact }}
           path: dist/omytea-console
           retention-days: 14
 
