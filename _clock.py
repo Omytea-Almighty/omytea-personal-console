@@ -79,6 +79,16 @@ _TEAL     = "#58c5b4"
 _CORAL    = "#ff5e6e"
 _AMBER    = "#d8a657"
 
+# Galaxy palette — borrowed verbatim from the founder's Nye Clock
+# (the sexagenary-cycle celestial instrument). 天干 ticks render gold,
+# 地支 ticks render cyan, so the 10-stem and 12-branch tick systems
+# visibly "mesh" like two gears (LCM 10,12 = 60). Used by the 八字
+# Sexagenary Engine + the 占星 orbital wheel.
+_GAL_GOLD   = "#f7c940"   # 天干 / Heavenly Stems
+_GAL_CYAN   = "#44ecff"   # 地支 / Earthly Branches
+_GAL_BLUE   = "#6b8fff"   # orbital paths
+_GAL_VIOLET = "#b47eff"   # nebula accents
+
 _SERIF = "'Cormorant Garamond',Georgia,serif"
 _MONO  = "ui-monospace,SFMono-Regular,Menlo,monospace"
 
@@ -332,11 +342,29 @@ def _branch_ring(branch_probabilities: list[tuple[str, float, str]],
 # Instrument 1 — 八字 "Five-Phase Astrolabe"
 # ======================================================================
 
+def _sexagenary_index(pillar: tuple[int, int]) -> int:
+    """The 0–59 position of a 干支 pillar on the great sexagenary cycle.
+
+    Solves n ≡ stem (mod 10), n ≡ branch (mod 12) by CRT: n = (6s−5b) mod 60.
+    """
+    s, b = pillar
+    return (6 * s - 5 * b) % 60
+
+
 def _render_bazi(reading: LensReading,
                  branch_probabilities: list[tuple[str, float, str]],
                  top_label: str, top_value: str,
                  bottom_label: str, bottom_value: str,
                  meta: str) -> str:
+    """八字 "Sexagenary Engine".
+
+    Borrows the founder's Nye Clock celestial instrument: the outer ring
+    is the 60-step 干支 cycle where the 10-stem (gold) and 12-branch
+    (cyan) tick systems visibly mesh like two gears — LCM(10,12)=60.
+    The user's four pillars sit as marked coordinates on that cycle.
+    Inside: the 五行 phase ring, the model's branch arcs, an engraved
+    dual-readout core.
+    """
     bazi = reading.bazi
     balance = reading.balance or {}
     dom_key = dominant_element(balance) if balance else None
@@ -345,36 +373,75 @@ def _render_bazi(reading: LensReading,
 
     # --- outer frame: double hairline ring + 4 cardinal diamonds ---
     body.append(
-        f'<circle cx="{_CX}" cy="{_CY}" r="226" fill="none" '
+        f'<circle cx="{_CX}" cy="{_CY}" r="227" fill="none" '
         f'stroke="{_HAIRLINE}" stroke-width="0.7"></circle>'
-        f'<circle cx="{_CX}" cy="{_CY}" r="221" fill="none" '
-        f'stroke="{_HAIRLINE}" stroke-width="1.1"></circle>'
+        f'<circle cx="{_CX}" cy="{_CY}" r="222" fill="none" '
+        f'stroke="{_HAIR_STRONG}" stroke-width="1.0" opacity="0.6"></circle>'
     )
     for ang in (0, 90, 180, 270):
-        dx, dy = _polar(_CX, _CY, 223.5, ang)
+        dx, dy = _polar(_CX, _CY, 224.5, ang)
         body.append(
             f'<path d="M {dx:.1f} {dy-4:.1f} L {dx+4:.1f} {dy:.1f} '
             f'L {dx:.1f} {dy+4:.1f} L {dx-4:.1f} {dy:.1f} Z" '
             f'fill="{_INK2}"></path>'
         )
 
-    # --- graduated tick ring ---
-    for i in range(72):
-        ang = i * 5.0
-        major = (i % 6 == 0)
-        r1 = 219.0
-        r2 = 208.0 if major else 213.0
-        x1, y1 = _polar(_CX, _CY, r1, ang)
-        x2, y2 = _polar(_CX, _CY, r2, ang)
+    # === SEXAGENARY RING — 60 steps; 10 gold 天干 teeth mesh with
+    # 12 cyan 地支 teeth (the "天干地支咬合" of the Nye Clock). ===
+    r_base = 210.0
+    body.append(
+        f'<circle cx="{_CX}" cy="{_CY}" r="{r_base}" fill="none" '
+        f'stroke="{_HAIR_SOFT}" stroke-width="0.7"></circle>'
+    )
+    for i in range(60):
+        ang = i * 6.0
+        # minor tick — all 60 steps
+        x1, y1 = _polar(_CX, _CY, r_base - 1.5, ang)
+        x2, y2 = _polar(_CX, _CY, r_base + 1.5, ang)
         body.append(
             f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" '
-            f'stroke="{_INK1 if major else _INK3}" '
-            f'stroke-width="{1.1 if major else 0.6}" '
-            f'opacity="{0.85 if major else 0.5}"></line>'
+            f'stroke="{_INK3}" stroke-width="0.5" opacity="0.45"></line>'
         )
+        if i % 6 == 0:  # 天干 — gold tooth, points outward
+            xa, ya = _polar(_CX, _CY, r_base + 1, ang)
+            xb, yb = _polar(_CX, _CY, r_base + 11, ang)
+            body.append(
+                f'<line x1="{xa:.1f}" y1="{ya:.1f}" x2="{xb:.1f}" y2="{yb:.1f}" '
+                f'stroke="{_GAL_GOLD}" stroke-width="1.8" '
+                f'stroke-linecap="round" opacity="0.78"></line>'
+            )
+        if i % 5 == 0:  # 地支 — cyan tooth, points inward
+            xa, ya = _polar(_CX, _CY, r_base - 1, ang)
+            xb, yb = _polar(_CX, _CY, r_base - 10, ang)
+            body.append(
+                f'<line x1="{xa:.1f}" y1="{ya:.1f}" x2="{xb:.1f}" y2="{yb:.1f}" '
+                f'stroke="{_GAL_CYAN}" stroke-width="1.6" '
+                f'stroke-linecap="round" opacity="0.66"></line>'
+            )
 
-    # --- 五行 sector ring (gradient wedges) ---
-    r_out, r_in_base = 202.0, 152.0
+    # --- the four pillars as coordinates on the 60-cycle ---
+    if bazi is not None:
+        pillar_seq = (
+            (bazi.year_pillar,  "YEAR"),
+            (bazi.month_pillar, "MONTH"),
+            (bazi.day_pillar,   "DAY"),
+            (bazi.hour_pillar,  "HOUR"),
+        )
+        for pil, _name in pillar_seq:
+            n = _sexagenary_index(pil)
+            ang = n * 6.0
+            mx, my = _polar(_CX, _CY, r_base, ang)
+            # a lavender coordinate jewel on the ring
+            body.append(
+                f'<circle cx="{mx:.1f}" cy="{my:.1f}" r="5.4" '
+                f'fill="{_SURFACE}" stroke="{_ACCENT}" stroke-width="1.5" '
+                f'filter="url(#soft-glow)"></circle>'
+                f'<circle cx="{mx:.1f}" cy="{my:.1f}" r="2.1" '
+                f'fill="{_ACCENT}"></circle>'
+            )
+
+    # --- 五行 phase ring (gradient wedges) ---
+    r_out, r_in_base = 195.0, 150.0
     sector = 72.0
     for i, key in enumerate(WUXING_KEYS):
         share = max(0.0, balance.get(key, 0.0))
@@ -387,43 +454,33 @@ def _render_bazi(reading: LensReading,
         body.append(
             f'<path d="{_arc_path(_CX, _CY, r_out, r_in, a0, a1)}" '
             f'fill="url(#wx-{key})" '
-            f'fill-opacity="{0.92 if is_dom else 0.62}" '
+            f'fill-opacity="{0.92 if is_dom else 0.60}" '
             f'stroke="{_CANVAS}" stroke-width="1.0"{glow}></path>'
         )
-        # element glyph on a small recessed plate
-        mr = (r_out + r_in_base) / 2 + 4
+        mr = (r_out + r_in_base) / 2 + 3
         gx, gy = _polar(_CX, _CY, mr, (a0 + a1) / 2)
-        plate_r = 13.5 if is_dom else 10.5
+        plate_r = 13.0 if is_dom else 10.0
         body.append(
             f'<circle cx="{gx:.1f}" cy="{gy:.1f}" r="{plate_r}" '
             f'fill="{_SURFACE}" stroke="{WUXING_COLOR[key]}" '
-            f'stroke-width="{1.4 if is_dom else 0.8}" '
-            f'opacity="{1.0 if is_dom else 0.9}"></circle>'
+            f'stroke-width="{1.4 if is_dom else 0.8}"></circle>'
             f'<text x="{gx:.1f}" y="{gy+0.5:.1f}" font-family="{_SERIF}" '
-            f'font-size="{20 if is_dom else 14}" '
+            f'font-size="{19 if is_dom else 13}" '
             f'fill="{_INK0 if is_dom else _INK1}" '
             f'font-weight="600" text-anchor="middle" '
             f'dominant-baseline="middle">{WUXING_HANZI[i]}</text>'
         )
 
-    # --- separator hairline + boundary dots ---
+    # --- separator hairline + branch arc ring ---
     body.append(
-        f'<circle cx="{_CX}" cy="{_CY}" r="148" fill="none" '
-        f'stroke="{_HAIRLINE}" stroke-width="0.7"></circle>'
+        f'<circle cx="{_CX}" cy="{_CY}" r="146" fill="none" '
+        f'stroke="{_HAIR_SOFT}" stroke-width="0.7"></circle>'
     )
-    for i in range(5):
-        bx, by = _polar(_CX, _CY, 148, i * sector - sector / 2)
-        body.append(f'<circle cx="{bx:.1f}" cy="{by:.1f}" r="1.6" '
-                    f'fill="{_INK2}"></circle>')
-
-    # --- branch arc ring ---
-    body.append(_branch_ring(branch_probabilities, 142.0, 116.0))
+    body.append(_branch_ring(branch_probabilities, 140.0, 116.0))
     body.append(
         f'<circle cx="{_CX}" cy="{_CY}" r="112" fill="none" '
-        f'stroke="{_HAIRLINE}" stroke-width="0.7"></circle>'
+        f'stroke="{_HAIR_SOFT}" stroke-width="0.7"></circle>'
     )
-
-    # --- inner micro-tick ring ---
     for i in range(48):
         ang = i * 7.5
         x1, y1 = _polar(_CX, _CY, 110, ang)
@@ -438,7 +495,7 @@ def _render_bazi(reading: LensReading,
                                 bottom_label, bottom_value, meta,
                                 r_core=100.0))
 
-    # --- corner 八字 cartouches ---
+    # --- corner 八字 cartouches — 干支 + sexagenary index, gold/cyan ---
     if bazi is not None:
         pillars = (
             (bazi.year_pillar,  "YEAR",  (40, 40)),
@@ -447,16 +504,24 @@ def _render_bazi(reading: LensReading,
             (bazi.hour_pillar,  "HOUR",  (_VB - 40, _VB - 40)),
         )
         for pil, name, (px, py) in pillars:
+            txt = pillar_text(pil)
+            idx = _sexagenary_index(pil)
+            stem_ch = txt[0] if txt else ""
+            branch_ch = txt[1] if len(txt) > 1 else ""
             body.append(
-                f'<g transform="translate({px-32},{py-19})">'
-                f'<rect x="0" y="0" width="64" height="38" rx="6" '
+                f'<g transform="translate({px-37},{py-20})">'
+                f'<rect x="0" y="0" width="74" height="40" rx="7" '
                 f'fill="{_SURFACE2}" stroke="{_HAIRLINE}" stroke-width="1"></rect>'
-                f'<text x="32" y="17" font-family="{_SERIF}" font-size="17" '
-                f'fill="{_INK0}" font-weight="600" text-anchor="middle" '
-                f'dominant-baseline="middle">{_esc(pillar_text(pil),4)}</text>'
-                f'<text x="32" y="30" font-family="{_MONO}" font-size="7.5" '
-                f'fill="{_INK3}" letter-spacing="0.18em" text-anchor="middle">'
-                f'{name}</text>'
+                # 天干 in gold, 地支 in cyan — the mesh, restated
+                f'<text x="37" y="18" font-family="{_SERIF}" font-size="18" '
+                f'text-anchor="middle" dominant-baseline="middle" '
+                f'font-weight="600">'
+                f'<tspan fill="{_GAL_GOLD}">{_esc(stem_ch,1)}</tspan>'
+                f'<tspan fill="{_GAL_CYAN}">{_esc(branch_ch,1)}</tspan>'
+                f'</text>'
+                f'<text x="37" y="32" font-family="{_MONO}" font-size="7" '
+                f'fill="{_INK3}" letter-spacing="0.12em" text-anchor="middle">'
+                f'{name} · {idx + 1:02d}/60</text>'
                 f'</g>'
             )
 
@@ -953,40 +1018,42 @@ def _render_astro(reading: LensReading,
             f'dominant-baseline="middle">{sign.glyph}</text>'
         )
 
-    # --- big-three markers (☉ sun / ☽ moon / Asc) on a marker ring ---
-    body.append(
-        f'<circle cx="{_CX}" cy="{_CY}" r="148" fill="none" '
-        f'stroke="{_HAIRLINE}" stroke-width="0.7"></circle>'
+    # --- the big three as bodies on orbital paths (Nye-Clock
+    # Sun-Earth-Moon system borrow): three concentric galaxy-blue
+    # orbits, ☉ Sun innermost, ☽ Moon mid, Asc outermost — each body
+    # sits on its own orbit at its sign's angle. ---
+    orbits = (
+        ("asc",  chart.rising, "Asc", _GAL_BLUE,  144.0, 11),
+        ("moon", chart.moon,   "☽",   _INK1,      124.0, 13),
+        ("sun",  chart.sun,    "☉",   _GAL_GOLD,  106.0, 14),
     )
-    for body_key, idx, sym, col in (
-        ("sun",  chart.sun,    "☉", _AMBER),
-        ("moon", chart.moon,   "☽", _INK1),
-        ("asc",  chart.rising, "Asc",    _ACCENT),
-    ):
-        mx, my = _polar(_CX, _CY, 148.0, idx * 30.0)
+    for _bk, idx, _sym, col, orad, _fs in orbits:
+        # the orbit path — faint dashed galaxy-blue ring
         body.append(
-            f'<circle cx="{mx:.1f}" cy="{my:.1f}" r="9" fill="{_SURFACE}" '
-            f'stroke="{col}" stroke-width="1.3"></circle>'
+            f'<circle cx="{_CX}" cy="{_CY}" r="{orad}" fill="none" '
+            f'stroke="{_GAL_BLUE}" stroke-width="0.7" '
+            f'stroke-dasharray="2 5" opacity="0.32"></circle>'
+        )
+    for _bk, idx, sym, col, orad, fs in orbits:
+        mx, my = _polar(_CX, _CY, orad, idx * 30.0)
+        # a faint connector from the centre sun to the body
+        body.append(
+            f'<line x1="{_CX}" y1="{_CY}" x2="{mx:.1f}" y2="{my:.1f}" '
+            f'stroke="{_GAL_BLUE}" stroke-width="0.6" opacity="0.20"></line>'
+            f'<circle cx="{mx:.1f}" cy="{my:.1f}" r="10" fill="{_SURFACE}" '
+            f'stroke="{col}" stroke-width="1.4" '
+            f'filter="url(#soft-glow)"></circle>'
             f'<text x="{mx:.1f}" y="{my+1:.1f}" font-family="{_SERIF}" '
-            f'font-size="{11 if body_key == "asc" else 13}" fill="{col}" '
+            f'font-size="{fs}" fill="{col}" '
             f'text-anchor="middle" dominant-baseline="middle" '
             f'font-weight="600">{sym}</text>'
         )
 
-    # --- branch arc ring + inner micro-ticks ---
-    body.append(_branch_ring(branch_probabilities, 138.0, 114.0))
-    body.append(
-        f'<circle cx="{_CX}" cy="{_CY}" r="110" fill="none" '
-        f'stroke="{_HAIRLINE}" stroke-width="0.7"></circle>'
-    )
-    for i in range(48):
-        ang = i * 7.5
-        x1, y1 = _polar(_CX, _CY, 108, ang)
-        x2, y2 = _polar(_CX, _CY, 104, ang)
-        body.append(
-            f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" '
-            f'stroke="{_INK3}" stroke-width="0.5" opacity="0.5"></line>'
-        )
+    # The natal wheel's "model" half is the orbital system above + the
+    # tri-metric chips below the card; no separate branch ring here, so
+    # the Sun-Earth-Moon orbits read cleanly (branch_probabilities is
+    # accepted for signature parity with the other instruments).
+    _ = branch_probabilities
 
     # --- engraved core with dual readout ---
     body.append(_centre_readout(top_label, top_value,

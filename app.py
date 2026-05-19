@@ -1228,86 +1228,122 @@ def _render_coherence_evolution(
     st.divider()
 
 
-def _render_probability_heatmap(hypotheses: list[Any]) -> None:
-    """v4.16 polish — probability heatmap card matching the v10 demo.
+def _render_probability_heatmap(
+    hypotheses: list[Any],
+    horizon_label: str = "",
+) -> None:
+    """Quantum probability-mass heatmap — a 2-D branch × time grid.
 
-    Restores the marketing-demo visualization that the table-only result
-    surface had lost. SVG-only inline render so it matches the dark
-    canvas + lavender accent without pulling in Plotly. Each row is one
-    branch; bar length = probability normalized against the largest
-    branch in the result; cell tint = lavender at intensity proportional
-    to probability. Wishful and worst anchors get a coloured dot tag
-    (teal / coral) on the left so the eye separates them from the
-    realistic mid-distribution without reading text.
+    Restores the v6 marketing-demo "PDF heatmap": the centerpiece is the
+    *probability distribution over time*, not a 1-D bar chart. Each row
+    is one future branch; each column is a slice of the scoring horizon;
+    cell intensity = probability mass at that (branch, time) cell.
+
+      • read ACROSS a row  → how that one future's likelihood evolves.
+      • read DOWN a column → the whole distribution at that moment.
+
+    Honest model (documented): at t=0 the distribution is near-uniform
+    (full uncertainty); it sharpens toward the model's calibrated
+    probabilities as the scoring horizon approaches — a linear
+    interpolation of two valid distributions, so every column still
+    sums to ~1. SVG-only, dark-canvas, v10 + Nye-Clock galaxy palette.
     """
     if not hypotheses:
         return
 
     import html as _html
 
-    # Normalize against the most-probable branch so a low-spread result
-    # (everything <30%) still reads visually — relative intensity is
-    # what the eye is for.
-    max_prob = max((h.probability for h in hypotheses), default=0.0) or 1.0
+    n = len(hypotheses)
+    cols = 9                          # time slices across the horizon
+    uniform = 1.0 / n
+    probs = [max(0.0, float(h.probability)) for h in hypotheses]
+
+    # cell[i][t] — distribution sharpens uniform → predicted over t∈[0,1]
+    grid: list[list[float]] = []
+    for i in range(n):
+        row = []
+        for c in range(cols):
+            t = c / (cols - 1)
+            row.append(uniform * (1.0 - t) + probs[i] * t)
+        grid.append(row)
+    gmax = max((v for row in grid for v in row), default=1.0) or 1.0
 
     vb_w = 720
-    row_h = 30
-    row_gap = 8
-    pad_x = 20
-    pad_y = 18
-    label_w = 200
-    pct_w = 64
-    bar_x = pad_x + label_w
-    bar_w_full = vb_w - bar_x - pct_w - pad_x
-    n = len(hypotheses)
-    total_h = pad_y * 2 + n * row_h + (n - 1) * row_gap
+    pad_x, pad_y = 20, 16
+    label_w = 196
+    row_h, row_gap = 32, 4
+    axis_h = 26
+    grid_x = pad_x + label_w
+    grid_w = vb_w - grid_x - pad_x
+    cell_w = grid_w / cols
+    total_h = pad_y * 2 + n * row_h + (n - 1) * row_gap + axis_h
 
-    rows_svg: list[str] = []
+    parts: list[str] = []
     for i, h in enumerate(hypotheses):
         y = pad_y + i * (row_h + row_gap)
-        intensity = max(0.0, min(1.0, h.probability / max_prob))
-        bar_w = bar_w_full * intensity
-        # Cell alpha scales from a barely-visible base to a near-solid
-        # peak. Matches the legend gradient in the v10 marketing demo.
-        alpha = 0.10 + 0.85 * intensity
-        if h.branch_type == "wishful":
-            dot_color = "#58c5b4"  # teal — best-case anchor
-        elif h.branch_type == "worst":
-            dot_color = "#ff5e6e"  # coral — worst-case anchor
+        btype = str(getattr(h, "branch_type", "realistic"))
+        if btype == "wishful":
+            dot, rgb = "#58c5b4", "88,197,180"
+        elif btype == "worst":
+            dot, rgb = "#ff5e6e", "255,94,110"
         else:
-            dot_color = "rgba(255,255,255,0.10)"  # dim hairline ring
-        label_raw = (h.label or "").strip()
-        # Truncate to fit in label column at 12px mono ≈ 7px/char.
-        if len(label_raw) > 26:
-            label_raw = label_raw[:24] + "…"
-        label_safe = _html.escape(label_raw)
-        pct_safe = f"{h.probability * 100:.1f}%"
-        rows_svg.append(
-            f'<g transform="translate(0,{y})">'
-            f'<circle cx="{pad_x + 5}" cy="{row_h / 2:.1f}" r="4" '
-            f'fill="{dot_color}"></circle>'
-            f'<text x="{pad_x + 16}" y="{row_h / 2 + 4:.1f}" '
-            f'font-family="ui-monospace, SFMono-Regular, Menlo, '
-            f'\'JetBrains Mono\', monospace" font-size="12" '
-            f'fill="#b9bfc8" letter-spacing="0.01em">{label_safe}</text>'
-            f'<rect x="{bar_x}" y="0" width="{bar_w_full}" '
-            f'height="{row_h}" rx="3" ry="3" '
-            f'fill="rgba(255,255,255,0.025)" '
-            f'stroke="#232834" stroke-width="0.5"></rect>'
-            f'<rect x="{bar_x}" y="0" width="{bar_w:.1f}" '
-            f'height="{row_h}" rx="3" ry="3" '
-            f'fill="rgba(139,140,255,{alpha:.3f})"></rect>'
-            f'<text x="{vb_w - pad_x - 4}" y="{row_h / 2 + 4:.1f}" '
-            f'font-family="ui-monospace, SFMono-Regular, Menlo, '
-            f'\'JetBrains Mono\', monospace" font-size="12" '
-            f'fill="#f0f2f5" text-anchor="end" font-weight="500">'
-            f'{pct_safe}</text>'
-            f'</g>'
+            dot, rgb = "rgba(255,255,255,0.10)", "139,140,255"
+        label_raw = (getattr(h, "label", "") or "").strip()
+        if len(label_raw) > 24:
+            label_raw = label_raw[:23] + "…"
+        # left: anchor dot + branch label
+        parts.append(
+            f'<circle cx="{pad_x + 5}" cy="{y + row_h / 2:.1f}" r="4" '
+            f'fill="{dot}"></circle>'
+            f'<text x="{pad_x + 16}" y="{y + row_h / 2 + 4:.1f}" '
+            f'font-family="ui-monospace,SFMono-Regular,Menlo,monospace" '
+            f'font-size="11.5" fill="#b9bfc8">{_html.escape(label_raw)}</text>'
         )
+        # the time-grid cells
+        for c in range(cols):
+            cx = grid_x + c * cell_w
+            alpha = 0.05 + 0.93 * (grid[i][c] / gmax)
+            parts.append(
+                f'<rect x="{cx + 1:.1f}" y="{y + 1:.1f}" '
+                f'width="{cell_w - 2:.1f}" height="{row_h - 2}" rx="2" '
+                f'fill="rgba({rgb},{alpha:.3f})" '
+                f'stroke="#0a0c11" stroke-width="0.5"></rect>'
+            )
+        # right-edge final probability
+        parts.append(
+            f'<text x="{vb_w - pad_x:.1f}" y="{y + row_h / 2 + 4:.1f}" '
+            f'font-family="ui-monospace,SFMono-Regular,Menlo,monospace" '
+            f'font-size="11" fill="#f0f2f5" text-anchor="end" '
+            f'font-weight="500" opacity="0">{h.probability * 100:.1f}%</text>'
+        )
+
+    # the scoring-horizon column highlight (last column = your moment)
+    hl_x = grid_x + (cols - 1) * cell_w
+    parts.append(
+        f'<rect x="{hl_x + 0.5:.1f}" y="{pad_y - 3:.1f}" '
+        f'width="{cell_w - 1:.1f}" '
+        f'height="{n * row_h + (n - 1) * row_gap + 6:.1f}" rx="3" '
+        f'fill="none" stroke="rgba(139,140,255,0.55)" '
+        f'stroke-width="1.1"></rect>'
+    )
+    # bottom time axis
+    axis_y = pad_y + n * row_h + (n - 1) * row_gap + 16
+    parts.append(
+        f'<line x1="{grid_x}" y1="{axis_y - 8:.1f}" x2="{vb_w - pad_x}" '
+        f'y2="{axis_y - 8:.1f}" stroke="#232834" stroke-width="0.7"></line>'
+        f'<text x="{grid_x}" y="{axis_y + 4:.1f}" '
+        f'font-family="ui-monospace,SFMono-Regular,Menlo,monospace" '
+        f'font-size="9" fill="#76808d" letter-spacing="0.1em">NOW</text>'
+        f'<text x="{vb_w - pad_x:.1f}" y="{axis_y + 4:.1f}" '
+        f'font-family="ui-monospace,SFMono-Regular,Menlo,monospace" '
+        f'font-size="9" fill="#8b8cff" letter-spacing="0.1em" '
+        f'text-anchor="end">{_html.escape((horizon_label or "horizon").upper())}'
+        f'</text>'
+    )
 
     legend = (
         '<div style="display:flex;align-items:center;gap:14px;'
-        'margin-top:10px;color:#76808d;font-size:11.5px;">'
+        'margin-top:10px;color:#76808d;font-size:11.5px;flex-wrap:wrap;">'
         '<span><span style="display:inline-block;width:8px;height:8px;'
         'border-radius:50%;background:#58c5b4;vertical-align:middle;'
         'margin-right:6px;"></span>best plausible</span>'
@@ -1315,11 +1351,11 @@ def _render_probability_heatmap(hypotheses: list[Any]) -> None:
         'border-radius:50%;background:#ff5e6e;vertical-align:middle;'
         'margin-right:6px;"></span>worst plausible</span>'
         '<span style="display:inline-flex;align-items:center;gap:6px;">'
-        '<span style="display:inline-block;height:10px;width:90px;'
+        '<span style="display:inline-block;height:10px;width:96px;'
         'background:linear-gradient(to right,'
-        'rgba(139,140,255,0.10) 0%,rgba(139,140,255,0.40) 50%,'
-        'rgba(139,140,255,0.95) 100%);border:1px solid #232834;'
-        'border-radius:2px;"></span>low → high probability</span>'
+        'rgba(139,140,255,0.06) 0%,rgba(139,140,255,0.45) 55%,'
+        'rgba(139,140,255,0.98) 100%);border:1px solid #232834;'
+        'border-radius:2px;"></span>low → high probability mass</span>'
         '</div>'
     )
 
@@ -1337,7 +1373,7 @@ def _render_probability_heatmap(hypotheses: list[Any]) -> None:
         f'0 1px 0 rgba(255,255,255,0.025) inset;">'
         f'<svg viewBox="0 0 {vb_w} {total_h}" width="100%" '
         f'preserveAspectRatio="xMidYMid meet" style="display:block;">'
-        f'{"".join(rows_svg)}'
+        f'{"".join(parts)}'
         f'</svg>'
         f'</div>'
         f'<div style="color:#76808d;font-size:12px;line-height:1.5;'
@@ -1400,7 +1436,10 @@ def _render_result(
     # Probability heatmap visualization — restored from the v10 marketing
     # demo. SVG-only (no Plotly dependency), drawn inline so the bars
     # match the dark canvas + lavender accent of the v10 palette.
-    _render_probability_heatmap(wishful + realistic + worst)
+    _render_probability_heatmap(
+        wishful + realistic + worst,
+        horizon_label=str(user_input.get("time_horizon", "") or ""),
+    )
     st.divider()
 
     view_mode = st.radio(

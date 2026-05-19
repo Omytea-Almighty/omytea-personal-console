@@ -249,17 +249,29 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
     },
     "result.heatmap_reading": {
         LANG_EN: (
-            "Each row is one branch; intensity = probability. Wishful and "
-            "worst-case anchors are tagged."
+            "Each row is one future; each column a slice of your scoring "
+            "horizon. Read across a row to see one future's likelihood "
+            "evolve; read down a column for the whole distribution at "
+            "that moment. The spread sharpens from uncertain (now) "
+            "toward the calibrated probabilities (your horizon)."
         ),
-        LANG_ZH: "每行是一条未来分支，颜色越亮 = 概率越高。最好和最坏锚点已标记。",
+        LANG_ZH: (
+            "每一行是一条未来分支，每一列是你评分时限上的一个切片。"
+            "横看一行 = 这条未来的概率随时间如何演变；纵看一列 = "
+            "那个时刻的整体概率分布。分布从「现在」的不确定逐步收敛"
+            "到「时限」处校准过的概率。"
+        ),
         LANG_ES: (
-            "Cada fila es una rama; la intensidad = probabilidad. Los "
-            "anclajes optimista y peor caso están etiquetados."
+            "Cada fila es un futuro; cada columna un tramo de tu "
+            "horizonte. A lo largo de una fila ves cómo evoluciona una "
+            "probabilidad; hacia abajo en una columna, la distribución "
+            "en ese momento."
         ),
         LANG_FR: (
-            "Chaque ligne est une branche ; intensité = probabilité. Les "
-            "ancres optimiste et pire-cas sont étiquetées."
+            "Chaque ligne est un futur ; chaque colonne une tranche de "
+            "votre horizon. En lisant une ligne : l'évolution d'une "
+            "probabilité ; en lisant une colonne : la distribution à "
+            "cet instant."
         ),
     },
     # -----  Mode 7: Traditional × Calibrated (Nye-clock)  -----
