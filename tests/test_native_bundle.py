@@ -95,6 +95,40 @@ def test_spec_file_parses_as_python() -> None:
     compile(text, str(spec_path), "exec")
 
 
+def test_onefile_spec_file_parses_as_python() -> None:
+    """The single-binary spec must also be valid Python."""
+    repo_dir = Path(__file__).resolve().parent.parent
+    spec_path = repo_dir / "omytea-console-onefile.spec"
+    assert spec_path.exists()
+    text = spec_path.read_text(encoding="utf-8")
+    compile(text, str(spec_path), "exec")
+
+
+def test_onefile_spec_has_no_collect_step() -> None:
+    """The single-binary variant is single-file precisely because it
+    skips PyInstaller's COLLECT step. If COLLECT shows up the result
+    would be a folder, not a single binary."""
+    repo_dir = Path(__file__).resolve().parent.parent
+    spec_path = repo_dir / "omytea-console-onefile.spec"
+    text = spec_path.read_text(encoding="utf-8")
+    assert "COLLECT(" not in text, (
+        "Single-binary spec must not call COLLECT — that produces "
+        "a one-folder bundle instead"
+    )
+
+
+def test_folder_spec_calls_collect() -> None:
+    """The default one-folder spec MUST call COLLECT, else it would
+    silently produce a non-runnable executable."""
+    repo_dir = Path(__file__).resolve().parent.parent
+    spec_path = repo_dir / "omytea-console.spec"
+    text = spec_path.read_text(encoding="utf-8")
+    assert "COLLECT(" in text, (
+        "One-folder spec must call COLLECT to gather binaries + data "
+        "alongside the EXE"
+    )
+
+
 def test_build_script_exists_and_is_executable() -> None:
     repo_dir = Path(__file__).resolve().parent.parent
     script_path = repo_dir / "scripts" / "build_native.sh"
@@ -110,3 +144,15 @@ def test_bootstrap_native_has_main_entry() -> None:
     has a stable entry point."""
     import bootstrap_native
     assert callable(getattr(bootstrap_native, "main", None))
+
+
+def test_build_script_supports_onefile_and_folder_flags() -> None:
+    """The build script should recognize both --onefile and --folder
+    so users can pick their distribution mode."""
+    repo_dir = Path(__file__).resolve().parent.parent
+    script_path = repo_dir / "scripts" / "build_native.sh"
+    text = script_path.read_text(encoding="utf-8")
+    assert "--onefile" in text
+    assert "--folder" in text
+    assert "omytea-console.spec" in text
+    assert "omytea-console-onefile.spec" in text
