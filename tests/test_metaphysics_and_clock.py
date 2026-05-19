@@ -86,7 +86,7 @@ def test_pillar_text_returns_two_hanzi() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Clock — SVG structural invariants
+# Clock — SVG structural invariants (v4.17 dual-readout dial)
 # ---------------------------------------------------------------------------
 
 
@@ -100,7 +100,11 @@ def test_clock_svg_has_five_wuxing_sectors() -> None:
          ("B", 0.3, "wishful"),
          ("C", 0.2, "realistic"),
          ("D", 0.1, "worst")],
-        "Career success", "52% combined", "WOOD-DOMINANT · α=0.30",
+        center_top_label="MODEL",
+        center_top_value="34.2%",
+        center_bottom_label="COMBINED",
+        center_bottom_value="52.1%",
+        center_meta="WOOD · α=0.30",
     )
     # 5 outer sectors as <path d="..."> arcs
     assert svg.count('<path d="M') >= 5
@@ -113,10 +117,14 @@ def test_clock_svg_has_five_wuxing_sectors() -> None:
     assert "139,140,255" in svg  # realistic / lavender
     assert "88,197,180" in svg   # wishful  / teal
     assert "255,94,110" in svg   # worst    / coral
-    # Centre disc + headline + meta
-    assert "Career success" in svg
-    assert "52%" in svg
-    assert "WOOD-DOMINANT" in svg
+    # Centre disc — both stacked numbers + meta tag visible
+    assert "MODEL" in svg and "COMBINED" in svg
+    assert "34.2%" in svg
+    assert "52.1%" in svg
+    assert "WOOD" in svg
+    # New 480-viewBox + radial gradient backdrop
+    assert 'viewBox="0 0 480 480"' in svg
+    assert 'id="dial-glow"' in svg
 
 
 def test_clock_svg_handles_empty_branches() -> None:
@@ -127,11 +135,16 @@ def test_clock_svg_handles_empty_branches() -> None:
     bz = mp.bazi_from_birth(bd)
     bal = mp.wuxing_balance(bz)
     svg = render_nye_clock_svg(
-        bz, bal,
-        [],
-        "Waiting", "—", "EARTH-DOMINANT",
+        bz, bal, [],
+        center_top_label="MODEL",
+        center_top_value="—",
+        center_bottom_label="COMBINED",
+        center_bottom_value="—",
+        center_meta="EARTH",
     )
     assert svg.startswith("<svg ")
     assert svg.endswith("</svg>")
     # Outer ring must still show 5 sectors
     assert svg.count('<path d="M') >= 5
+    # Even with no branches, the centre dual-readout must still render
+    assert "MODEL" in svg and "COMBINED" in svg

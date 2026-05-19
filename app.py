@@ -506,25 +506,204 @@ Ollama.
 
 # ============================================================
 # Mode 7 — Traditional × Calibrated (Nye-clock instrument)
+#
+# Two entry points share the same render helper below:
+#   1. PRIMARY: a subtle expander at the end of the result page
+#      ("Or read the same prediction the old way") — the founder's
+#      "精妙小彩蛋" requirement. Discovered AFTER the user has seen
+#      the model result, so the dial reads as an *alternate take* on
+#      something they already trust.
+#   2. SECONDARY: the sidebar's Mode 7 page — a standalone playground
+#      where new visitors can twirl the dial without committing to a
+#      full prediction. Prefills sample 八字 + sample branches so the
+#      dial is alive on first view.
 # ============================================================
 
-def render_traditional_view() -> None:
-    """The 古法 × 校准 page.
+def _render_traditional_lens(
+    branches_or_none: list[Any] | None,
+    *,
+    key_prefix: str,
+    sample_birth: tuple[int, int, int, int] = (2000, 6, 15, 12),
+    sample_branches: list[tuple[str, float, str]] | None = None,
+) -> None:
+    """Render the dual-input row + Nye-clock dial + tri-metric readout.
 
-    Combines the user's 八字-derived 五行 prior with the most-recent
-    model branch distribution from the New-prediction tab. Renders one
-    Nye-clock SVG instrument as the centerpiece. The unweighted model
-    output is always shown alongside the combined view so the user can
-    see exactly how the traditional prior shifts things.
+    Shared between the result-page expander and the standalone Mode 7
+    page. ``key_prefix`` namespaces the widget keys so the two
+    surfaces don't fight over the same st.session_state slot.
 
-    No new compile is run here — this page is a re-view of the last
-    prediction through a different lens. If the user hasn't generated
-    a prediction yet, we show a polite empty state pointing back to
-    the New-prediction tab.
+    ``branches_or_none`` is the list of ConsoleHypothesis-like objects
+    from the most recent prediction (each carries ``label``,
+    ``probability``, ``branch_type``). When ``None`` (e.g. the user
+    hit Mode 7 before generating any prediction), we render the dial
+    with ``sample_branches`` so the instrument is never empty — the
+    "alive on first view" requirement.
     """
     import _metaphysics as _mp
     from _clock import render_nye_clock_svg
 
+    # ---- Birth-data row ----
+    sy, sm, sd, sh = sample_birth
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        b_year = st.number_input(
+            T("trad.birth.year"), min_value=1900, max_value=2100,
+            value=sy, step=1, key=f"{key_prefix}_y")
+    with c2:
+        b_month = st.number_input(
+            T("trad.birth.month"), min_value=1, max_value=12,
+            value=sm, step=1, key=f"{key_prefix}_m")
+    with c3:
+        b_day = st.number_input(
+            T("trad.birth.day"), min_value=1, max_value=31,
+            value=sd, step=1, key=f"{key_prefix}_d")
+    with c4:
+        b_hour = st.number_input(
+            T("trad.birth.hour"), min_value=0, max_value=23,
+            value=sh, step=1, key=f"{key_prefix}_h")
+    st.caption(T("trad.birth.hint"))
+
+    # ---- Outcome + combination controls ----
+    cc1, cc2, cc3 = st.columns([2, 2, 1.4])
+    with cc1:
+        outcome = st.selectbox(
+            T("trad.outcome.select"),
+            options=list(_mp.OUTCOME_CATEGORIES),
+            format_func=lambda k: T(f"trad.outcome.{k}"),
+            index=0,
+            key=f"{key_prefix}_outcome",
+        )
+    with cc2:
+        mode_options = ("mixture", "bayesian", "off")
+        mode = st.selectbox(
+            T("trad.combine.label"),
+            options=mode_options,
+            format_func=lambda k: T(f"trad.combine.{k}"),
+            index=0,
+            key=f"{key_prefix}_mode",
+        )
+    with cc3:
+        alpha = st.slider(
+            T("trad.alpha.label"),
+            min_value=0.0, max_value=1.0, value=0.30, step=0.05,
+            key=f"{key_prefix}_alpha",
+            help=T("trad.alpha.hint"),
+        )
+
+    # ---- Derive 八字 + 五行 balance + focal-outcome prior ----
+    bd = _mp.BirthData(year=int(b_year), month=int(b_month),
+                       day=int(b_day), hour=int(b_hour))
+    bazi = _mp.bazi_from_birth(bd)
+    balance = _mp.wuxing_balance(bazi)
+    dominant_key = _mp.dominant_element(balance)
+    tradition_prob = _mp.outcome_prior(bazi, str(outcome))
+
+    # ---- Choose the focal branch (real or sample) ----
+    using_sample = False
+    if branches_or_none:
+        hyps = branches_or_none
+        realistic = [h for h in hyps if h.branch_type
+                     not in ("wishful", "worst")]
+        focal = max(realistic or hyps, key=lambda h: h.probability)
+        model_prob = float(focal.probability)
+        branch_data: list[tuple[str, float, str]] = [
+            (h.label, float(h.probability), str(h.branch_type))
+            for h in hyps
+        ]
+    elif sample_branches:
+        using_sample = True
+        branch_data = list(sample_branches)
+        non_anchor = [(l, p, t) for l, p, t in branch_data
+                      if t not in ("wishful", "worst")]
+        focal_tuple = max(non_anchor or branch_data, key=lambda x: x[1])
+        model_prob = float(focal_tuple[1])
+    else:
+        branch_data = []
+        model_prob = 0.0
+
+    # ---- Combine: focal model probability × tradition prior ----
+    combined = _mp.combine_with_model(
+        model_prob, tradition_prob, mode, alpha
+    )
+    if mode == "bayesian":
+        # Renormalize the focal posterior against its complement for
+        # display. (The dial focuses on ONE outcome category, so the
+        # 2-bin renormalization is honest; per-branch reweighting
+        # under Bayesian would require classifying every branch into
+        # one of the 6 categories, which is deferred.)
+        denom = combined + (1 - tradition_prob) * (1 - model_prob)
+        combined = combined / denom if denom > 1e-9 else combined
+
+    # ---- Dial centre labels: model-only / combined stacked ----
+    model_value = f"{model_prob * 100:.1f}%"
+    combined_value = f"{combined * 100:.1f}%"
+    meta_tag = (
+        f"{dominant_key.upper()} · "
+        f"{'α=' + format(alpha, '.2f') if mode != 'off' else 'model only'}"
+    )
+
+    instrument_svg = render_nye_clock_svg(
+        bazi, balance, branch_data,
+        center_top_label=T("trad.metric.model_short"),
+        center_top_value=model_value,
+        center_bottom_label=T("trad.metric.combined_short"),
+        center_bottom_value=combined_value,
+        center_meta=meta_tag,
+    )
+
+    # ---- Card chrome — matches the v10 heat-card visual rhyme ----
+    st.markdown(
+        f"<div style='background:#11141b;border:1px solid #232834;"
+        f"border-radius:12px;padding:20px 16px;margin:18px auto 8px;"
+        f"max-width:520px;"
+        f"box-shadow:0 12px 50px rgba(0,0,0,0.4),"
+        f"0 1px 0 rgba(255,255,255,0.025) inset;'>"
+        f"{instrument_svg}"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+    if using_sample:
+        st.caption(T("trad.using_sample"))
+
+    # ---- Tri-metric readout sits below the dial ----
+    m1, m2, m3 = st.columns(3)
+    with m1:
+        st.metric(T("trad.metric.model"), f"{model_prob * 100:.1f}%")
+    with m2:
+        st.metric(T("trad.metric.tradition"),
+                  f"{tradition_prob * 100:.1f}%")
+    with m3:
+        st.metric(T("trad.metric.combined"),
+                  f"{combined * 100:.1f}%")
+
+    # ---- Always-visible disclaimer (integrity gate per spec §7) ----
+    st.markdown(
+        f"<div style='color:#76808d;font-size:11.5px;line-height:1.55;"
+        f"max-width:560px;margin:16px auto 4px;letter-spacing:0.005em;'>"
+        f"{T('trad.disclaimer')}</div>",
+        unsafe_allow_html=True,
+    )
+
+
+_TRAD_SAMPLE_BRANCHES: list[tuple[str, float, str]] = [
+    ("Take the offer",       0.32, "realistic"),
+    ("Stay & negotiate",     0.27, "realistic"),
+    ("Pivot to research",    0.18, "wishful"),
+    ("Wait one quarter",     0.15, "realistic"),
+    ("Withdraw entirely",    0.08, "worst"),
+]
+
+
+def render_traditional_view() -> None:
+    """Mode 7 — standalone "古法 × 校准" page.
+
+    Lightweight playground. New visitors who land here see a populated
+    dial immediately (sample 八字 + sample branches), so the brand's
+    cultural differentiator works in one click without forcing them
+    to type a decision first. Users who *do* have a current prediction
+    see the dial driven by that prediction's branches.
+    """
     # ---- Apple-style two-tier hero ----
     st.markdown(
         f"""
@@ -543,155 +722,17 @@ def render_traditional_view() -> None:
         unsafe_allow_html=True,
     )
 
-    # ---- Birth-data input row ----
-    st.markdown(
-        f"<div style='color:#76808d;font-size:11.5px;text-transform:uppercase;"
-        f"letter-spacing:0.12em;font-weight:500;margin:24px 0 12px;'>"
-        f"{T('trad.birth.section')}</div>",
-        unsafe_allow_html=True,
-    )
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        b_year = st.number_input(T("trad.birth.year"), min_value=1900,
-                                 max_value=2100, value=2000, step=1,
-                                 key="_trad_y")
-    with c2:
-        b_month = st.number_input(T("trad.birth.month"), min_value=1,
-                                  max_value=12, value=6, step=1,
-                                  key="_trad_m")
-    with c3:
-        b_day = st.number_input(T("trad.birth.day"), min_value=1,
-                                max_value=31, value=15, step=1,
-                                key="_trad_d")
-    with c4:
-        b_hour = st.number_input(T("trad.birth.hour"), min_value=0,
-                                 max_value=23, value=12, step=1,
-                                 key="_trad_h")
-    st.caption(T("trad.birth.hint"))
-
-    # ---- Outcome + combination controls ----
-    cc1, cc2, cc3 = st.columns([2, 2, 1.4])
-    with cc1:
-        outcome = st.selectbox(
-            T("trad.outcome.select"),
-            options=list(_mp.OUTCOME_CATEGORIES),
-            format_func=lambda k: T(f"trad.outcome.{k}"),
-            index=0,
-            key="_trad_outcome",
-        )
-    with cc2:
-        combine_modes = ("mixture", "bayesian", "off")
-        mode = st.selectbox(
-            T("trad.combine.label"),
-            options=combine_modes,
-            format_func=lambda k: T(f"trad.combine.{k}"),
-            index=0,
-            key="_trad_mode",
-        )
-    with cc3:
-        alpha = st.slider(
-            T("trad.alpha.label"), min_value=0.0, max_value=1.0,
-            value=0.30, step=0.05, key="_trad_alpha",
-            help=T("trad.alpha.hint"),
-        )
-
-    # ---- Derive 八字 + balance + tradition prior on the chosen outcome ----
-    bd = _mp.BirthData(year=int(b_year), month=int(b_month),
-                       day=int(b_day), hour=int(b_hour))
-    bazi = _mp.bazi_from_birth(bd)
-    balance = _mp.wuxing_balance(bazi)
-    dominant_key = _mp.dominant_element(balance)
-    tradition_prob = _mp.outcome_prior(bazi, str(outcome))
-
-    # ---- Pull the most-recent prediction from session state ----
+    # Try to use the user's current prediction; fall back to sample.
     current = st.session_state.get("current_prediction")
-    have_model = current is not None and current.get("result") is not None
+    branches = None
+    if current is not None and current.get("result") is not None:
+        branches = list(current["result"].hypotheses)
 
-    if have_model:
-        result = current["result"]
-        hyps = list(result.hypotheses)
-        # Headline outcome = the highest-probability realistic branch
-        # (anchors are emotional, not the most-likely future).
-        realistic = [h for h in hyps if h.branch_type
-                     not in ("wishful", "worst")]
-        head_h = max(realistic or hyps, key=lambda h: h.probability)
-        model_prob = float(head_h.probability)
-
-        # Build the inner-ring data (label/prob/branch_type triples).
-        branch_data: list[tuple[str, float, str]] = [
-            (h.label, float(h.probability), str(h.branch_type)) for h in hyps
-        ]
-
-        # Compute the combined posterior on the headline branch.
-        combined = _mp.combine_with_model(
-            model_prob, tradition_prob, mode, alpha
-        )
-        # In bayesian mode the combined value is unnormalized; reproject
-        # against a 1-branch fallback so the centre reading stays in
-        # [0, 1] for display. (Full per-branch renormalization is in
-        # scope when we extend this to write back into ConsoleResult.)
-        if mode == "bayesian":
-            denom = combined + (1 - tradition_prob) * (1 - model_prob)
-            combined = combined / denom if denom > 1e-9 else combined
-
-        center_headline = head_h.label.replace("_", " ").title()[:24]
-        center_subline = f"{combined * 100:.1f}% combined"
-        center_meta = (
-            f"{dominant_key.upper()} · "
-            f"{'α=' + format(alpha, '.2f') if mode != 'off' else 'model only'}"
-        )
-    else:
-        branch_data = []
-        model_prob = float("nan")
-        combined = float("nan")
-        center_headline = T("trad.no_input")[:24]
-        center_subline = "—"
-        center_meta = dominant_key.upper()
-
-    # ---- Render the Nye-clock instrument ----
-    st.markdown(
-        f"<div style='margin:28px 0 8px;color:#76808d;font-size:11.5px;"
-        f"text-transform:uppercase;letter-spacing:0.12em;font-weight:500;'>"
-        f"{T('result.heatmap_title') if False else ''}</div>",
-        unsafe_allow_html=True,
-    )
-    instrument_svg = render_nye_clock_svg(
-        bazi, balance, branch_data,
-        center_headline, center_subline, center_meta,
-    )
-    st.markdown(
-        f"<div style='background:#11141b;border:1px solid #232834;"
-        f"border-radius:12px;padding:24px;margin:18px auto;max-width:680px;"
-        f"box-shadow:0 12px 50px rgba(0,0,0,0.4),"
-        f"0 1px 0 rgba(255,255,255,0.025) inset;'>"
-        f"{instrument_svg}"
-        f"</div>"
-        f"<div style='text-align:center;color:#76808d;font-size:12px;"
-        f"line-height:1.55;max-width:560px;margin:0 auto 8px;'>"
-        f"{T('trad.legend')}</div>",
-        unsafe_allow_html=True,
-    )
-
-    # ---- Tri-metric readout: model · tradition · combined ----
-    if have_model:
-        m1, m2, m3 = st.columns(3)
-        with m1:
-            st.metric(T("trad.metric.model"), f"{model_prob * 100:.1f}%")
-        with m2:
-            st.metric(T("trad.metric.tradition"),
-                      f"{tradition_prob * 100:.1f}%")
-        with m3:
-            st.metric(T("trad.metric.combined"),
-                      f"{combined * 100:.1f}%")
-    else:
-        st.info(T("trad.no_input"))
-
-    # ---- Disclaimer (always visible — required posture) ----
-    st.markdown(
-        f"<div style='color:#76808d;font-size:12px;line-height:1.55;"
-        f"max-width:680px;margin:24px auto 8px;letter-spacing:0.005em;'>"
-        f"{T('trad.disclaimer')}</div>",
-        unsafe_allow_html=True,
+    _render_traditional_lens(
+        branches,
+        key_prefix="_trad_standalone",
+        sample_birth=(2000, 6, 15, 12),
+        sample_branches=_TRAD_SAMPLE_BRANCHES,
     )
 
 
@@ -1356,6 +1397,26 @@ def _render_result(
         _render_continuous_distribution(result, user_input)
     else:
         _render_story_view(wishful, realistic, worst, result.decision_options)
+
+    # v4.17 P1 — "Time-honored lens" easter egg. A single subtle line
+    # below the result + view-mode dispatch invites the user to read
+    # the same prediction through a traditional-prior lens. Collapsed
+    # by default so it never imposes on visitors who don't want it;
+    # opens inline so they don't lose their place. Reuses the Mode 7
+    # render helper so both surfaces stay in lockstep visually.
+    st.markdown(
+        "<div style='margin:24px 0 -8px;text-align:center;'>"
+        f"<span style='color:#76808d;font-size:11.5px;"
+        f"letter-spacing:0.18em;text-transform:uppercase;'>"
+        f"✦ {T('trad.lens.invite_chip')}</span>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+    with st.expander(T("trad.lens.expander_label"), expanded=False):
+        _render_traditional_lens(
+            list(result.hypotheses),
+            key_prefix=f"_trad_lens_{prediction_id or 'inline'}",
+        )
 
     # v4.16 P2: drill-down loop. Wrapped in an expander so it doesn't
     # dominate the page; once opened it persists across reruns via

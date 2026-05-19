@@ -520,6 +520,48 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_ES: "Posterior combinado",
         LANG_FR: "Postérieur combiné",
     },
+    "trad.metric.model_short": {
+        LANG_EN: "MODEL",
+        LANG_ZH: "模型",
+        LANG_ES: "MODELO",
+        LANG_FR: "MODÈLE",
+    },
+    "trad.metric.combined_short": {
+        LANG_EN: "COMBINED",
+        LANG_ZH: "融合",
+        LANG_ES: "COMBINADO",
+        LANG_FR: "COMBINÉ",
+    },
+    "trad.lens.invite_chip": {
+        LANG_EN: "an old read of the same prediction",
+        LANG_ZH: "古法读这同一份预测",
+        LANG_ES: "una lectura tradicional de la misma predicción",
+        LANG_FR: "une lecture traditionnelle de la même prédiction",
+    },
+    "trad.lens.expander_label": {
+        LANG_EN: "Time-honored lens · open",
+        LANG_ZH: "古法视角 · 展开",
+        LANG_ES: "Lente tradicional · abrir",
+        LANG_FR: "Lecture traditionnelle · ouvrir",
+    },
+    "trad.using_sample": {
+        LANG_EN: (
+            "Sample branches shown — generate a real prediction in the "
+            "New-prediction tab and the dial reads from your own decision."
+        ),
+        LANG_ZH: (
+            "当前用的是示例分支——回到「新预测」生成一份真实预测，"
+            "表盘就会读你自己的决定。"
+        ),
+        LANG_ES: (
+            "Mostrando ramas de muestra — genera una predicción real en la "
+            "pestaña Nueva predicción y el dial leerá tu propia decisión."
+        ),
+        LANG_FR: (
+            "Branches d'exemple — générez une vraie prédiction dans "
+            "l'onglet Nouvelle prédiction et le cadran lira votre décision."
+        ),
+    },
     # -----  Other-page heroes (Apple-style two-tier)  -----
     "video.hero.title": {
         LANG_EN: "Watch a clip. Get the futures.",
