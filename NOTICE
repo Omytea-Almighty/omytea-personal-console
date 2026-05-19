@@ -1,0 +1,13 @@
+Omytea Personal Future Console
+Copyright 2026 Omytea LLC
+
+This product includes software developed by Omytea LLC and contributors.
+
+Vendored components
+-------------------
+The `omytea/` package in this directory is a snapshot of the Omytea
+quantum substrate (parts of `omytea.quantum`, `omytea.joint_belief`,
+`omytea.models`, `omytea.density`, `omytea.dynamics.*`). The original
+sources live in the upstream Omytea repository; the snapshot here is
+included under Apache License 2.0 to keep the personal-console
+package self-contained.

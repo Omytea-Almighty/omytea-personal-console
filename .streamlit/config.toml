@@ -1,0 +1,27 @@
+# Streamlit Cloud config for Omytea Personal Future Console
+# See https://docs.streamlit.io/library/advanced-features/configuration
+
+[server]
+# Headless on Cloud
+headless = true
+# Disable file watching on Cloud (we don't hot-reload)
+fileWatcherType = "none"
+# Bind on whatever port Streamlit Cloud injects
+# (Streamlit Cloud sets STREAMLIT_SERVER_PORT env var; default 8501 locally)
+
+[browser]
+# Hide the "made with Streamlit" badge for a cleaner branded look
+gatherUsageStats = false
+
+[theme]
+# Omytea brand-ish theme — minimal, scientific-feel, not too playful
+primaryColor = "#4A6FA5"          # restrained slate-blue (decision support, not fortune-cookie)
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F4F6F9"
+textColor = "#1F2937"
+font = "sans serif"
+
+[client]
+# Show toolbar so users can refresh / view source if curious
+toolbarMode = "minimal"
+showErrorDetails = false           # hide stack traces from public users in production

@@ -1,0 +1,28 @@
+streamlit>=1.30,<2.0
+pydantic>=2.5,<3.0
+numpy>=1.24
+
+# LLM backends — install only the ones you actually use.
+# All four are optional; the package degrades gracefully if any
+# specific provider's SDK isn't installed. MockBackend works with
+# nothing installed.
+
+# Primary free-tier default (Google AI Studio):
+google-genai>=0.3,<2.0
+
+# Free-tier fallback (Groq Cloud Llama):
+groq>=0.11,<2.0
+
+# Optional power-user backend (user-supplied Anthropic key):
+anthropic>=0.40,<2.0
+
+# Optional power-user backend (user-supplied OpenAI key):
+openai>=1.30,<2.0
+
+# Optional Cloudflare Workers AI / Ollama backends — both use plain
+# HTTP via the `requests` library; no vendor SDK required.
+requests>=2.28
+
+# Omytea quantum substrate — install from the parent WMDB repo
+# (development) or via the vendored `omytea_quantum/` directory
+# (production deploy). Set OMYTEA_CONSOLE_MOCK=1 to skip this.

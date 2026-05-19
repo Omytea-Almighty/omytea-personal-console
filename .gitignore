@@ -1,0 +1,28 @@
+# Build / cache artifacts
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local virtualenv
+.venv/
+
+# Local SQLite DB (per-user; never commit)
+*.sqlite
+*.db
+*.db-journal
+
+# Streamlit local cache
+.streamlit/secrets.toml
+
+# Public release prep output (assembled by
+# scripts/prepare_public_release.py)
+dist/
+
+# macOS
+.DS_Store
+
+# Local run-data — internal self-test transcripts; do not commit
+runs/
