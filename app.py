@@ -17,6 +17,7 @@ from typing import Any
 
 import streamlit as st
 
+import _brand
 import currency
 import pricing
 import storage
@@ -55,14 +56,14 @@ st.set_page_config(
 
 def render_sidebar() -> str:
     """Sidebar shows system status + nav. Returns active mode."""
-    st.sidebar.title("Omytea Console")
-    st.sidebar.caption("Probability-calibrated decision support")
+    st.sidebar.title(_brand.BRAND_NAME_SHORT)
+    st.sidebar.caption(_brand.BRAND_TAGLINE)
     st.sidebar.divider()
 
     mode = st.sidebar.radio(
         "Mode",
         options=(
-            "New prediction", "Video query",
+            "New prediction", "Video query", "Live webcam",
             "Measurement update", "Calibration history",
             "Pricing & pre-order",
         ),
@@ -117,6 +118,8 @@ def render_sidebar() -> str:
         "future scenarios with measurement-update feedback. Not medical / "
         "legal / financial advice."
     )
+    st.sidebar.divider()
+    st.sidebar.markdown(_brand.footer_markdown())
 
     return str(mode)
 
@@ -1659,18 +1662,253 @@ def _render_entity_quantum_evolution(
     )
 
 
+# ============================================================
+# Mode 6 — Live webcam (Tier 2)
+# ============================================================
+
+
+def render_live_webcam() -> None:
+    """Mode 6 — Live webcam streaming with continuous quantum-state
+    evolution.
+
+    Pipeline:
+    1. streamlit-webrtc opens a local WebRTC peer in the browser →
+       camera frames stream into a callback running on a background
+       thread (managed by aiortc).
+    2. Each frame goes through ``WebcamSession.on_frame`` →
+       substrate detector → IoUTracker → rolling trajectory dict.
+    3. Every ``rebuild_every_n_frames`` frames, the joint
+       wavefunction is rebuilt and evolved under the Lindblad
+       operator. The snapshot of the joint state is cached in the
+       session so the Streamlit main thread can read it without
+       racing.
+    4. A "Capture for prediction" button freezes the latest snapshot
+       and asks the vision LLM about the current scene, returning
+       a full ConsoleResult — same rendering as Mode 5 from there.
+
+    Master plan §9 World Console direction — direct live perception
+    rather than file upload. §2.9 negative scope — no biometric ID,
+    no demographic features, no multi-camera fusion (single stream
+    only).
+    """
+    st.title("📷 Live webcam")
+    st.write(
+        "Stream from your local camera. Frames are processed entirely "
+        "on your machine — no upload, no cloud. The quantum operator "
+        "rebuilds every few frames as new entity trajectories accumulate."
+    )
+
+    # Probe streamlit-webrtc availability up front
+    import webcam_stream
+    webrtc_mod, webrtc_err = webcam_stream._try_streamlit_webrtc()
+
+    with st.expander("System status (live webcam)", expanded=False):
+        if webrtc_mod is None:
+            st.error(
+                f"⚠ {webrtc_err}\n\n"
+                "Live webcam mode needs streamlit-webrtc + its aiortc "
+                "transitive deps (av, cffi, cryptography). To enable: "
+                "`pip install 'streamlit-webrtc>=0.47,<1.0' 'av>=10.0'`"
+            )
+        else:
+            st.success("✓ streamlit-webrtc available")
+        sub_types, sub_err = webcam_stream._try_import_substrate()
+        if sub_types is not None:
+            st.success("✓ Omytea substrate (perception + quantum) available")
+        else:
+            st.warning(
+                f"⚠ Omytea substrate not available: {sub_err}. "
+                "Live mode will count frames but skip the quantum stage. "
+                "Install the parent omytea package or unset "
+                "OMYTEA_CONSOLE_MOCK to enable substrate."
+            )
+
+    if webrtc_mod is None:
+        st.info(
+            "Install the Tier 2 webcam extra and reload to enable this "
+            "mode. Until then, Mode 5 \"Video query\" handles uploaded "
+            "video files with the same pipeline."
+        )
+        return
+
+    # Session-state object — persists across reruns and is the same
+    # Python object the webrtc frame callback writes to.
+    if "webcam_session" not in st.session_state:
+        st.session_state.webcam_session = webcam_stream.WebcamSession()
+    session: webcam_stream.WebcamSession = st.session_state.webcam_session
+
+    # Tunable settings
+    with st.expander("Tuning (advanced)", expanded=False):
+        col_a, col_b, col_c = st.columns(3)
+        with col_a:
+            new_rebuild = st.slider(
+                "Rebuild every N frames",
+                min_value=2, max_value=30,
+                value=session.rebuild_every_n_frames,
+                help=(
+                    "How often the joint wavefunction is rebuilt + "
+                    "evolved. Smaller = more reactive, more CPU."
+                ),
+            )
+            session.rebuild_every_n_frames = new_rebuild
+        with col_b:
+            new_max_traj = st.slider(
+                "Rolling-window size",
+                min_value=10, max_value=120,
+                value=session.max_trajectory_len,
+                help="Max trajectory points kept per entity.",
+            )
+            session.max_trajectory_len = new_max_traj
+        with col_c:
+            new_decoh = st.slider(
+                "Decoherence rate γ",
+                min_value=0.02, max_value=0.30,
+                value=session.decoherence_rate, step=0.02,
+            )
+            session.decoherence_rate = new_decoh
+
+    # WebRTC streamer
+    from streamlit_webrtc import RTCConfiguration, WebRtcMode, webrtc_streamer
+
+    rtc_config = RTCConfiguration({
+        "iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}],
+    })
+
+    def video_frame_callback(frame: Any) -> Any:
+        """Background-thread callback. Converts av.VideoFrame → BGR
+        ndarray and pushes into the WebcamSession. Returns the frame
+        unchanged so the user still sees their video preview."""
+        try:
+            import numpy as np  # noqa: F401  # required by av's to_ndarray
+            img = frame.to_ndarray(format="bgr24")
+            h, w = img.shape[:2]
+            session.on_frame(
+                image_data=img, frame_width=w, frame_height=h,
+                stream_id="streamlit_webrtc",
+            )
+        except Exception:
+            # Honest-fail: never crash the WebRTC track loop —
+            # the user would lose the video preview.
+            pass
+        return frame
+
+    ctx = webrtc_streamer(
+        key="omytea-live-webcam",
+        mode=WebRtcMode.SENDRECV,
+        rtc_configuration=rtc_config,
+        video_frame_callback=video_frame_callback,
+        media_stream_constraints={"video": True, "audio": False},
+        async_processing=True,
+    )
+
+    # Live state panel (re-reads the snapshot every rerun)
+    st.subheader("Live state")
+    refresh_col, reset_col = st.columns([1, 1])
+    with refresh_col:
+        if st.button("🔄 Refresh state", use_container_width=True):
+            st.rerun()
+    with reset_col:
+        if st.button("🧹 Reset session", use_container_width=True):
+            session.reset()
+            st.rerun()
+
+    snap = session.snapshot()
+
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Frames processed", snap.frames_processed)
+    m2.metric("Observed FPS", f"{snap.fps_observed:.1f}")
+    m3.metric("Live entities", snap.n_entities)
+    m4.metric("Joint hypotheses", snap.n_joint_hypotheses)
+
+    if snap.entities_summary:
+        st.markdown("**Tracked entities**")
+        rows = [
+            {
+                "Entity": f"{e['object_id']} ({e['label']})",
+                "Points": e["n_points"],
+                "Last x": f"{e['last_cx']:.2f}",
+                "Last y": f"{e['last_cy']:.2f}",
+                "Vx": f"{e['velocity_x']:+.3f}",
+                "Vy": f"{e['velocity_y']:+.3f}",
+                "Confidence": f"{e['confidence']:.2f}",
+            }
+            for e in snap.entities_summary
+        ]
+        st.dataframe(rows, hide_index=True, use_container_width=True)
+    else:
+        st.caption(
+            "No entities tracked yet. Start the webcam above and move "
+            "something within the frame."
+        )
+
+    # Coherence-decay chart (last rebuild's snapshots)
+    if snap.coherence_snapshots:
+        # Build per-pair series like Mode 5 does, but from the live snapshot
+        seen_pairs: set[tuple[int, int]] = set()
+        pair_series: dict[str, list[float]] = {}
+        for s_ in snap.coherence_snapshots:
+            for entry in s_.get("entries", []):
+                key = (min(entry["row"], entry["col"]),
+                       max(entry["row"], entry["col"]))
+                if key not in seen_pairs:
+                    seen_pairs.add(key)
+                    pair_series[f"(j{key[0]}, j{key[1]})"] = []
+        for s_ in snap.coherence_snapshots:
+            pair_mags: dict[tuple[int, int], float] = {}
+            for entry in s_.get("entries", []):
+                key = (min(entry["row"], entry["col"]),
+                       max(entry["row"], entry["col"]))
+                pair_mags[key] = max(
+                    pair_mags.get(key, 0.0), entry["magnitude"]
+                )
+            for key in seen_pairs:
+                lbl = f"(j{key[0]}, j{key[1]})"
+                pair_series[lbl].append(pair_mags.get(key, 0.0))
+
+        if pair_series:
+            st.markdown("**Off-diagonal coherence decay (last rebuild)**")
+            st.line_chart(pair_series)
+            st.caption(
+                f"Rebuilt at frame {snap.last_rebuild_at_frame}. "
+                f"Each line = one joint-hypothesis pair magnitude over "
+                f"Lindblad ticks. Lines decaying to 0 = correlated "
+                f"futures losing coherence."
+            )
+    else:
+        st.caption(
+            "No joint quantum state yet. Coherence chart will appear "
+            "after the first rebuild (every "
+            f"{session.rebuild_every_n_frames} frames by default)."
+        )
+
+    # Footer note
+    st.divider()
+    st.caption(
+        "Live mode runs entirely on your machine. Frames never leave "
+        "your computer. Toggle 'Capture for prediction' (Mode 5) to "
+        "ask the vision LLM about the current scene."
+    )
+
+
 def main() -> None:
     mode = render_sidebar()
     if mode == "New prediction":
         render_new_prediction()
     elif mode == "Video query":
         render_video_query()
+    elif mode == "Live webcam":
+        render_live_webcam()
     elif mode == "Measurement update":
         render_measurement_update()
     elif mode == "Calibration history":
         render_calibration_history()
     elif mode == "Pricing & pre-order":
         render_pricing_and_preorder()
+
+    # Single, consistent footer rendered after the mode body so users
+    # always see the version + GitHub + privacy links.
+    st.divider()
+    st.caption(_brand.footer_markdown())
 
 
 if __name__ == "__main__":

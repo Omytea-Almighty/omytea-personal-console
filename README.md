@@ -24,6 +24,29 @@ Then open http://localhost:8501 → switch to **Video query** mode → upload an
 
 For the full step-by-step + troubleshooting, see [§ Install and run](#install-and-run) below.
 
+### Tier 2 — Live webcam + native bundle (v0.3.0)
+
+The Console now ships **Mode 6 "Live webcam"** for continuous streaming and a PyInstaller spec for native distribution. Both are opt-in so the Tier 1 install stays light.
+
+**Mode 6 — Live webcam.** Install the optional WebRTC stack, then pick `Live webcam` in the sidebar:
+
+```bash
+pip install 'streamlit-webrtc>=0.47,<1.0' 'av>=10.0,<13.0'
+streamlit run app.py
+```
+
+Camera frames stream into the substrate's detector + IoUTracker on a background thread. Every 8 frames (tunable) the joint wavefunction rebuilds and is evolved under the Lindblad operator — the live coherence-decay chart updates each rerender. Nothing leaves your machine.
+
+**Native bundle.** Build a self-contained folder that launches the Console without any Python install:
+
+```bash
+bash scripts/build_native.sh
+# → dist/omytea-console/omytea-console      (the launcher binary)
+# A browser tab opens at http://127.0.0.1:8501.
+```
+
+The bundle still expects Ollama for the vision LLM (multi-GB models aren't worth embedding); the Console runs in mock mode if Ollama isn't present.
+
 ---
 
 ## Install and run
