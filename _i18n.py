@@ -290,27 +290,27 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
     "trad.hero.subtitle": {
         LANG_EN: (
             "Read the same prediction through a time-honored lens — "
-            "八字, 紫微斗数, 易经, Tarot, or a Western natal chart. Each "
+            "八字, 易经, Tarot, or a Western natal chart. Each "
             "is an explicitly weighted prior, never a verdict; the "
             "model's own number is always shown beside the combined "
             "one. Pick the system, pick the weight, watch it move."
         ),
         LANG_ZH: (
-            "用一种古法视角重读同一份预测——八字、紫微斗数、易经、"
+            "用一种古法视角重读同一份预测——八字、易经、"
             "塔罗、或西方星盘。每一种都只是一个可调权重的先验，绝非"
             "定论；模型自己的数字始终与融合后的数字并列展示。"
             "选体系、调权重，看仪器随之转动。"
         ),
         LANG_ES: (
             "Lee la misma predicción a través de una lente tradicional "
-            "— 八字, 紫微, 易经, Tarot o una carta natal occidental. "
+            "— 八字, 易经, Tarot o una carta natal occidental. "
             "Cada una es un prior con peso explícito, nunca un "
             "veredicto; el número del modelo siempre se muestra junto "
             "al combinado."
         ),
         LANG_FR: (
             "Lisez la même prédiction à travers une lentille "
-            "traditionnelle — 八字, 紫微, 易经, Tarot ou un thème "
+            "traditionnelle — 八字, 易经, Tarot ou un thème "
             "astral occidental. Chacune est un prior pondéré "
             "explicitement, jamais un verdict ; le chiffre du modèle "
             "est toujours affiché à côté du combiné."

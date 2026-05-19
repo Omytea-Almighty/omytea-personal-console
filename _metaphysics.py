@@ -35,9 +35,10 @@ an author-reviewed 64-hexagram interpretation library, and a full
 from __future__ import annotations
 
 import hashlib
+import math
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Literal
+from typing import Final, Literal
 
 
 # ======================================================================
@@ -60,8 +61,16 @@ SYSTEM_ZIWEI: str = "ziwei"
 SYSTEM_ICHING: str = "iching"
 SYSTEM_TAROT: str = "tarot"
 SYSTEM_ASTRO: str = "astro"
+
+# 紫微 is intentionally absent from SYSTEMS (the user-facing selector):
+# a correct 12-palace chart needs the Chinese lunisolar calendar
+# (lunar month + lunar day), which this module does not yet have. Per
+# the project's honest-fallback discipline we do not surface a chart
+# we know is wrong. The 紫微 code below stays intact and `compute_reading`
+# still handles it, so re-enabling is a one-line change once a real
+# lunar-calendar engine is ported.
 SYSTEMS: tuple[str, ...] = (
-    SYSTEM_BAZI, SYSTEM_ZIWEI, SYSTEM_ICHING, SYSTEM_TAROT, SYSTEM_ASTRO,
+    SYSTEM_BAZI, SYSTEM_ICHING, SYSTEM_TAROT, SYSTEM_ASTRO,
 )
 
 
@@ -214,23 +223,80 @@ WUXING_COLOR_DEEP: dict[str, str] = {
 }
 
 
+# --- Real 八字 engine, ported verbatim from the founder's Nye Clock ---
+# (`nye-clock-backdrop.html` :: getGanZhiYear / getGanZhiMonth /
+#  getGanZhiDay + heroHourStemIndexFromDayStemWushu). The earlier
+# `(year-4)%60` + `year*365 + month*30 + day` placeholder was simply
+# wrong — it ignored leap years, real month lengths and 节气.
+
+from datetime import date as _date
+
+# Day-pillar anchor: 1900-04-20 (UTC) is sexagenary index 59 (癸亥).
+_DAY_ANCHOR: Final = _date(1900, 4, 20)
+_DAY_ANCHOR_INDEX: Final = 59
+
+# The 12 "节" that open each 八字 month — (gregorian month, day,
+# branch index). Approximate Gregorian dates (±1 day); the Nye Clock
+# uses the same table as its solar-longitude iteration seed.
+_SOLAR_NODES: Final = (
+    (2, 4, 2),    # 立春 → 寅
+    (3, 5, 3),    # 惊蛰 → 卯
+    (4, 5, 4),    # 清明 → 辰
+    (5, 5, 5),    # 立夏 → 巳
+    (6, 5, 6),    # 芒种 → 午
+    (7, 7, 7),    # 小暑 → 未
+    (8, 7, 8),    # 立秋 → 申
+    (9, 7, 9),    # 白露 → 酉
+    (10, 8, 10),  # 寒露 → 戌
+    (11, 7, 11),  # 立冬 → 亥
+    (12, 7, 0),   # 大雪 → 子
+    (1, 5, 1),    # 小寒 → 丑
+)
+# 五虎遁 — year-stem index → 正月(寅) stem index.
+_WUHU_DUN: Final = {0: 2, 5: 2, 1: 4, 6: 4, 2: 6, 7: 6,
+                    3: 8, 8: 8, 4: 0, 9: 0}
+
+
 def bazi_from_birth(bd: BirthData) -> BaZiPattern:
-    """Compute a SIMPLIFIED 八字 from birth datetime.
+    """Compute the 八字 from a birth datetime — the real algorithm.
 
-    Deterministic. Real 八字 needs solar terms (节气) + true solar time;
-    this is a documented placeholder (v0.5+ replaces it).
+    Faithful Python port of the Nye Clock's tested engine:
+      • Year  — sexagenary of the year, boundary at 立春 (≈ Feb 4).
+      • Month — 节气起月法 (which 节 the date falls in) + 五虎遁 stem.
+      • Day   — exact day count from the 1900-04-20 (index 59) anchor.
+      • Hour  — 时辰 branch from the hour + 五鼠遁 stem.
+
+    Deterministic. The only approximation is the 节气 date table
+    (±1 day at a solar-term boundary); everything else is exact.
     """
-    sexagenary = (bd.year - 4) % 60
-    year_stem = sexagenary % 10
-    year_branch = sexagenary % 12
+    d = _date(bd.year, bd.month, bd.day)
 
-    month_stem = (year_stem * 2 + bd.month) % 10
-    month_branch = (bd.month + 1) % 12
+    # --- year pillar — sexagenary year, 立春 boundary ---
+    y = bd.year
+    if (bd.month, bd.day) < (2, 4):
+        y -= 1
+    year_stem = (y - 4) % 10
+    year_branch = (y - 4) % 12
 
-    days_since_epoch = (bd.year - 1900) * 365 + bd.month * 30 + bd.day
-    day_stem = days_since_epoch % 10
-    day_branch = days_since_epoch % 12
+    # --- day pillar — exact, anchored at 1900-04-20 = index 59 ---
+    day_idx = (_DAY_ANCHOR_INDEX + (d - _DAY_ANCHOR).days) % 60
+    day_stem = day_idx % 10
+    day_branch = day_idx % 12
 
+    # --- month pillar — 节气起月法 + 五虎遁 ---
+    nodes = [(_date(bd.year, m, dd), bi) for (m, dd, bi) in _SOLAR_NODES]
+    nodes.append((_date(bd.year - 1, 12, 7), 0))  # previous-year 大雪
+    nodes.sort()
+    month_branch = nodes[-1][1]
+    for node_date, branch_idx in nodes:
+        if d >= node_date:
+            month_branch = branch_idx
+        else:
+            break
+    start_stem = _WUHU_DUN[year_stem]
+    month_stem = (start_stem + (month_branch - 2) % 12) % 10
+
+    # --- hour pillar — 时辰 branch + 五鼠遁 stem ---
     hour_branch = ((bd.hour + 1) // 2) % 12
     hour_stem = (day_stem * 2 + hour_branch) % 10
 
@@ -707,58 +773,95 @@ ZODIAC: tuple[ZodiacSign, ...] = (
 
 # (month) → (day the *second* sign of that month begins, first-sign index,
 # second-sign index). The sun-sign boundaries are exact (tropical zodiac).
-_SUN_BOUNDARY: dict[int, tuple[int, int, int]] = {
-    1:  (20,  9, 10),   # Capricorn → Aquarius
-    2:  (19, 10, 11),   # Aquarius  → Pisces
-    3:  (21, 11,  0),   # Pisces    → Aries
-    4:  (20,  0,  1),   # Aries     → Taurus
-    5:  (21,  1,  2),   # Taurus    → Gemini
-    6:  (21,  2,  3),   # Gemini    → Cancer
-    7:  (23,  3,  4),   # Cancer    → Leo
-    8:  (23,  4,  5),   # Leo       → Virgo
-    9:  (23,  5,  6),   # Virgo     → Libra
-    10: (23,  6,  7),   # Libra     → Scorpio
-    11: (22,  7,  8),   # Scorpio   → Sagittarius
-    12: (22,  8,  9),   # Sagittarius → Capricorn
-}
+# --- Real ephemeris — sun + moon ecliptic longitude (low precision) ---
+# Sun: Meeus ch. 25 (apparent longitude, equation of centre). Moon:
+# Meeus ch. 47, the ten largest periodic terms — accurate to ≈ ±0.3°,
+# which fixes the zodiac sign except within a fraction of a degree of a
+# cusp. Replaces the earlier fabricated `(sun + day*4) % 12` placeholder.
+# The ascendant (rising sign) is intentionally NOT computed — it needs
+# the birth latitude/longitude, which this console does not collect;
+# showing a fake one was the bug the founder caught.
+
+
+def _julian_day(year: int, month: int, day: int, hour: float = 12.0) -> float:
+    """Julian Day for a Gregorian date+hour (UT). J2000.0 = 2451545.0."""
+    a = (14 - month) // 12
+    yy = year + 4800 - a
+    mm = month + 12 * a - 3
+    jdn = (day + (153 * mm + 2) // 5 + 365 * yy + yy // 4
+           - yy // 100 + yy // 400 - 32045)
+    return jdn + (hour - 12.0) / 24.0
+
+
+def _sun_longitude(jd: float) -> float:
+    """Geocentric apparent ecliptic longitude of the Sun, degrees."""
+    t = (jd - 2451545.0) / 36525.0
+    l0 = 280.46646 + 36000.76983 * t
+    m = math.radians(357.52911 + 35999.05029 * t)
+    c = (1.914602 * math.sin(m) + 0.019993 * math.sin(2 * m)
+         + 0.000289 * math.sin(3 * m))
+    return (l0 + c) % 360.0
+
+
+def _moon_longitude(jd: float) -> float:
+    """Geocentric ecliptic longitude of the Moon, degrees (low precision)."""
+    t = (jd - 2451545.0) / 36525.0
+    lp = 218.3164477 + 481267.88123421 * t
+    d = math.radians(297.8501921 + 445267.1114034 * t)
+    m = math.radians(357.5291092 + 35999.0502909 * t)
+    mp = math.radians(134.9633964 + 477198.8675055 * t)
+    f = math.radians(93.2720950 + 483202.0175233 * t)
+    lon = (lp
+           + 6.288774 * math.sin(mp)
+           + 1.274027 * math.sin(2 * d - mp)
+           + 0.658314 * math.sin(2 * d)
+           + 0.213618 * math.sin(2 * mp)
+           - 0.185116 * math.sin(m)
+           - 0.114332 * math.sin(2 * f)
+           + 0.058793 * math.sin(2 * d - 2 * mp)
+           + 0.057066 * math.sin(2 * d - m - mp)
+           + 0.053322 * math.sin(2 * d + mp)
+           + 0.045758 * math.sin(2 * d - m))
+    return lon % 360.0
 
 
 def sun_sign(bd: BirthData) -> int:
-    """Return the sun-sign index (0-11) — exact tropical-zodiac dates."""
-    cut, first, second = _SUN_BOUNDARY[max(1, min(12, bd.month))]
-    return second if bd.day >= cut else first
+    """Sun-sign index (0-11) from the Sun's true ecliptic longitude.
+
+    0° ecliptic longitude (the vernal equinox) = 0° Aries, so the sign
+    index is simply ⌊longitude / 30⌋ — astronomically exact to ±1 day
+    at a cusp.
+    """
+    jd = _julian_day(bd.year, bd.month, bd.day, float(bd.hour))
+    return int(_sun_longitude(jd) // 30.0) % 12
+
+
+def moon_sign(bd: BirthData) -> int:
+    """Moon-sign index (0-11) from the Moon's true ecliptic longitude."""
+    jd = _julian_day(bd.year, bd.month, bd.day, float(bd.hour))
+    return int(_moon_longitude(jd) // 30.0) % 12
 
 
 @dataclass(frozen=True, slots=True)
 class NatalChart:
-    """A simplified natal chart (星盘).
+    """A natal chart (星盘) — Sun + Moon, both from real ephemeris.
 
-    The sun sign is exact. The moon + rising (ascendant) are SIMPLIFIED
-    deterministic placements — a real chart needs an ephemeris + birth
-    longitude/latitude (v0.5+). `placements` maps a body key → zodiac
-    index, for the renderer.
+    The ascendant is deliberately omitted: it requires the birth
+    latitude/longitude (not collected here), and a fabricated one is
+    worse than none. `placements` maps a body key → zodiac index.
     """
 
     sun: int
     moon: int
-    rising: int
 
     @property
     def placements(self) -> dict[str, int]:
-        return {"sun": self.sun, "moon": self.moon, "rising": self.rising}
+        return {"sun": self.sun, "moon": self.moon}
 
 
 def natal_chart(bd: BirthData) -> NatalChart:
-    """Build a simplified natal chart.
-
-    Sun sign is exact. Moon shifts ~1 sign / 2.3 days → a day-driven
-    offset; the ascendant shifts ~1 sign / 2 hours → an hour-driven
-    offset. Deterministic. Documented as simplified — not an ephemeris.
-    """
-    sun = sun_sign(bd)
-    moon = (sun + (bd.day * 4 + bd.month) // 7) % 12
-    rising = (sun + (bd.hour // 2)) % 12
-    return NatalChart(sun=sun, moon=moon, rising=rising)
+    """Build the natal chart — Sun + Moon from low-precision ephemeris."""
+    return NatalChart(sun=sun_sign(bd), moon=moon_sign(bd))
 
 
 # Outcome prior per element (sun sign). Fire = drive, Earth = ground,
@@ -792,25 +895,20 @@ def astro_outcome_prior(chart: NatalChart, outcome: str) -> float:
 
 
 def astro_auspice(chart: NatalChart) -> float:
-    """Overall chart favourability ∈ [0, 1].
+    """Overall chart favourability ∈ [0, 1] from Sun–Moon element concord.
 
-    The classical 'easy chart' is one where the big three (sun, moon,
-    rising) share an element or compatible elements (fire+air, earth+
-    water are the harmonious pairs). Concordance → auspicious.
+    Same-element Sun+Moon is the 'easy' configuration; fire+air and
+    earth+water are the harmonious cross-pairs; the rest are friction.
     """
-    els = [ZODIAC[i].element for i in (chart.sun, chart.moon, chart.rising)]
+    es = ZODIAC[chart.sun].element
+    em = ZODIAC[chart.moon].element
     harmonious = {("fire", "air"), ("air", "fire"),
                   ("earth", "water"), ("water", "earth")}
-    score = 0.5
-    for a in range(3):
-        for b in range(a + 1, 3):
-            if els[a] == els[b]:
-                score += 0.12
-            elif (els[a], els[b]) in harmonious:
-                score += 0.06
-            else:
-                score -= 0.04
-    return max(0.0, min(1.0, score))
+    if es == em:
+        return 0.80
+    if (es, em) in harmonious:
+        return 0.62
+    return 0.40
 
 
 # ======================================================================

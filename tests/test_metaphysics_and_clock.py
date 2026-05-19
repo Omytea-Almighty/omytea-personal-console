@@ -38,6 +38,31 @@ def test_bazi_from_birth_is_deterministic() -> None:
     assert mp.bazi_from_birth(bd) == mp.bazi_from_birth(bd)
 
 
+def test_bazi_matches_nye_clock() -> None:
+    """Cross-check the ported 八字 engine against the founder's Nye Clock.
+
+    The Nye Clock app showed 丙午 / 癸巳 / 癸巳 / 壬戌 for 2026-05-19 ~20:00;
+    our engine must reproduce all four pillars exactly.
+    """
+    bz = mp.bazi_from_birth(mp.BirthData(2026, 5, 19, 20))
+    assert mp.pillar_text(bz.year_pillar) == "丙午"
+    assert mp.pillar_text(bz.month_pillar) == "癸巳"
+    assert mp.pillar_text(bz.day_pillar) == "癸巳"
+    assert mp.pillar_text(bz.hour_pillar) == "壬戌"
+
+
+def test_bazi_pillars_are_valid_ganzhi() -> None:
+    """Every pillar must be a real 干支 pair — stem and branch share
+    parity (the 60-cycle never pairs an odd stem with an even branch)."""
+    for (y, m, d) in [(1950, 1, 1), (1985, 7, 15), (2000, 2, 29),
+                      (2012, 11, 30), (2026, 5, 19)]:
+        bz = mp.bazi_from_birth(mp.BirthData(y, m, d, 12))
+        for pillar in (bz.year_pillar, bz.month_pillar,
+                       bz.day_pillar, bz.hour_pillar):
+            stem, branch = pillar
+            assert stem % 2 == branch % 2, (y, m, d, pillar)
+
+
 def test_wuxing_balance_sums_to_one() -> None:
     bz = mp.bazi_from_birth(mp.BirthData(1990, 3, 15, 7))
     bal = mp.wuxing_balance(bz)
@@ -164,11 +189,13 @@ def test_tarot_prior_and_auspice_bounded() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_sun_sign_dates_are_exact() -> None:
+def test_sun_sign_from_real_ephemeris() -> None:
+    # Dates safely mid-sign (away from cusps) — the Sun's longitude
+    # puts each squarely in the expected sign.
     cases = [
-        (3, 21, "aries"), (3, 20, "pisces"), (7, 23, "leo"),
-        (7, 22, "cancer"), (12, 25, "capricorn"), (1, 1, "capricorn"),
-        (1, 20, "aquarius"), (10, 23, "scorpio"),
+        (4, 5, "aries"), (5, 5, "taurus"), (6, 5, "gemini"),
+        (7, 10, "cancer"), (8, 5, "leo"), (12, 5, "sagittarius"),
+        (1, 10, "capricorn"), (2, 5, "aquarius"), (3, 5, "pisces"),
     ]
     for month, day, expected in cases:
         bd = mp.BirthData(2000, month, day, 12)
@@ -179,13 +206,23 @@ def test_natal_chart_and_priors_bounded() -> None:
     chart = mp.natal_chart(mp.BirthData(1996, 8, 9, 16))
     assert 0 <= chart.sun < 12
     assert 0 <= chart.moon < 12
-    assert 0 <= chart.rising < 12
+    # the natal chart no longer fabricates a rising sign
+    assert not hasattr(chart, "rising")
     for outcome in mp.OUTCOME_CATEGORIES:
         assert 0.0 <= mp.astro_outcome_prior(chart, outcome) <= 1.0
     assert 0.0 <= mp.astro_auspice(chart) <= 1.0
 
 
-def test_astro_renderer_shows_zodiac() -> None:
+def test_moon_sign_is_deterministic_and_moves() -> None:
+    # Same input → same moon sign; the Moon shifts sign within ~weeks.
+    a = mp.moon_sign(mp.BirthData(2000, 6, 15, 12))
+    b = mp.moon_sign(mp.BirthData(2000, 6, 15, 12))
+    assert a == b and 0 <= a < 12
+    signs = {mp.moon_sign(mp.BirthData(2000, 6, d, 12)) for d in range(1, 29)}
+    assert len(signs) >= 8  # the Moon cycles all 12 signs in ~27 days
+
+
+def test_astro_renderer_shows_sun_and_moon() -> None:
     bd = mp.BirthData(2000, 6, 15, 12)
     reading = mp.compute_reading("astro", birth=bd, seed="s",
                                  outcome="career_success")
@@ -195,8 +232,8 @@ def test_astro_renderer_shows_zodiac() -> None:
         center_bottom_label="COMBINED", center_bottom_value="42%",
         center_meta="ASTRO",
     )
-    assert "SUN" in svg and "MOON" in svg and "RISING" in svg
-    # at least one zodiac glyph rendered
+    assert "SUN SIGN" in svg and "MOON SIGN" in svg
+    assert "RISING" not in svg  # rising is honestly not computed
     assert any(g in svg for g in [s.glyph for s in mp.ZODIAC])
 
 

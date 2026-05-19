@@ -993,7 +993,7 @@ def _render_astro(reading: LensReading,
 
     # --- 12 zodiac sectors (30° each, Aries centred at top) ---
     r_out, r_in = 202.0, 152.0
-    big3 = {chart.sun, chart.moon, chart.rising}
+    big3 = {chart.sun, chart.moon}
     for i, sign in enumerate(ZODIAC):
         a0 = i * 30.0 - 15.0
         a1 = a0 + 30.0
@@ -1018,14 +1018,14 @@ def _render_astro(reading: LensReading,
             f'dominant-baseline="middle">{sign.glyph}</text>'
         )
 
-    # --- the big three as bodies on orbital paths (Nye-Clock
-    # Sun-Earth-Moon system borrow): three concentric galaxy-blue
-    # orbits, ☉ Sun innermost, ☽ Moon mid, Asc outermost — each body
-    # sits on its own orbit at its sign's angle. ---
+    # --- Sun + Moon as bodies on orbital paths (Nye-Clock Sun-Earth-
+    # Moon system borrow): two concentric galaxy-blue orbits, ☉ Sun
+    # inner, ☽ Moon outer — each body on its orbit at its true sign's
+    # angle. (No ascendant ring — the rising sign needs a birth
+    # latitude/longitude this console does not collect.) ---
     orbits = (
-        ("asc",  chart.rising, "Asc", _GAL_BLUE,  144.0, 11),
-        ("moon", chart.moon,   "☽",   _INK1,      124.0, 13),
-        ("sun",  chart.sun,    "☉",   _GAL_GOLD,  106.0, 14),
+        ("moon", chart.moon, "☽", _INK1,     140.0, 15),
+        ("sun",  chart.sun,  "☉", _GAL_GOLD, 112.0, 16),
     )
     for _bk, idx, _sym, col, orad, _fs in orbits:
         # the orbit path — faint dashed galaxy-blue ring
@@ -1060,16 +1060,16 @@ def _render_astro(reading: LensReading,
                                 bottom_label, bottom_value, meta,
                                 r_core=99.0))
 
-    # --- corner cartouches: Sun / Moon / Rising / element·modality ---
+    # --- corner cartouches: Sun sign / Moon sign + their element·mode ---
     sun_sign = ZODIAC[chart.sun]
+    moon_sgn = ZODIAC[chart.moon]
     corners = (
-        (f"{sun_sign.glyph} {sun_sign.name}", "SUN",   (40, 40)),
-        (f"{ZODIAC[chart.moon].glyph} {ZODIAC[chart.moon].name}",
-         "MOON", (_VB - 40, 40)),
-        (f"{ZODIAC[chart.rising].glyph} {ZODIAC[chart.rising].name}",
-         "RISING", (40, _VB - 40)),
+        (f"{sun_sign.glyph} {sun_sign.name}", "SUN SIGN", (40, 40)),
+        (f"{moon_sgn.glyph} {moon_sgn.name}", "MOON SIGN", (_VB - 40, 40)),
         (f"{sun_sign.element} · {sun_sign.modality}",
-         "SUN SIGN", (_VB - 40, _VB - 40)),
+         "SUN", (40, _VB - 40)),
+        (f"{moon_sgn.element} · {moon_sgn.modality}",
+         "MOON", (_VB - 40, _VB - 40)),
     )
     for text, name, (px, py) in corners:
         body.append(
