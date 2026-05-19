@@ -262,6 +262,381 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
             "ancres optimiste et pire-cas sont étiquetées."
         ),
     },
+    # -----  Mode 7: Traditional × Calibrated (Nye-clock)  -----
+    "mode.traditional": {
+        LANG_EN: "Traditional × Calibrated",
+        LANG_ZH: "古法 × 校准",
+        LANG_ES: "Tradicional × Calibrado",
+        LANG_FR: "Traditionnel × Calibré",
+    },
+    "trad.hero.title": {
+        LANG_EN: "Two priors, one dial.",
+        LANG_ZH: "两种先验，一个表盘。",
+        LANG_ES: "Dos priors, un dial.",
+        LANG_FR: "Deux a priori, un cadran.",
+    },
+    "trad.hero.subtitle": {
+        LANG_EN: (
+            "The outer ring is your 八字 五行 balance — wood, fire, earth, "
+            "metal, water. The inner ring is the model's calibrated "
+            "branch distribution. The centre is the posterior when both "
+            "are weighted together. Pick the weight; the dial moves."
+        ),
+        LANG_ZH: (
+            "外圈是你八字的五行分布——木火土金水；内圈是模型校准过的"
+            "未来分支；中心读数是两者按你设定的权重融合后的后验。"
+            "权重一调，表盘就动。"
+        ),
+        LANG_ES: (
+            "El anillo exterior es tu balance 五行 de 八字 — madera, "
+            "fuego, tierra, metal, agua. El anillo interior es la "
+            "distribución calibrada del modelo. El centro es el "
+            "posterior cuando ambos se ponderan juntos."
+        ),
+        LANG_FR: (
+            "L'anneau externe est ton équilibre 五行 du 八字 — bois, feu, "
+            "terre, métal, eau. L'anneau interne est la distribution "
+            "calibrée du modèle. Le centre est le postérieur quand les "
+            "deux sont pondérés ensemble."
+        ),
+    },
+    "trad.birth.section": {
+        LANG_EN: "Your birth",
+        LANG_ZH: "出生信息",
+        LANG_ES: "Tu nacimiento",
+        LANG_FR: "Votre naissance",
+    },
+    "trad.birth.year": {
+        LANG_EN: "Year",
+        LANG_ZH: "年",
+        LANG_ES: "Año",
+        LANG_FR: "Année",
+    },
+    "trad.birth.month": {
+        LANG_EN: "Month",
+        LANG_ZH: "月",
+        LANG_ES: "Mes",
+        LANG_FR: "Mois",
+    },
+    "trad.birth.day": {
+        LANG_EN: "Day",
+        LANG_ZH: "日",
+        LANG_ES: "Día",
+        LANG_FR: "Jour",
+    },
+    "trad.birth.hour": {
+        LANG_EN: "Hour (0–23)",
+        LANG_ZH: "小时（0–23）",
+        LANG_ES: "Hora (0–23)",
+        LANG_FR: "Heure (0–23)",
+    },
+    "trad.birth.hint": {
+        LANG_EN: (
+            "Local clock time at birth. Used only to derive the 八字 "
+            "pillars + 五行 share — never stored, never sent off-device."
+        ),
+        LANG_ZH: (
+            "出生当地的本地时间。仅用于推算八字四柱 + 五行比例——"
+            "不会保存，也不会离开你的设备。"
+        ),
+        LANG_ES: (
+            "Hora local al nacer. Sólo se usa para derivar las 八字 "
+            "pillars + balance 五行 — nunca se guarda."
+        ),
+        LANG_FR: (
+            "Heure locale à la naissance. Utilisée uniquement pour "
+            "dériver les 八字 + 五行 — jamais enregistrée."
+        ),
+    },
+    "trad.outcome.select": {
+        LANG_EN: "Outcome you care about",
+        LANG_ZH: "你关心的结果",
+        LANG_ES: "Resultado que te importa",
+        LANG_FR: "Résultat qui vous importe",
+    },
+    "trad.outcome.career_success": {
+        LANG_EN: "Career success",
+        LANG_ZH: "事业有成",
+        LANG_ES: "Éxito profesional",
+        LANG_FR: "Réussite professionnelle",
+    },
+    "trad.outcome.marriage_stable": {
+        LANG_EN: "Marriage / partnership stability",
+        LANG_ZH: "婚姻 / 关系稳定",
+        LANG_ES: "Estabilidad de pareja",
+        LANG_FR: "Stabilité conjugale",
+    },
+    "trad.outcome.wealth_accumulation": {
+        LANG_EN: "Wealth accumulation",
+        LANG_ZH: "财富积累",
+        LANG_ES: "Acumulación de riqueza",
+        LANG_FR: "Accumulation de richesse",
+    },
+    "trad.outcome.health_strong": {
+        LANG_EN: "Strong health",
+        LANG_ZH: "身体康健",
+        LANG_ES: "Salud robusta",
+        LANG_FR: "Santé robuste",
+    },
+    "trad.outcome.learning_good": {
+        LANG_EN: "Learning / academic",
+        LANG_ZH: "学业 / 学习",
+        LANG_ES: "Aprendizaje / académico",
+        LANG_FR: "Apprentissage / scolaire",
+    },
+    "trad.outcome.conflict_low": {
+        LANG_EN: "Low conflict / smooth ties",
+        LANG_ZH: "少口舌 / 关系顺",
+        LANG_ES: "Bajo conflicto",
+        LANG_FR: "Faible conflit",
+    },
+    "trad.combine.label": {
+        LANG_EN: "How to combine",
+        LANG_ZH: "融合方式",
+        LANG_ES: "Cómo combinar",
+        LANG_FR: "Méthode de fusion",
+    },
+    "trad.combine.mixture": {
+        LANG_EN: "α-mixture (linear)",
+        LANG_ZH: "α-混合（线性）",
+        LANG_ES: "Mezcla α (lineal)",
+        LANG_FR: "Mélange α (linéaire)",
+    },
+    "trad.combine.bayesian": {
+        LANG_EN: "Bayesian update",
+        LANG_ZH: "贝叶斯更新",
+        LANG_ES: "Actualización bayesiana",
+        LANG_FR: "Mise à jour bayésienne",
+    },
+    "trad.combine.off": {
+        LANG_EN: "Off (model only)",
+        LANG_ZH: "关闭（只用模型）",
+        LANG_ES: "Apagado (sólo modelo)",
+        LANG_FR: "Désactivé (modèle seul)",
+    },
+    "trad.alpha.label": {
+        LANG_EN: "Traditional-prior weight (α)",
+        LANG_ZH: "古法权重 α",
+        LANG_ES: "Peso del prior tradicional (α)",
+        LANG_FR: "Poids du prior traditionnel (α)",
+    },
+    "trad.alpha.hint": {
+        LANG_EN: (
+            "0 = ignore the traditional prior entirely; 1 = the centre "
+            "reading is purely the 五行 prior. 0.2–0.4 is the "
+            "honest-curiosity range."
+        ),
+        LANG_ZH: (
+            "0 = 完全忽略古法；1 = 中心读数完全是五行先验。"
+            "0.2–0.4 是一个比较诚实的好奇区间。"
+        ),
+        LANG_ES: (
+            "0 = ignorar el prior tradicional; 1 = la lectura central "
+            "es puramente 五行. 0.2–0.4 es el rango de curiosidad honesta."
+        ),
+        LANG_FR: (
+            "0 = ignorer le prior traditionnel ; 1 = la lecture "
+            "centrale est purement 五行. 0.2–0.4 est la plage de "
+            "curiosité honnête."
+        ),
+    },
+    "trad.compile": {
+        LANG_EN: "Read the dial",
+        LANG_ZH: "读这个表盘",
+        LANG_ES: "Leer el dial",
+        LANG_FR: "Lire le cadran",
+    },
+    "trad.legend": {
+        LANG_EN: (
+            "Outer ring = 五行 share from your 八字. Inner ring = "
+            "model-calibrated branch probabilities. Centre = "
+            "combined posterior."
+        ),
+        LANG_ZH: (
+            "外圈 = 八字推得的五行分布；内圈 = 模型校准过的分支概率；"
+            "中心 = 两者融合后的后验。"
+        ),
+        LANG_ES: (
+            "Anillo exterior = balance 五行 de tu 八字. Anillo interior "
+            "= probabilidades calibradas del modelo. Centro = "
+            "posterior combinado."
+        ),
+        LANG_FR: (
+            "Anneau externe = équilibre 五行 de votre 八字. Anneau "
+            "interne = probabilités calibrées du modèle. Centre = "
+            "postérieur combiné."
+        ),
+    },
+    "trad.disclaimer": {
+        LANG_EN: (
+            "Not deterministic fortune-telling — an explicitly weighted "
+            "prior the user chooses (or doesn't) to use. The model's "
+            "unweighted output is always shown alongside the combined "
+            "view so you can see the shift."
+        ),
+        LANG_ZH: (
+            "不是确定的命理预言——它只是一个用户主动选择是否使用的"
+            "可调权重先验。模型未加权的原始输出始终与融合视图并列展示，"
+            "让你看清差异从哪里来。"
+        ),
+        LANG_ES: (
+            "No es adivinación determinista — un prior con peso "
+            "explícito que el usuario elige usar o no. La salida no "
+            "ponderada del modelo siempre se muestra junto al posterior."
+        ),
+        LANG_FR: (
+            "Pas de prédiction déterministe — un prior pondéré que "
+            "l'utilisateur choisit (ou non) d'utiliser. La sortie non "
+            "pondérée du modèle est toujours affichée à côté."
+        ),
+    },
+    "trad.no_input": {
+        LANG_EN: "Fill in your birth + outcome above, then read the dial.",
+        LANG_ZH: "上方填好出生信息和你关心的结果，再读这个表盘。",
+        LANG_ES: "Rellena tu nacimiento + resultado arriba, luego lee el dial.",
+        LANG_FR: "Remplissez la naissance + le résultat ci-dessus, puis lisez le cadran.",
+    },
+    "trad.center.dominant_fmt": {
+        LANG_EN: "{element}-dominant 五行",
+        LANG_ZH: "五行偏{element}",
+        LANG_ES: "五行 con dominio de {element}",
+        LANG_FR: "五行 dominé par {element}",
+    },
+    "trad.metric.model": {
+        LANG_EN: "Model-only probability",
+        LANG_ZH: "模型独立预测",
+        LANG_ES: "Probabilidad sólo-modelo",
+        LANG_FR: "Probabilité modèle seul",
+    },
+    "trad.metric.tradition": {
+        LANG_EN: "Traditional-prior probability",
+        LANG_ZH: "古法先验概率",
+        LANG_ES: "Probabilidad prior tradicional",
+        LANG_FR: "Probabilité prior traditionnel",
+    },
+    "trad.metric.combined": {
+        LANG_EN: "Combined posterior",
+        LANG_ZH: "融合后验",
+        LANG_ES: "Posterior combinado",
+        LANG_FR: "Postérieur combiné",
+    },
+    # -----  Other-page heroes (Apple-style two-tier)  -----
+    "video.hero.title": {
+        LANG_EN: "Watch a clip. Get the futures.",
+        LANG_ZH: "看一段视频，得到未来分布。",
+        LANG_ES: "Mira un clip. Obtén los futuros.",
+        LANG_FR: "Regardez un clip. Obtenez les futurs.",
+    },
+    "video.hero.subtitle": {
+        LANG_EN: (
+            "Upload a short clip. The system samples keyframes, runs "
+            "the perception pipeline, asks a local vision model to "
+            "read the scene, and emits calibrated future-scenario "
+            "branches."
+        ),
+        LANG_ZH: (
+            "上传一段短视频。系统会抽帧、跑感知层、让本地视觉模型"
+            "读懂画面，并输出校准过的未来分支概率分布。"
+        ),
+        LANG_ES: (
+            "Sube un clip corto. El sistema muestrea fotogramas clave, "
+            "ejecuta la percepción, le pide a un modelo de visión local "
+            "que lea la escena, y emite ramas calibradas."
+        ),
+        LANG_FR: (
+            "Téléversez un court clip. Le système échantillonne les "
+            "images clés, exécute la perception, demande à un modèle "
+            "de vision local de lire la scène, puis émet des branches "
+            "calibrées."
+        ),
+    },
+    "measurement.hero.title": {
+        LANG_EN: "Tell it what actually happened.",
+        LANG_ZH: "告诉它真实发生了什么。",
+        LANG_ES: "Cuéntale lo que pasó de verdad.",
+        LANG_FR: "Dis-lui ce qui s'est réellement passé.",
+    },
+    "measurement.hero.subtitle": {
+        LANG_EN: (
+            "Look up a past prediction by ID, score each branch by how "
+            "much it materialized, and the system computes calibration "
+            "(Brier, log-loss) on your forecast. The measurement loop "
+            "is the whole point — predictions you never score teach "
+            "you nothing."
+        ),
+        LANG_ZH: (
+            "用 ID 找回之前的预测，根据真实情况给每个分支打分；"
+            "系统会算出 Brier / log-loss 校准指标。"
+            "回填测量是这个系统的关键——不复盘的预测什么都教不会你。"
+        ),
+        LANG_ES: (
+            "Busca una predicción pasada por ID, puntúa cada rama "
+            "según cuánto se materializó, y el sistema calcula la "
+            "calibración (Brier, log-loss). El bucle de medición es "
+            "el propósito."
+        ),
+        LANG_FR: (
+            "Retrouvez une prédiction par identifiant, notez chaque "
+            "branche selon ce qui s'est matérialisé, et le système "
+            "calcule la calibration (Brier, log-loss)."
+        ),
+    },
+    "calibration.hero.title": {
+        LANG_EN: "How well-calibrated are you?",
+        LANG_ZH: "你的判断校准得怎样？",
+        LANG_ES: "¿Qué tan bien calibrado estás?",
+        LANG_FR: "À quel point êtes-vous calibré ?",
+    },
+    "calibration.hero.subtitle": {
+        LANG_EN: (
+            "Aggregate Brier and log-loss across all of your scored "
+            "predictions — what you genuinely got right, what you "
+            "fooled yourself about, and whether you trended better "
+            "over time."
+        ),
+        LANG_ZH: (
+            "把你打过分的预测全部汇总，看 Brier / log-loss 校准趋势——"
+            "哪些是真懂，哪些是自欺，以及随时间有没有进步。"
+        ),
+        LANG_ES: (
+            "Agrega Brier y log-loss en todas tus predicciones "
+            "puntuadas — qué acertaste de verdad y si mejoraste con "
+            "el tiempo."
+        ),
+        LANG_FR: (
+            "Agrège Brier et log-loss sur toutes vos prédictions "
+            "notées — ce que vous avez vraiment bien fait et si vous "
+            "vous êtes amélioré avec le temps."
+        ),
+    },
+    "pricing.hero.title": {
+        LANG_EN: "An honest price, posted in advance.",
+        LANG_ZH: "事先公开的、诚实的价格。",
+        LANG_ES: "Un precio honesto, publicado por adelantado.",
+        LANG_FR: "Un prix honnête, affiché à l'avance.",
+    },
+    "pricing.hero.subtitle": {
+        LANG_EN: (
+            "Free during the public beta. After v1.0 the Personal tier "
+            "stays free for 25 predictions / month; heavier use moves "
+            "to a flat monthly. No card collected until billing actually "
+            "starts."
+        ),
+        LANG_ZH: (
+            "公开 beta 期间完全免费。v1.0 以后个人档每月 25 次预测"
+            "依旧免费，重度使用按固定月费。开始计费前不收信用卡。"
+        ),
+        LANG_ES: (
+            "Gratis durante la beta pública. Después de v1.0 el plan "
+            "Personal sigue gratis para 25 predicciones/mes; uso "
+            "intensivo pasa a una mensualidad fija."
+        ),
+        LANG_FR: (
+            "Gratuit pendant la bêta publique. Après v1.0 le plan "
+            "Personnel reste gratuit jusqu'à 25 prédictions/mois ; "
+            "usage intensif passe à un forfait mensuel."
+        ),
+    },
 }
 
 

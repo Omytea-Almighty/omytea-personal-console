@@ -224,12 +224,14 @@ def render_sidebar() -> str:
 
     # ---- Mode nav ----
     mode_keys = (
-        "New prediction", "Video query", "Live webcam",
+        "New prediction", "Traditional × Calibrated",
+        "Video query", "Live webcam",
         "Measurement update", "Calibration history",
         "Pricing & pre-order",
     )
     mode_key_to_i18n = {
         "New prediction": "mode.new_prediction",
+        "Traditional × Calibrated": "mode.traditional",
         "Video query": "mode.video_query",
         "Live webcam": "mode.live_webcam",
         "Measurement update": "mode.measurement_update",
@@ -499,6 +501,197 @@ Ollama.
         current["result"], current["form_data"], current["scenario"],
         current["user_id"], current["program"],
         prediction_id=current["prediction_id"],
+    )
+
+
+# ============================================================
+# Mode 7 — Traditional × Calibrated (Nye-clock instrument)
+# ============================================================
+
+def render_traditional_view() -> None:
+    """The 古法 × 校准 page.
+
+    Combines the user's 八字-derived 五行 prior with the most-recent
+    model branch distribution from the New-prediction tab. Renders one
+    Nye-clock SVG instrument as the centerpiece. The unweighted model
+    output is always shown alongside the combined view so the user can
+    see exactly how the traditional prior shifts things.
+
+    No new compile is run here — this page is a re-view of the last
+    prediction through a different lens. If the user hasn't generated
+    a prediction yet, we show a polite empty state pointing back to
+    the New-prediction tab.
+    """
+    import _metaphysics as _mp
+    from _clock import render_nye_clock_svg
+
+    # ---- Apple-style two-tier hero ----
+    st.markdown(
+        f"""
+        <div style='text-align:center;padding:40px 24px 28px;'>
+          <h1 style='font-family:"Cormorant Garamond",Georgia,serif;
+                     font-size:52px;font-weight:600;letter-spacing:-0.02em;
+                     margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
+            {T("trad.hero.title")}
+          </h1>
+          <p style='max-width:600px;margin:0 auto;color:#b9bfc8;
+                    font-size:16px;line-height:1.55;letter-spacing:0.005em;'>
+            {T("trad.hero.subtitle")}
+          </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # ---- Birth-data input row ----
+    st.markdown(
+        f"<div style='color:#76808d;font-size:11.5px;text-transform:uppercase;"
+        f"letter-spacing:0.12em;font-weight:500;margin:24px 0 12px;'>"
+        f"{T('trad.birth.section')}</div>",
+        unsafe_allow_html=True,
+    )
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        b_year = st.number_input(T("trad.birth.year"), min_value=1900,
+                                 max_value=2100, value=2000, step=1,
+                                 key="_trad_y")
+    with c2:
+        b_month = st.number_input(T("trad.birth.month"), min_value=1,
+                                  max_value=12, value=6, step=1,
+                                  key="_trad_m")
+    with c3:
+        b_day = st.number_input(T("trad.birth.day"), min_value=1,
+                                max_value=31, value=15, step=1,
+                                key="_trad_d")
+    with c4:
+        b_hour = st.number_input(T("trad.birth.hour"), min_value=0,
+                                 max_value=23, value=12, step=1,
+                                 key="_trad_h")
+    st.caption(T("trad.birth.hint"))
+
+    # ---- Outcome + combination controls ----
+    cc1, cc2, cc3 = st.columns([2, 2, 1.4])
+    with cc1:
+        outcome = st.selectbox(
+            T("trad.outcome.select"),
+            options=list(_mp.OUTCOME_CATEGORIES),
+            format_func=lambda k: T(f"trad.outcome.{k}"),
+            index=0,
+            key="_trad_outcome",
+        )
+    with cc2:
+        combine_modes = ("mixture", "bayesian", "off")
+        mode = st.selectbox(
+            T("trad.combine.label"),
+            options=combine_modes,
+            format_func=lambda k: T(f"trad.combine.{k}"),
+            index=0,
+            key="_trad_mode",
+        )
+    with cc3:
+        alpha = st.slider(
+            T("trad.alpha.label"), min_value=0.0, max_value=1.0,
+            value=0.30, step=0.05, key="_trad_alpha",
+            help=T("trad.alpha.hint"),
+        )
+
+    # ---- Derive 八字 + balance + tradition prior on the chosen outcome ----
+    bd = _mp.BirthData(year=int(b_year), month=int(b_month),
+                       day=int(b_day), hour=int(b_hour))
+    bazi = _mp.bazi_from_birth(bd)
+    balance = _mp.wuxing_balance(bazi)
+    dominant_key = _mp.dominant_element(balance)
+    tradition_prob = _mp.outcome_prior(bazi, str(outcome))
+
+    # ---- Pull the most-recent prediction from session state ----
+    current = st.session_state.get("current_prediction")
+    have_model = current is not None and current.get("result") is not None
+
+    if have_model:
+        result = current["result"]
+        hyps = list(result.hypotheses)
+        # Headline outcome = the highest-probability realistic branch
+        # (anchors are emotional, not the most-likely future).
+        realistic = [h for h in hyps if h.branch_type
+                     not in ("wishful", "worst")]
+        head_h = max(realistic or hyps, key=lambda h: h.probability)
+        model_prob = float(head_h.probability)
+
+        # Build the inner-ring data (label/prob/branch_type triples).
+        branch_data: list[tuple[str, float, str]] = [
+            (h.label, float(h.probability), str(h.branch_type)) for h in hyps
+        ]
+
+        # Compute the combined posterior on the headline branch.
+        combined = _mp.combine_with_model(
+            model_prob, tradition_prob, mode, alpha
+        )
+        # In bayesian mode the combined value is unnormalized; reproject
+        # against a 1-branch fallback so the centre reading stays in
+        # [0, 1] for display. (Full per-branch renormalization is in
+        # scope when we extend this to write back into ConsoleResult.)
+        if mode == "bayesian":
+            denom = combined + (1 - tradition_prob) * (1 - model_prob)
+            combined = combined / denom if denom > 1e-9 else combined
+
+        center_headline = head_h.label.replace("_", " ").title()[:24]
+        center_subline = f"{combined * 100:.1f}% combined"
+        center_meta = (
+            f"{dominant_key.upper()} · "
+            f"{'α=' + format(alpha, '.2f') if mode != 'off' else 'model only'}"
+        )
+    else:
+        branch_data = []
+        model_prob = float("nan")
+        combined = float("nan")
+        center_headline = T("trad.no_input")[:24]
+        center_subline = "—"
+        center_meta = dominant_key.upper()
+
+    # ---- Render the Nye-clock instrument ----
+    st.markdown(
+        f"<div style='margin:28px 0 8px;color:#76808d;font-size:11.5px;"
+        f"text-transform:uppercase;letter-spacing:0.12em;font-weight:500;'>"
+        f"{T('result.heatmap_title') if False else ''}</div>",
+        unsafe_allow_html=True,
+    )
+    instrument_svg = render_nye_clock_svg(
+        bazi, balance, branch_data,
+        center_headline, center_subline, center_meta,
+    )
+    st.markdown(
+        f"<div style='background:#11141b;border:1px solid #232834;"
+        f"border-radius:12px;padding:24px;margin:18px auto;max-width:680px;"
+        f"box-shadow:0 12px 50px rgba(0,0,0,0.4),"
+        f"0 1px 0 rgba(255,255,255,0.025) inset;'>"
+        f"{instrument_svg}"
+        f"</div>"
+        f"<div style='text-align:center;color:#76808d;font-size:12px;"
+        f"line-height:1.55;max-width:560px;margin:0 auto 8px;'>"
+        f"{T('trad.legend')}</div>",
+        unsafe_allow_html=True,
+    )
+
+    # ---- Tri-metric readout: model · tradition · combined ----
+    if have_model:
+        m1, m2, m3 = st.columns(3)
+        with m1:
+            st.metric(T("trad.metric.model"), f"{model_prob * 100:.1f}%")
+        with m2:
+            st.metric(T("trad.metric.tradition"),
+                      f"{tradition_prob * 100:.1f}%")
+        with m3:
+            st.metric(T("trad.metric.combined"),
+                      f"{combined * 100:.1f}%")
+    else:
+        st.info(T("trad.no_input"))
+
+    # ---- Disclaimer (always visible — required posture) ----
+    st.markdown(
+        f"<div style='color:#76808d;font-size:12px;line-height:1.55;"
+        f"max-width:680px;margin:24px auto 8px;letter-spacing:0.005em;'>"
+        f"{T('trad.disclaimer')}</div>",
+        unsafe_allow_html=True,
     )
 
 
@@ -1249,11 +1442,21 @@ def _render_result(
 
 def render_measurement_update() -> None:
     """User comes back, looks up prior prediction, reports actual outcome."""
-    st.title("Measurement update")
-    st.write(
-        "Report what actually happened after a prior prediction. The system "
-        "stores your observation, computes the calibration delta, and "
-        "updates the cumulative calibration histogram."
+    st.markdown(
+        f"""
+        <div style='text-align:center;padding:40px 24px 28px;'>
+          <h1 style='font-family:"Cormorant Garamond",Georgia,serif;
+                     font-size:52px;font-weight:600;letter-spacing:-0.02em;
+                     margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
+            {T("measurement.hero.title")}
+          </h1>
+          <p style='max-width:600px;margin:0 auto;color:#b9bfc8;
+                    font-size:16px;line-height:1.55;letter-spacing:0.005em;'>
+            {T("measurement.hero.subtitle")}
+          </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
     user_id = st.text_input(
@@ -1397,10 +1600,21 @@ def render_measurement_update() -> None:
 
 def render_calibration_history() -> None:
     """Show aggregate calibration metrics with owner-bias breakdown."""
-    st.title("Calibration history")
-    st.write(
-        "Aggregate calibration metrics across all measurement updates. "
-        "Lower Brier / log-loss = better calibration."
+    st.markdown(
+        f"""
+        <div style='text-align:center;padding:40px 24px 28px;'>
+          <h1 style='font-family:"Cormorant Garamond",Georgia,serif;
+                     font-size:52px;font-weight:600;letter-spacing:-0.02em;
+                     margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
+            {T("calibration.hero.title")}
+          </h1>
+          <p style='max-width:600px;margin:0 auto;color:#b9bfc8;
+                    font-size:16px;line-height:1.55;letter-spacing:0.005em;'>
+            {T("calibration.hero.subtitle")}
+          </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
     user_id = st.text_input(
@@ -1483,12 +1697,21 @@ def render_calibration_history() -> None:
 def render_pricing_and_preorder() -> None:
     """v4.16 P6 — pricing tier comparison + pre-order interest
     capture. Pre-revenue PMF research; no payment processor wired."""
-    st.title("Pricing & pre-order interest")
-    st.write(
-        "We're not selling yet. This page exists so you can tell us "
-        "what you'd pay for which tier — pre-order interest is "
-        "captured for PMF research and helps prioritize the "
-        "billing-integration work."
+    st.markdown(
+        f"""
+        <div style='text-align:center;padding:40px 24px 28px;'>
+          <h1 style='font-family:"Cormorant Garamond",Georgia,serif;
+                     font-size:52px;font-weight:600;letter-spacing:-0.02em;
+                     margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
+            {T("pricing.hero.title")}
+          </h1>
+          <p style='max-width:600px;margin:0 auto;color:#b9bfc8;
+                    font-size:16px;line-height:1.55;letter-spacing:0.005em;'>
+            {T("pricing.hero.subtitle")}
+          </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
     locale = st.session_state.get("user_locale", currency.DEFAULT_LOCALE)
@@ -1626,14 +1849,20 @@ def render_video_query() -> None:
 
     Master plan §9 first-cut consumer surface for the video path.
     """
-    st.title("Video query")
     st.markdown(
-        "<p style='color:#76808d;font-size:14px;margin-top:-8px;"
-        "margin-bottom:20px;letter-spacing:0.01em;'>"
-        "Upload a short clip. The system samples keyframes, runs the "
-        "perception pipeline, asks a local vision model to read the "
-        "scene, and emits calibrated future-scenario branches."
-        "</p>",
+        f"""
+        <div style='text-align:center;padding:40px 24px 28px;'>
+          <h1 style='font-family:"Cormorant Garamond",Georgia,serif;
+                     font-size:52px;font-weight:600;letter-spacing:-0.02em;
+                     margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
+            {T("video.hero.title")}
+          </h1>
+          <p style='max-width:600px;margin:0 auto;color:#b9bfc8;
+                    font-size:16px;line-height:1.55;letter-spacing:0.005em;'>
+            {T("video.hero.subtitle")}
+          </p>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
@@ -2064,12 +2293,20 @@ def render_live_webcam() -> None:
     no demographic features, no multi-camera fusion (single stream
     only).
     """
-    st.title(T("webcam.title"))
     st.markdown(
-        f"<p style='color:#76808d;font-size:14px;margin-top:-8px;"
-        f"margin-bottom:20px;letter-spacing:0.01em;'>"
-        f"{T('webcam.subtitle')}"
-        f"</p>",
+        f"""
+        <div style='text-align:center;padding:40px 24px 28px;'>
+          <h1 style='font-family:"Cormorant Garamond",Georgia,serif;
+                     font-size:52px;font-weight:600;letter-spacing:-0.02em;
+                     margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
+            {T("webcam.title")}
+          </h1>
+          <p style='max-width:600px;margin:0 auto;color:#b9bfc8;
+                    font-size:16px;line-height:1.55;letter-spacing:0.005em;'>
+            {T("webcam.subtitle")}
+          </p>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
@@ -2390,6 +2627,8 @@ def main() -> None:
     mode = render_sidebar()
     if mode == "New prediction":
         render_new_prediction()
+    elif mode == "Traditional × Calibrated":
+        render_traditional_view()
     elif mode == "Video query":
         render_video_query()
     elif mode == "Live webcam":
