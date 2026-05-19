@@ -44,9 +44,134 @@ from scenarios.career_decision import (
 )
 
 st.set_page_config(
-    page_title="Omytea Personal Future Console — MVP",
+    page_title="Omytea Console",
     layout="wide",
     initial_sidebar_state="expanded",
+)
+
+
+# ============================================================
+# Visual polish — CSS injection matching the v10 marketing
+# design language (dark canvas, lavender accent #8b8cff, teal
+# success #58c5b4, Inter sans, refined hairlines and spacing).
+# Kept additive: Streamlit's default widgets still work; we just
+# soften the corners, tighten the contrast, and de-emoji the
+# default chrome. CSS scoped to common Streamlit class names —
+# may break on a future Streamlit upgrade and is intended to be
+# easily revertible (delete this block).
+# ============================================================
+st.markdown(
+    """
+    <style>
+    /* Typography — match the v10 demo */
+    html, body, [class*="css"] {
+        font-family: -apple-system, "Inter", system-ui, "Segoe UI",
+                     Helvetica, Arial, sans-serif;
+        letter-spacing: -0.005em;
+    }
+    h1, h2, h3, h4 {
+        font-family: "Cormorant Garamond", "Iowan Old Style", Georgia, serif;
+        letter-spacing: -0.015em;
+        font-weight: 600;
+    }
+    /* Refine container chrome */
+    .stApp {
+        background: #0a0c11;
+    }
+    section[data-testid="stSidebar"] {
+        background: #11141b;
+        border-right: 1px solid #232834;
+    }
+    section[data-testid="stSidebar"] h1 {
+        font-family: -apple-system, "Inter", system-ui, sans-serif;
+        font-size: 17px !important;
+        letter-spacing: -0.015em;
+        font-weight: 600;
+    }
+    /* Buttons — tighter radius, hairline border, refined hover */
+    .stButton > button, .stDownloadButton > button {
+        border-radius: 4px;
+        border: 1px solid #232834;
+        background: #181c25;
+        color: #f0f2f5;
+        font-weight: 500;
+        transition: all 0.15s ease;
+    }
+    .stButton > button:hover, .stDownloadButton > button:hover {
+        background: #1f2530;
+        border-color: #8b8cff;
+        color: #f0f2f5;
+    }
+    .stButton > button[kind="primary"] {
+        background: rgba(139, 140, 255, 0.15);
+        border-color: #8b8cff;
+        color: #f0f2f5;
+    }
+    .stButton > button[kind="primary"]:hover {
+        background: rgba(139, 140, 255, 0.25);
+    }
+    /* Text inputs and textareas — calmer borders */
+    .stTextInput input, .stTextArea textarea,
+    .stSelectbox > div > div, .stNumberInput input {
+        background: #181c25 !important;
+        border: 1px solid #232834 !important;
+        border-radius: 4px !important;
+        color: #f0f2f5 !important;
+    }
+    .stTextArea textarea:focus, .stTextInput input:focus {
+        border-color: #8b8cff !important;
+        box-shadow: 0 0 0 1px #8b8cff !important;
+    }
+    /* Expander styling */
+    .streamlit-expanderHeader, [data-testid="stExpander"] summary {
+        background: #181c25;
+        border: 1px solid #232834;
+        border-radius: 4px;
+    }
+    /* Sliders — accent color */
+    .stSlider [role="slider"] {
+        background: #8b8cff;
+    }
+    /* Divider — fainter */
+    hr {
+        border-color: #232834 !important;
+        opacity: 0.6;
+    }
+    /* Caption text — slightly dimmer */
+    .stCaption, [data-testid="stCaptionContainer"] {
+        color: #76808d !important;
+    }
+    /* Code blocks */
+    code {
+        background: rgba(255,255,255,0.04) !important;
+        color: #b9bfc8 !important;
+        padding: 0 4px !important;
+        border-radius: 2px !important;
+    }
+    /* Hide the "Made with Streamlit" footer and the deploy chip */
+    footer { visibility: hidden; }
+    /* Tighten metric chrome */
+    [data-testid="stMetricValue"] {
+        font-family: "Cormorant Garamond", Georgia, serif;
+        font-size: 32px;
+        color: #f0f2f5;
+    }
+    [data-testid="stMetricLabel"] {
+        color: #76808d;
+        font-size: 12px;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+    }
+    /* Container border refinement */
+    [data-testid="stContainer"][data-border="true"],
+    div[data-testid="stContainer"]:has(> div[data-testid="stContainerBorder"]) {
+        background: #11141b;
+        border: 1px solid #232834;
+        border-radius: 8px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
 
 
@@ -130,50 +255,40 @@ def render_sidebar() -> str:
 
 def render_new_prediction() -> None:
     """Form input → compile → display branches + off-diagonal + evidence."""
-    st.title("🔮 New prediction · 新预测")
+    st.title("New prediction")
+    st.markdown(
+        "<p style='color:#76808d;font-size:14px;margin-top:-8px;"
+        "margin-bottom:20px;letter-spacing:0.01em;'>"
+        "Tell the system a decision you're weighing. It compiles your "
+        "input into a calibrated probability space across possible "
+        "futures, stores a snapshot, and lets you score yourself later "
+        "when reality has unfolded."
+        "</p>",
+        unsafe_allow_html=True,
+    )
 
-    # Bilingual intro banner — collapsed by default so it doesn't dominate
-    # the page for repeat visitors but is one click away for first-timers.
-    with st.expander(
-        "ℹ️ What is this? · 这是什么? (click to expand · 点开看)",
-        expanded=False,
-    ):
+    # A short, dense "how this works" panel for first-time visitors. Open
+    # by default — testers shouldn't have to hunt for context.
+    with st.expander("How this works · 30 seconds", expanded=False):
         st.markdown(
             """
-**这个工具做什么 / What this does**
+1. **Describe the decision.** Pick a scenario, fill the fields, or click
+   *Fill with sample data* to see the full flow with zero typing.
+2. **Generate.** The system produces 6–8 future branches with priors,
+   a wishful and a worst-case anchor, off-diagonal correlations, and
+   a recommended-evidence list (ΔP in percentage points).
+3. **Come back later.** Use the Measurement update tab with the
+   prediction ID. Score each branch by how much it actually
+   materialized. The system computes your calibration (Brier / log-loss).
 
-你给它一个你正在纠结的决定（比如要不要回国、要不要接 offer），它会:
-
-1. 把你的输入编译成一个**概率假设空间** (几个未来可能分支 + 每个分支的发生概率)
-2. **存下来快照**，给你一个 prediction ID
-3. 几周/几个月后你回来填「实际发生了什么」，系统给你**校准评分** (Brier score)
-
-You give it a decision you're wrestling with. The system:
-
-1. Compiles it into a **probabilistic hypothesis space** (several future branches with calibrated probabilities)
-2. **Stores the snapshot** with a prediction ID
-3. Weeks/months later, you come back and report what actually happened — system scores your prediction's **calibration** (Brier score)
-
-**这不是什么 / What this isn't**
-
-- ❌ 不是占卜、不是算命、不是「肯定会发生什么」
-- ❌ 不是医疗 / 法律 / 财务建议
-- ❌ 不会把你的数据发到外部 API (除非你装了 Ollama 用 vision LLM)
-
-- ❌ Not fortune-telling, not "what will happen"
-- ❌ Not medical / legal / financial advice
-- ❌ Doesn't send your data to external APIs (unless you've installed Ollama for vision LLM)
-
-**测试者注意 / For testers**
-
-测试这个工具最快的方法是点下面的「📝 自动填示例数据」按钮，然后直接按 Generate。无需自己想数据。
-The fastest way to test: click the **📝 Fill with sample data** button below, then hit Generate. No typing needed.
+What this **isn't**: not fortune-telling, not medical / legal /
+financial advice. Predictions are calibrated probabilities, not
+oracles. No external API is required — runs end-to-end locally
+when you self-host with Ollama.
 """
         )
 
-    # Auto-suggested user handle, regenerated per session so different
-    # visitors don't collide. Stored in session_state so the field
-    # keeps a stable value across re-renders.
+    # Auto-suggested user handle so the field never blocks submission.
     if "_default_user_id" not in st.session_state:
         import random
         import string
@@ -184,30 +299,26 @@ The fastest way to test: click the **📝 Fill with sample data** button below, 
 
     # Scenario selection (only one scenario today — career_decision)
     scenario = st.selectbox(
-        "Scenario / 场景",
+        "Scenario",
         options=list(AVAILABLE_SCENARIOS.keys()),
-        format_func=lambda k: f"{k} — {AVAILABLE_SCENARIOS[k]['description'][:80]}…",
+        format_func=lambda k: AVAILABLE_SCENARIOS[k]["description"][:100],
     )
 
-    st.caption(AVAILABLE_SCENARIOS[scenario]["description"])
-
-    # "Fill with sample data" — one-click flow for testers. Writes the
-    # `example_value` of each InputField into the matching session_state
-    # key BEFORE the form renders, so the form picks them up on this rerun.
+    # Fill / clear row — testers can land + click once + Generate.
     col_a, col_b = st.columns([3, 2])
     with col_a:
         if st.button(
-            "📝 Fill with sample data · 自动填示例数据",
+            "Fill with sample data",
             help=(
-                "一键填入合理的示例数据；然后直接按下面的 Generate 按钮就能看到完整效果。"
-                " | Click once → see the full prediction flow without any typing."
+                "Prefill every field with realistic example values so you "
+                "can see the entire prediction flow in one click."
             ),
             use_container_width=True,
+            type="primary",
         ):
             for field in AVAILABLE_SCENARIOS[scenario]["input_fields"]:
                 if field.example_value:
                     st.session_state[f"input_{field.key}"] = field.example_value
-            # Also set the handle field's example_value if blank
             handle_field_key = "input_user_id"
             if not st.session_state.get(handle_field_key):
                 st.session_state[handle_field_key] = (
@@ -216,8 +327,8 @@ The fastest way to test: click the **📝 Fill with sample data** button below, 
             st.rerun()
     with col_b:
         if st.button(
-            "🧹 Clear form · 清空表单",
-            help="Reset all fields to empty. / 清空所有字段。",
+            "Clear form",
+            help="Reset all fields to empty.",
             use_container_width=True,
         ):
             for field in AVAILABLE_SCENARIOS[scenario]["input_fields"]:
@@ -269,21 +380,21 @@ The fastest way to test: click the **📝 Fill with sample data** button below, 
         # v4.16 P8: opt-in self-test flag so aggregate calibration view
         # can separate owner data from real-user data.
         form_data["is_owner_bias_flagged"] = st.checkbox(
-            "🧪 I am the project owner / this is a self-test · 我是项目作者/自测",
+            "I am the project owner / this is a self-test",
             value=False,
             help=(
-                "勾选后这条预测会在 calibration 聚合视图里被单独标记，"
-                "外部 reviewer 可以选择「只看非作者数据」做诚实分析。 | "
-                "Check this if you are the project founder or running an internal "
-                "self-test. Your data still counts in calibration aggregates, but "
-                "the Calibration history tab lets viewers see the distribution "
-                "both with and without owner-tagged data points."
+                "Check this if you are the project founder or running an "
+                "internal self-test. Your data still counts in calibration "
+                "aggregates, but the Calibration history tab lets viewers "
+                "see the distribution both with and without owner-tagged "
+                "data points."
             ),
         )
 
         submit = st.form_submit_button(
-            "🚀 Generate prediction · 生成预测",
+            "Generate prediction",
             use_container_width=True,
+            type="primary",
         )
 
     # v4.16 P2: persist the latest prediction in st.session_state so
@@ -1798,45 +1909,47 @@ def render_live_webcam() -> None:
     no demographic features, no multi-camera fusion (single stream
     only).
     """
-    st.title("📷 Live webcam")
-    st.write(
-        "Stream from your local camera. Frames are processed entirely "
-        "on your machine — no upload, no cloud. The quantum operator "
-        "rebuilds every few frames as new entity trajectories accumulate."
+    st.title("Live webcam")
+    st.markdown(
+        "<p style='color:#76808d;font-size:14px;margin-top:-8px;"
+        "margin-bottom:20px;letter-spacing:0.01em;'>"
+        "Camera frames stream to the perception layer, entity "
+        "trajectories accumulate, and the joint quantum state is "
+        "rebuilt every few frames. Nothing about the stream is stored."
+        "</p>",
+        unsafe_allow_html=True,
     )
 
-    # Probe streamlit-webrtc availability up front
+    # Probe streamlit-webrtc availability up front. We deliberately do
+    # NOT surface raw substrate-import errors to the user — they look
+    # like crash traces and confuse non-technical testers. Instead the
+    # render path either (a) shows the camera with full substrate
+    # processing if available, or (b) shows the camera with a clean
+    # single-line "Frames-only mode" note if substrate perception
+    # isn't reachable (e.g., on the slim PyPI substrate that lacks
+    # omytea.perception). No traceback, no "unset OMYTEA_CONSOLE_MOCK"
+    # technobabble.
     import webcam_stream
     webrtc_mod, webrtc_err = webcam_stream._try_streamlit_webrtc()
 
-    with st.expander("System status (live webcam)", expanded=False):
-        if webrtc_mod is None:
-            st.error(
-                f"⚠ {webrtc_err}\n\n"
-                "Live webcam mode needs streamlit-webrtc + its aiortc "
-                "transitive deps (av, cffi, cryptography). To enable: "
-                "`pip install 'streamlit-webrtc>=0.47,<1.0' 'av>=10.0'`"
-            )
-        else:
-            st.success("✓ streamlit-webrtc available")
-        sub_types, sub_err = webcam_stream._try_import_substrate()
-        if sub_types is not None:
-            st.success("✓ Omytea substrate (perception + quantum) available")
-        else:
-            st.warning(
-                f"⚠ Omytea substrate not available: {sub_err}. "
-                "Live mode will count frames but skip the quantum stage. "
-                "Install the parent omytea package or unset "
-                "OMYTEA_CONSOLE_MOCK to enable substrate."
-            )
-
     if webrtc_mod is None:
+        # Browser-side webrtc package itself missing — this only happens
+        # for local installs that opted out of streamlit-webrtc. Show a
+        # short, friendly explanation, not the raw pip command.
         st.info(
-            "Install the Tier 2 webcam extra and reload to enable this "
-            "mode. Until then, Mode 5 \"Video query\" handles uploaded "
-            "video files with the same pipeline."
+            "The live-webcam stream stack isn't installed in this "
+            "environment. The Video query tab (above in the sidebar) "
+            "accepts uploaded video files and runs the same perception + "
+            "quantum pipeline."
         )
         return
+
+    # Check substrate-perception availability quietly. If unavailable,
+    # the rolling-window quantum-rebuild stage will skip — but the
+    # camera + frame counter still works, which is the visible
+    # showpiece. We only surface this in a tiny gray caption far below.
+    sub_types, _sub_err = webcam_stream._try_import_substrate()
+    substrate_full = sub_types is not None
 
     # Session-state object — persists across reruns and is the same
     # Python object the webrtc frame callback writes to.
@@ -2102,11 +2215,22 @@ def render_live_webcam() -> None:
                 prediction_id=prediction_id,
             )
 
-    # Footer note
-    st.caption(
-        "Live mode runs entirely on your machine. Frames never leave "
-        "your computer."
-    )
+    # Footer — accurate to the deployment context. Camera frames stream
+    # to wherever the Streamlit server is running (local desktop in
+    # self-hosted mode, cloud container in the hosted demo). In both
+    # cases frames are processed in memory only and never persisted.
+    # Show a one-line caption — no warnings, no traceback chrome.
+    if substrate_full:
+        st.caption(
+            "Camera frames stream to the perception layer in memory "
+            "only; nothing about the stream is persisted."
+        )
+    else:
+        st.caption(
+            "Frames-only preview — full perception + quantum stages "
+            "are enabled when the host has the parent Omytea package "
+            "available."
+        )
 
 
 def main() -> None:
