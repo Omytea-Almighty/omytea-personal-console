@@ -1881,12 +1881,124 @@ def render_live_webcam() -> None:
             f"{session.rebuild_every_n_frames} frames by default)."
         )
 
-    # Footer note
+    # ----------------------------------------------------------------
+    # Tier 3 — Capture & predict: freeze current state, ask vision LLM
+    # ----------------------------------------------------------------
+
     st.divider()
+    st.subheader("🎯 Ask vision LLM about the current scene")
+    st.write(
+        "Freeze the last few webcam frames + current entity tracks "
+        "and run them through the same scene-understanding pipeline "
+        "Mode 5 uses. Returns calibrated future branches you can "
+        "score later in the Measurement update tab."
+    )
+
+    cap_query = st.text_area(
+        "Your question about the current scene",
+        value="What is most likely about to happen?",
+        height=70,
+        key="webcam_capture_query",
+        help=(
+            "Ask anything probabilistic about what's happening or "
+            "about to happen. 'What's most likely?' works; "
+            "'exactly when will X happen?' does not."
+        ),
+    )
+    cap_user_id = st.text_input(
+        "Your handle (for measurement-update tracking)",
+        key="webcam_capture_user_id",
+        help=(
+            "Any string. Used to look up the prediction later via "
+            "the Measurement update tab."
+        ),
+    )
+    cap_n_frames = st.slider(
+        "How many recent frames to include",
+        min_value=1, max_value=session.frame_buffer_size, value=min(3, session.frame_buffer_size),
+        help=(
+            "More frames = more visual context for the vision LLM "
+            "(better tracking) but slower inference. 2-3 is usually "
+            "enough."
+        ),
+    )
+
+    if st.button("📸 Capture & predict", type="primary", use_container_width=True):
+        capture = session.snapshot_for_prediction(n_frames=cap_n_frames)
+        if not capture["available"]:
+            st.warning(
+                f"Cannot capture yet: {capture['reason']}"
+            )
+        elif not cap_query.strip():
+            st.error("Please type a question first.")
+        elif not cap_user_id.strip():
+            st.error("Please enter a handle (any string is fine).")
+        else:
+            with st.spinner("Asking vision LLM about the current scene…"):
+                from compiler import compile_scene_query
+                program = compile_scene_query(
+                    user_query=cap_query.strip(),
+                    sampled_frame_jpegs=capture["frames"],
+                    tracked_entities_summary=capture["entities_summary"],
+                )
+            result = belief_program_to_console(program)
+
+            # Persist via storage so the Measurement update tab can
+            # surface this prediction later. Reuses the standard
+            # PredictionRecord shape from Mode 5.
+            prediction_id = storage.new_prediction_id()
+            try:
+                storage.save_prediction(storage.PredictionRecord(
+                    prediction_id=prediction_id,
+                    user_id=cap_user_id.strip(),
+                    scenario="webcam_live_scene_query",
+                    created_at=storage.now_unix(),
+                    user_input={
+                        "query": cap_query.strip(),
+                        "n_frames_captured": len(capture["frames"]),
+                        "n_entities_at_capture": len(
+                            capture["entities_summary"]
+                        ),
+                    },
+                    belief_program=program.raw,
+                    wavefunction_snapshot={
+                        "hypotheses": [
+                            h.to_dict() for h in result.hypotheses
+                        ],
+                    },
+                    joint_offdiag={
+                        "entries": [
+                            o.to_dict() for o in result.joint_offdiag
+                        ],
+                    },
+                    is_owner_bias_flagged=False,
+                ))
+            except Exception as exc:
+                # Storage failure is not fatal — the user still sees
+                # the prediction on screen.
+                st.warning(
+                    f"Saved-prediction storage failed (prediction "
+                    f"still shown below): {exc}"
+                )
+
+            # Reuse the Mode 5 / new-prediction result renderer so
+            # the visualization stays consistent across modes.
+            _render_result(
+                result=result,
+                user_input={
+                    "query": cap_query.strip(),
+                    "source": "live_webcam_capture",
+                },
+                scenario="webcam_live_scene_query",
+                user_id=cap_user_id.strip(),
+                program=program,
+                prediction_id=prediction_id,
+            )
+
+    # Footer note
     st.caption(
         "Live mode runs entirely on your machine. Frames never leave "
-        "your computer. Toggle 'Capture for prediction' (Mode 5) to "
-        "ask the vision LLM about the current scene."
+        "your computer."
     )
 
 

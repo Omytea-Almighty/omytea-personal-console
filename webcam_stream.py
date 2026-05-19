@@ -71,6 +71,8 @@ _DEFAULT_MAX_ENTITIES = 3          # joint-state cap
 _DEFAULT_DETECT_EVERY_N = 1        # how often to run the detector
 _DEFAULT_DECOHERENCE_RATE = 0.08
 _DEFAULT_HORIZON_STEPS = 5
+_DEFAULT_FRAME_BUFFER_SIZE = 3     # last-N frame JPEGs kept for capture-and-predict
+_DEFAULT_FRAME_BUFFER_JPEG_QUALITY = 70  # capture-and-predict snapshot quality
 
 
 @dataclass
@@ -111,6 +113,7 @@ class WebcamSnapshot:
     last_rebuild_at_frame: int = -1
     last_rebuild_wallclock: float = 0.0
     detector_name: str = ""
+    buffered_frames: int = 0  # # of recent frames available for capture-and-predict
 
 
 def _try_import_substrate() -> tuple[dict[str, Any] | None, str | None]:
@@ -173,6 +176,8 @@ class WebcamSession:
         detect_every_n_frames: int = _DEFAULT_DETECT_EVERY_N,
         decoherence_rate: float = _DEFAULT_DECOHERENCE_RATE,
         horizon_steps: int = _DEFAULT_HORIZON_STEPS,
+        frame_buffer_size: int = _DEFAULT_FRAME_BUFFER_SIZE,
+        frame_buffer_jpeg_quality: int = _DEFAULT_FRAME_BUFFER_JPEG_QUALITY,
     ) -> None:
         self.max_trajectory_len = max_trajectory_len
         self.rebuild_every_n_frames = rebuild_every_n_frames
@@ -180,6 +185,15 @@ class WebcamSession:
         self.detect_every_n_frames = detect_every_n_frames
         self.decoherence_rate = decoherence_rate
         self.horizon_steps = horizon_steps
+        # Frame buffer for the Mode 6 "Capture & predict" feature:
+        # we keep the last N raw frame JPEGs so the vision LLM can be
+        # called on whatever the user is currently seeing. Kept small
+        # (default 3) to bound memory — at 70-quality VGA, ~30-80 KB
+        # per frame, so worst case ~250 KB.
+        self.frame_buffer_size = max(1, frame_buffer_size)
+        self.frame_buffer_jpeg_quality = max(
+            10, min(95, frame_buffer_jpeg_quality)
+        )
 
         self._lock = threading.Lock()
         self._frames_processed = 0
@@ -196,6 +210,10 @@ class WebcamSession:
         }
         self._last_rebuild_at_frame = -1
         self._last_rebuild_wallclock = 0.0
+
+        # Frame buffer for capture-and-predict. Each entry is a tuple
+        # (frame_idx, timestamp_unix, width, height, jpeg_bytes).
+        self._frame_buffer: list[tuple[int, float, int, int, bytes]] = []
 
         # Substrate handles (lazy-loaded on first frame).
         self._substrate_loaded = False
@@ -261,6 +279,7 @@ class WebcamSession:
             }
             self._last_rebuild_at_frame = -1
             self._last_rebuild_wallclock = 0.0
+            self._frame_buffer.clear()
             self._substrate_loaded = False
             self._detector = None
             self._tracker = None
@@ -302,6 +321,11 @@ class WebcamSession:
         if not self._ensure_substrate():
             # Substrate not available — record the frame as seen so
             # the UI can still show "frames received but no perception".
+            # Still try to buffer the frame so capture-and-predict
+            # works even in degraded-perception mode.
+            jpeg = _maybe_encode_jpeg(
+                image_data, self.frame_buffer_jpeg_quality,
+            )
             with self._lock:
                 now = time.time()
                 if self._first_seen_wallclock == 0.0:
@@ -309,6 +333,14 @@ class WebcamSession:
                 self._last_seen_wallclock = now
                 self._frames_processed += 1
                 self._frame_idx += 1
+                if jpeg is not None:
+                    self._frame_buffer.append(
+                        (self._frame_idx, now, frame_width, frame_height, jpeg)
+                    )
+                    if len(self._frame_buffer) > self.frame_buffer_size:
+                        self._frame_buffer = self._frame_buffer[
+                            -self.frame_buffer_size:
+                        ]
             return
 
         # Detect + track (this part can be heavy; outside the lock).
@@ -324,6 +356,12 @@ class WebcamSession:
                 stream_id=stream_id,
             )
 
+        # Encode the frame for the capture-and-predict buffer outside
+        # the lock — JPEG encoding is the heaviest non-substrate step.
+        buffered_jpeg = _maybe_encode_jpeg(
+            image_data, self.frame_buffer_jpeg_quality,
+        )
+
         # Update rolling state + maybe rebuild joint, inside the lock.
         with self._lock:
             now = time.time()
@@ -332,6 +370,15 @@ class WebcamSession:
             self._last_seen_wallclock = now
             self._frame_idx += 1
             self._frames_processed += 1
+            if buffered_jpeg is not None:
+                self._frame_buffer.append(
+                    (self._frame_idx, now, frame_width, frame_height,
+                     buffered_jpeg)
+                )
+                if len(self._frame_buffer) > self.frame_buffer_size:
+                    self._frame_buffer = self._frame_buffer[
+                        -self.frame_buffer_size:
+                    ]
 
             for det in tracked:
                 oid = getattr(det, "object_id", None)
@@ -612,7 +659,65 @@ class WebcamSession:
                 detector_name=(
                     type(self._detector).__name__ if self._detector else ""
                 ),
+                buffered_frames=len(self._frame_buffer),
             )
+
+    # --------------------------------------------------------------
+    # Capture-and-predict — Tier 3 Mode 6 polish
+    # --------------------------------------------------------------
+
+    def snapshot_for_prediction(
+        self, n_frames: int = 3,
+    ) -> dict[str, Any]:
+        """Freeze the latest N frames + entity summaries so the vision
+        LLM can be called against the current scene.
+
+        Returns a dict with:
+          - 'frames': list of JPEG-encoded bytes (oldest → newest)
+          - 'frame_meta': list of (frame_idx, timestamp_unix, width, height)
+          - 'entities_summary': same shape as Mode 5 expects
+            (object_id, label, trajectory, confidence)
+          - 'available': bool — False if no frames buffered yet
+          - 'reason': human-readable when ``available`` is False
+
+        This is the bridge the Mode 6 UI uses to forward the live
+        state into ``compile_scene_query`` (same path as Mode 5)."""
+        with self._lock:
+            if not self._frame_buffer:
+                return {
+                    "available": False,
+                    "reason": (
+                        "no_frames_buffered — start the webcam, wait "
+                        "for at least one frame, then capture again."
+                    ),
+                    "frames": [],
+                    "frame_meta": [],
+                    "entities_summary": [],
+                }
+            tail = self._frame_buffer[-max(1, n_frames):]
+            frames = [t[4] for t in tail]
+            meta = [(t[0], t[1], t[2], t[3]) for t in tail]
+            # Mode 5 expects: object_id, label, trajectory, confidence.
+            ents = sorted(
+                self._entities.values(),
+                key=lambda e: -(len(e.trajectory) * e.confidence),
+            )[: self.max_entities]
+            ent_dicts = [
+                {
+                    "object_id": e.object_id,
+                    "label": e.label,
+                    "trajectory": list(e.trajectory),
+                    "confidence": e.confidence,
+                }
+                for e in ents
+            ]
+            return {
+                "available": True,
+                "reason": "",
+                "frames": frames,
+                "frame_meta": meta,
+                "entities_summary": ent_dicts,
+            }
 
 
 # --------------------------------------------------------------
@@ -658,6 +763,40 @@ def _extract_centroid(
     return cx, cy, area, conf, label
 
 
+def _maybe_encode_jpeg(image_data: Any, quality: int) -> bytes | None:
+    """Encode a BGR ndarray (or already-bytes payload) to JPEG.
+
+    Returns None if encoding fails (e.g. ``image_data`` is None,
+    OpenCV isn't installed, or the array shape is unsupported).
+    Used by the WebcamSession frame buffer for the capture-and-
+    predict feature; failure is non-fatal — the live mode continues.
+
+    If ``image_data`` is already ``bytes``, we trust the caller and
+    return it as-is. Useful for tests that drive on_frame() with a
+    pre-encoded payload.
+    """
+    if image_data is None:
+        return None
+    if isinstance(image_data, (bytes, bytearray)):
+        return bytes(image_data)
+    try:
+        import cv2  # type: ignore
+    except ImportError:
+        return None
+    try:
+        ok, buf = cv2.imencode(
+            ".jpg", image_data, [int(cv2.IMWRITE_JPEG_QUALITY), int(quality)],
+        )
+    except Exception:
+        return None
+    if not ok:
+        return None
+    try:
+        return buf.tobytes()
+    except Exception:
+        return None
+
+
 def _velocity_estimate(
     trajectory: list[tuple[int, float, float, float]],
 ) -> tuple[float, float]:
@@ -681,4 +820,5 @@ __all__ = [
     "WebcamSession",
     "_try_streamlit_webrtc",
     "_try_import_substrate",
+    "_maybe_encode_jpeg",
 ]

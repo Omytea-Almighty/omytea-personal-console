@@ -27,6 +27,7 @@ from webcam_stream import (
     WebcamSession,
     WebcamSnapshot,
     _extract_centroid,
+    _maybe_encode_jpeg,
     _try_import_substrate,
     _try_streamlit_webrtc,
     _velocity_estimate,
@@ -397,3 +398,129 @@ def test_on_frame_with_no_substrate_doesnt_raise(
 def test_substrate_probe_returns_tuple() -> None:
     types, err = _try_import_substrate()
     assert (types is None) == (err is not None)
+
+
+# --------------------------------------------------------------
+# 9. _maybe_encode_jpeg helper
+# --------------------------------------------------------------
+
+
+def test_maybe_encode_jpeg_passes_bytes_through() -> None:
+    """Pre-encoded bytes should be returned as-is so tests can drive
+    on_frame() without an OpenCV dependency."""
+    out = _maybe_encode_jpeg(b"\xff\xd8\xff_fake_jpeg_bytes", quality=70)
+    assert out == b"\xff\xd8\xff_fake_jpeg_bytes"
+
+
+def test_maybe_encode_jpeg_none_returns_none() -> None:
+    assert _maybe_encode_jpeg(None, quality=70) is None
+
+
+def test_maybe_encode_jpeg_garbage_returns_none() -> None:
+    """A string or wrong shape input must not raise — just return None."""
+    assert _maybe_encode_jpeg("not_a_real_image", quality=70) is None
+
+
+def test_maybe_encode_jpeg_real_numpy_array() -> None:
+    """If numpy + cv2 are available, encoding a real BGR array yields
+    a JPEG-magic-number prefix."""
+    cv2 = pytest.importorskip("cv2")
+    np = pytest.importorskip("numpy")
+    arr = np.zeros((24, 32, 3), dtype=np.uint8)
+    arr[:, :, 1] = 200  # all green
+    out = _maybe_encode_jpeg(arr, quality=70)
+    assert out is not None
+    assert out[:2] == b"\xff\xd8"  # JPEG SOI marker
+
+
+# --------------------------------------------------------------
+# 10. Frame buffer + snapshot_for_prediction
+# --------------------------------------------------------------
+
+
+def test_frame_buffer_grows_and_caps() -> None:
+    """Calling on_frame() with pre-encoded bytes should fill the
+    frame buffer up to ``frame_buffer_size`` and then ring-evict."""
+    s = WebcamSession(frame_buffer_size=2, rebuild_every_n_frames=100)
+    # No substrate in mock mode → frames still counted + buffered.
+    os.environ["OMYTEA_CONSOLE_MOCK"] = "1"
+    try:
+        s.on_frame(image_data=b"frame_1", frame_width=320, frame_height=240)
+        s.on_frame(image_data=b"frame_2", frame_width=320, frame_height=240)
+        s.on_frame(image_data=b"frame_3", frame_width=320, frame_height=240)
+    finally:
+        del os.environ["OMYTEA_CONSOLE_MOCK"]
+    snap = s.snapshot()
+    assert snap.frames_processed == 3
+    assert snap.buffered_frames == 2  # ring-evicted to last 2
+    cap = s.snapshot_for_prediction(n_frames=5)
+    assert cap["available"] is True
+    assert cap["frames"] == [b"frame_2", b"frame_3"]
+
+
+def test_snapshot_for_prediction_when_empty(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OMYTEA_CONSOLE_MOCK", "1")
+    s = WebcamSession()
+    cap = s.snapshot_for_prediction()
+    assert cap["available"] is False
+    assert "no_frames_buffered" in cap["reason"]
+    assert cap["frames"] == []
+    assert cap["entities_summary"] == []
+
+
+def test_snapshot_for_prediction_includes_entity_summaries() -> None:
+    s = WebcamSession(rebuild_every_n_frames=100, frame_buffer_size=3)
+    _install_stub_substrate(s, [
+        [_StubDet("t1", x=10, y=10, w=20, h=30)],
+        [_StubDet("t1", x=15, y=12, w=20, h=30)],
+        [_StubDet("t1", x=20, y=14, w=20, h=30)],
+    ])
+    for i in range(3):
+        s.on_frame(
+            image_data=f"frame_{i}".encode(),
+            frame_width=320, frame_height=240,
+        )
+    cap = s.snapshot_for_prediction(n_frames=3)
+    assert cap["available"] is True
+    assert len(cap["frames"]) == 3
+    assert len(cap["entities_summary"]) == 1
+    ent = cap["entities_summary"][0]
+    assert ent["object_id"] == "t1"
+    assert ent["label"] == "motion_blob"
+    assert ent["trajectory"]  # non-empty
+    assert "confidence" in ent
+
+
+def test_snapshot_for_prediction_caps_at_max_entities() -> None:
+    s = WebcamSession(
+        max_entities=2, rebuild_every_n_frames=100, frame_buffer_size=3,
+    )
+    # Three concurrent entities across all frames; capture should
+    # return only the top-2 by track quality.
+    detections = [
+        [_StubDet(f"t{k}", x=10 + 30 * k, y=10) for k in range(3)]
+        for _ in range(4)
+    ]
+    _install_stub_substrate(s, detections)
+    for i in range(4):
+        s.on_frame(
+            image_data=f"f{i}".encode(),
+            frame_width=320, frame_height=240,
+        )
+    cap = s.snapshot_for_prediction(n_frames=2)
+    assert len(cap["entities_summary"]) == 2
+
+
+def test_reset_clears_frame_buffer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OMYTEA_CONSOLE_MOCK", "1")
+    s = WebcamSession()
+    s.on_frame(image_data=b"frame_1", frame_width=320, frame_height=240)
+    assert s.snapshot().buffered_frames == 1
+    s.reset()
+    assert s.snapshot().buffered_frames == 0
+    cap = s.snapshot_for_prediction()
+    assert cap["available"] is False
