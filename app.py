@@ -850,10 +850,18 @@ def _render_result(
                     )
 
     st.divider()
+    # Bug 2026-05-19 (first friend user hit this): the `rec` PredictionRecord
+    # is only created inside the `if prediction_id is None:` branch above;
+    # when the caller passes a non-None prediction_id (the v4.16 P2 path
+    # that render_new_prediction takes), that local is unbound here. Use
+    # the `prediction_id` parameter instead — it's guaranteed populated in
+    # both branches (either passed in by caller, or reassigned to the
+    # freshly-created record's id by the inline-persistence fallback
+    # above). See tests/test_render_result_unbound_regression.py.
     st.info(
         f"📅 Come back in **{user_input.get('time_horizon', '6 months')}** to "
         f"report what actually happened. Use the **Measurement update** tab "
-        f"with prediction ID `{rec.prediction_id}`."
+        f"with prediction ID `{prediction_id}`."
     )
 
 
