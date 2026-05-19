@@ -31,6 +31,7 @@ import math
 from typing import Any
 
 from _metaphysics import (
+    ASTRO_ELEMENT_COLOR,
     HEXAGRAM_NAMES,
     TAROT_POSITIONS,
     TRIGRAM_HANZI,
@@ -41,9 +42,11 @@ from _metaphysics import (
     WUXING_KEYS,
     ZIWEI_PALACE_HANZI,
     ZIWEI_PALACES,
+    ZODIAC,
     BaZiPattern,
     Hexagram,
     LensReading,
+    NatalChart,
     TarotDraw,
     ZiWeiChart,
     dominant_element,
@@ -808,6 +811,142 @@ def _render_ziwei(reading: LensReading,
 
 
 # ======================================================================
+# Instrument 5 — 占星 natal-chart wheel
+# ======================================================================
+
+def _render_astro(reading: LensReading,
+                  branch_probabilities: list[tuple[str, float, str]],
+                  top_label: str, top_value: str,
+                  bottom_label: str, bottom_value: str,
+                  meta: str) -> str:
+    chart: NatalChart = reading.natal  # type: ignore[assignment]
+    body: list[str] = [_svg_open()]
+
+    # --- outer frame + cardinal diamonds ---
+    body.append(
+        f'<circle cx="{_CX}" cy="{_CY}" r="226" fill="none" '
+        f'stroke="{_HAIRLINE}" stroke-width="0.7"></circle>'
+        f'<circle cx="{_CX}" cy="{_CY}" r="221" fill="none" '
+        f'stroke="{_HAIRLINE}" stroke-width="1.1"></circle>'
+    )
+    for ang in (0, 90, 180, 270):
+        dx, dy = _polar(_CX, _CY, 223.5, ang)
+        body.append(
+            f'<path d="M {dx:.1f} {dy-4:.1f} L {dx+4:.1f} {dy:.1f} '
+            f'L {dx:.1f} {dy+4:.1f} L {dx-4:.1f} {dy:.1f} Z" '
+            f'fill="{_INK2}"></path>'
+        )
+
+    # --- graduated tick ring ---
+    for i in range(72):
+        ang = i * 5.0
+        major = (i % 6 == 0)
+        x1, y1 = _polar(_CX, _CY, 219.0, ang)
+        x2, y2 = _polar(_CX, _CY, 208.0 if major else 213.0, ang)
+        body.append(
+            f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" '
+            f'stroke="{_INK1 if major else _INK3}" '
+            f'stroke-width="{1.1 if major else 0.6}" '
+            f'opacity="{0.85 if major else 0.5}"></line>'
+        )
+
+    # --- 12 zodiac sectors (30° each, Aries centred at top) ---
+    r_out, r_in = 202.0, 152.0
+    big3 = {chart.sun, chart.moon, chart.rising}
+    for i, sign in enumerate(ZODIAC):
+        a0 = i * 30.0 - 15.0
+        a1 = a0 + 30.0
+        col = ASTRO_ELEMENT_COLOR[sign.element]
+        is_sun = (i == chart.sun)
+        is_big3 = (i in big3)
+        alpha = 0.78 if is_sun else (0.50 if is_big3 else 0.30)
+        glow = ' filter="url(#soft-glow)"' if is_sun else ""
+        body.append(
+            f'<path d="{_arc_path(_CX, _CY, r_out, r_in, a0, a1)}" '
+            f'fill="{col}" fill-opacity="{alpha:.3f}" '
+            f'stroke="{_CANVAS}" stroke-width="1.4"{glow}></path>'
+        )
+        # zodiac glyph at sector midpoint
+        mr = (r_out + r_in) / 2
+        gx, gy = _polar(_CX, _CY, mr, i * 30.0)
+        body.append(
+            f'<text x="{gx:.1f}" y="{gy+1:.1f}" font-family="{_SERIF}" '
+            f'font-size="{23 if is_sun else 18}" '
+            f'fill="{_INK0 if is_big3 else _INK1}" '
+            f'font-weight="600" text-anchor="middle" '
+            f'dominant-baseline="middle">{sign.glyph}</text>'
+        )
+
+    # --- big-three markers (☉ sun / ☽ moon / Asc) on a marker ring ---
+    body.append(
+        f'<circle cx="{_CX}" cy="{_CY}" r="148" fill="none" '
+        f'stroke="{_HAIRLINE}" stroke-width="0.7"></circle>'
+    )
+    for body_key, idx, sym, col in (
+        ("sun",  chart.sun,    "☉", _AMBER),
+        ("moon", chart.moon,   "☽", _INK1),
+        ("asc",  chart.rising, "Asc",    _ACCENT),
+    ):
+        mx, my = _polar(_CX, _CY, 148.0, idx * 30.0)
+        body.append(
+            f'<circle cx="{mx:.1f}" cy="{my:.1f}" r="9" fill="{_SURFACE}" '
+            f'stroke="{col}" stroke-width="1.3"></circle>'
+            f'<text x="{mx:.1f}" y="{my+1:.1f}" font-family="{_SERIF}" '
+            f'font-size="{11 if body_key == "asc" else 13}" fill="{col}" '
+            f'text-anchor="middle" dominant-baseline="middle" '
+            f'font-weight="600">{sym}</text>'
+        )
+
+    # --- branch arc ring + inner micro-ticks ---
+    body.append(_branch_ring(branch_probabilities, 138.0, 114.0))
+    body.append(
+        f'<circle cx="{_CX}" cy="{_CY}" r="110" fill="none" '
+        f'stroke="{_HAIRLINE}" stroke-width="0.7"></circle>'
+    )
+    for i in range(48):
+        ang = i * 7.5
+        x1, y1 = _polar(_CX, _CY, 108, ang)
+        x2, y2 = _polar(_CX, _CY, 104, ang)
+        body.append(
+            f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" '
+            f'stroke="{_INK3}" stroke-width="0.5" opacity="0.5"></line>'
+        )
+
+    # --- engraved core with dual readout ---
+    body.append(_centre_readout(top_label, top_value,
+                                bottom_label, bottom_value, meta,
+                                r_core=99.0))
+
+    # --- corner cartouches: Sun / Moon / Rising / element·modality ---
+    sun_sign = ZODIAC[chart.sun]
+    corners = (
+        (f"{sun_sign.glyph} {sun_sign.name}", "SUN",   (40, 40)),
+        (f"{ZODIAC[chart.moon].glyph} {ZODIAC[chart.moon].name}",
+         "MOON", (_VB - 40, 40)),
+        (f"{ZODIAC[chart.rising].glyph} {ZODIAC[chart.rising].name}",
+         "RISING", (40, _VB - 40)),
+        (f"{sun_sign.element} · {sun_sign.modality}",
+         "SUN SIGN", (_VB - 40, _VB - 40)),
+    )
+    for text, name, (px, py) in corners:
+        body.append(
+            f'<g transform="translate({px-44},{py-19})">'
+            f'<rect x="0" y="0" width="88" height="38" rx="6" '
+            f'fill="{_SURFACE2}" stroke="{_HAIRLINE}" stroke-width="1"></rect>'
+            f'<text x="44" y="17" font-family="{_SERIF}" font-size="13" '
+            f'fill="{_INK0}" font-weight="600" text-anchor="middle" '
+            f'dominant-baseline="middle">{_esc(text,22)}</text>'
+            f'<text x="44" y="30" font-family="{_MONO}" font-size="7" '
+            f'fill="{_INK3}" letter-spacing="0.16em" text-anchor="middle">'
+            f'{name}</text>'
+            f'</g>'
+        )
+
+    body.append('</svg>')
+    return "".join(body)
+
+
+# ======================================================================
 # Public dispatch
 # ======================================================================
 
@@ -836,6 +975,11 @@ def render_reading_svg(
     if sys == "ziwei":
         return _render_ziwei(reading, center_top_value,
                              center_bottom_value, center_meta)
+    if sys == "astro":
+        return _render_astro(reading, branch_probabilities,
+                             center_top_label, center_top_value,
+                             center_bottom_label, center_bottom_value,
+                             center_meta)
     return _render_bazi(reading, branch_probabilities,
                         center_top_label, center_top_value,
                         center_bottom_label, center_bottom_value,

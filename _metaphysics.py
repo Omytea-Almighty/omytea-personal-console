@@ -59,7 +59,10 @@ SYSTEM_BAZI: str = "bazi"
 SYSTEM_ZIWEI: str = "ziwei"
 SYSTEM_ICHING: str = "iching"
 SYSTEM_TAROT: str = "tarot"
-SYSTEMS: tuple[str, ...] = (SYSTEM_BAZI, SYSTEM_ZIWEI, SYSTEM_ICHING, SYSTEM_TAROT)
+SYSTEM_ASTRO: str = "astro"
+SYSTEMS: tuple[str, ...] = (
+    SYSTEM_BAZI, SYSTEM_ZIWEI, SYSTEM_ICHING, SYSTEM_TAROT, SYSTEM_ASTRO,
+)
 
 
 def _seed_int(seed: str, salt: str = "") -> int:
@@ -665,6 +668,152 @@ def tarot_auspice(draw: TarotDraw) -> float:
 
 
 # ======================================================================
+# System 5 — 占星 (Western astrology — natal chart / 星盘 + 星座)
+# ======================================================================
+
+ASTRO_ELEMENTS: tuple[str, ...] = ("fire", "earth", "air", "water")
+ASTRO_ELEMENT_COLOR: dict[str, str] = {
+    "fire":  "#ff5e6e",
+    "earth": "#d8a657",
+    "air":   "#8b8cff",
+    "water": "#58c5b4",
+}
+
+
+@dataclass(frozen=True, slots=True)
+class ZodiacSign:
+    key: str
+    name: str       # English display name
+    glyph: str      # astrological Unicode symbol (♈ …)
+    element: str    # fire / earth / air / water
+    modality: str   # cardinal / fixed / mutable
+
+
+# The 12 signs, in zodiac order starting at Aries.
+ZODIAC: tuple[ZodiacSign, ...] = (
+    ZodiacSign("aries",       "Aries",       "♈", "fire",  "cardinal"),
+    ZodiacSign("taurus",      "Taurus",      "♉", "earth", "fixed"),
+    ZodiacSign("gemini",      "Gemini",      "♊", "air",   "mutable"),
+    ZodiacSign("cancer",      "Cancer",      "♋", "water", "cardinal"),
+    ZodiacSign("leo",         "Leo",         "♌", "fire",  "fixed"),
+    ZodiacSign("virgo",       "Virgo",       "♍", "earth", "mutable"),
+    ZodiacSign("libra",       "Libra",       "♎", "air",   "cardinal"),
+    ZodiacSign("scorpio",     "Scorpio",     "♏", "water", "fixed"),
+    ZodiacSign("sagittarius", "Sagittarius", "♐", "fire",  "mutable"),
+    ZodiacSign("capricorn",   "Capricorn",   "♑", "earth", "cardinal"),
+    ZodiacSign("aquarius",    "Aquarius",    "♒", "air",   "fixed"),
+    ZodiacSign("pisces",      "Pisces",      "♓", "water", "mutable"),
+)
+
+# (month) → (day the *second* sign of that month begins, first-sign index,
+# second-sign index). The sun-sign boundaries are exact (tropical zodiac).
+_SUN_BOUNDARY: dict[int, tuple[int, int, int]] = {
+    1:  (20,  9, 10),   # Capricorn → Aquarius
+    2:  (19, 10, 11),   # Aquarius  → Pisces
+    3:  (21, 11,  0),   # Pisces    → Aries
+    4:  (20,  0,  1),   # Aries     → Taurus
+    5:  (21,  1,  2),   # Taurus    → Gemini
+    6:  (21,  2,  3),   # Gemini    → Cancer
+    7:  (23,  3,  4),   # Cancer    → Leo
+    8:  (23,  4,  5),   # Leo       → Virgo
+    9:  (23,  5,  6),   # Virgo     → Libra
+    10: (23,  6,  7),   # Libra     → Scorpio
+    11: (22,  7,  8),   # Scorpio   → Sagittarius
+    12: (22,  8,  9),   # Sagittarius → Capricorn
+}
+
+
+def sun_sign(bd: BirthData) -> int:
+    """Return the sun-sign index (0-11) — exact tropical-zodiac dates."""
+    cut, first, second = _SUN_BOUNDARY[max(1, min(12, bd.month))]
+    return second if bd.day >= cut else first
+
+
+@dataclass(frozen=True, slots=True)
+class NatalChart:
+    """A simplified natal chart (星盘).
+
+    The sun sign is exact. The moon + rising (ascendant) are SIMPLIFIED
+    deterministic placements — a real chart needs an ephemeris + birth
+    longitude/latitude (v0.5+). `placements` maps a body key → zodiac
+    index, for the renderer.
+    """
+
+    sun: int
+    moon: int
+    rising: int
+
+    @property
+    def placements(self) -> dict[str, int]:
+        return {"sun": self.sun, "moon": self.moon, "rising": self.rising}
+
+
+def natal_chart(bd: BirthData) -> NatalChart:
+    """Build a simplified natal chart.
+
+    Sun sign is exact. Moon shifts ~1 sign / 2.3 days → a day-driven
+    offset; the ascendant shifts ~1 sign / 2 hours → an hour-driven
+    offset. Deterministic. Documented as simplified — not an ephemeris.
+    """
+    sun = sun_sign(bd)
+    moon = (sun + (bd.day * 4 + bd.month) // 7) % 12
+    rising = (sun + (bd.hour // 2)) % 12
+    return NatalChart(sun=sun, moon=moon, rising=rising)
+
+
+# Outcome prior per element (sun sign). Fire = drive, Earth = ground,
+# Air = mind, Water = feeling — mapped to the 6 outcome categories.
+_ASTRO_ELEMENT_PRIOR: dict[str, dict[str, float]] = {
+    "fire":  {"career_success": 0.72, "marriage_stable": 0.48, "wealth_accumulation": 0.58,
+              "health_strong": 0.66, "learning_good": 0.60, "conflict_low": 0.40},
+    "earth": {"career_success": 0.62, "marriage_stable": 0.66, "wealth_accumulation": 0.74,
+              "health_strong": 0.68, "learning_good": 0.58, "conflict_low": 0.66},
+    "air":   {"career_success": 0.60, "marriage_stable": 0.58, "wealth_accumulation": 0.54,
+              "health_strong": 0.56, "learning_good": 0.78, "conflict_low": 0.62},
+    "water": {"career_success": 0.54, "marriage_stable": 0.70, "wealth_accumulation": 0.52,
+              "health_strong": 0.58, "learning_good": 0.66, "conflict_low": 0.58},
+}
+# Modality nudges the prior slightly: Cardinal favours initiative
+# (career), Fixed favours endurance (marriage / wealth), Mutable
+# favours adaptability (learning / low conflict).
+_ASTRO_MODALITY_NUDGE: dict[str, dict[str, float]] = {
+    "cardinal": {"career_success": 0.06, "wealth_accumulation": 0.03},
+    "fixed":    {"marriage_stable": 0.06, "wealth_accumulation": 0.04},
+    "mutable":  {"learning_good": 0.06, "conflict_low": 0.05},
+}
+
+
+def astro_outcome_prior(chart: NatalChart, outcome: str) -> float:
+    """占星 prior P(outcome) from the sun sign's element + modality."""
+    sign = ZODIAC[chart.sun]
+    base = _ASTRO_ELEMENT_PRIOR.get(sign.element, {}).get(outcome, 0.5)
+    base += _ASTRO_MODALITY_NUDGE.get(sign.modality, {}).get(outcome, 0.0)
+    return max(0.05, min(0.95, base))
+
+
+def astro_auspice(chart: NatalChart) -> float:
+    """Overall chart favourability ∈ [0, 1].
+
+    The classical 'easy chart' is one where the big three (sun, moon,
+    rising) share an element or compatible elements (fire+air, earth+
+    water are the harmonious pairs). Concordance → auspicious.
+    """
+    els = [ZODIAC[i].element for i in (chart.sun, chart.moon, chart.rising)]
+    harmonious = {("fire", "air"), ("air", "fire"),
+                  ("earth", "water"), ("water", "earth")}
+    score = 0.5
+    for a in range(3):
+        for b in range(a + 1, 3):
+            if els[a] == els[b]:
+                score += 0.12
+            elif (els[a], els[b]) in harmonious:
+                score += 0.06
+            else:
+                score -= 0.04
+    return max(0.0, min(1.0, score))
+
+
+# ======================================================================
 # Unified entry point
 # ======================================================================
 
@@ -681,6 +830,7 @@ class LensReading:
     ziwei: ZiWeiChart | None = None
     hexagram: Hexagram | None = None
     tarot: TarotDraw | None = None
+    natal: NatalChart | None = None
 
 
 def compute_reading(
@@ -719,6 +869,14 @@ def compute_reading(
             auspice=tarot_auspice(draw),
             tarot=draw,
         )
+    if system == SYSTEM_ASTRO:
+        chart = natal_chart(birth)
+        return LensReading(
+            system=system,
+            prior=astro_outcome_prior(chart, outcome),
+            auspice=astro_auspice(chart),
+            natal=chart,
+        )
     # default — 八字
     bazi = bazi_from_birth(birth)
     balance = wuxing_balance(bazi)
@@ -735,7 +893,8 @@ __all__ = [
     # shared
     "OUTCOME_CATEGORIES", "CombinationMode", "combine_with_model",
     "apply_lens_to_branches",
-    "SYSTEM_BAZI", "SYSTEM_ZIWEI", "SYSTEM_ICHING", "SYSTEM_TAROT", "SYSTEMS",
+    "SYSTEM_BAZI", "SYSTEM_ZIWEI", "SYSTEM_ICHING", "SYSTEM_TAROT",
+    "SYSTEM_ASTRO", "SYSTEMS",
     "LensReading", "compute_reading",
     # bazi
     "BirthData", "BaZiPattern", "bazi_from_birth", "wuxing_balance",
@@ -751,4 +910,8 @@ __all__ = [
     # tarot
     "TarotCard", "TarotDraw", "TAROT_MAJOR", "TAROT_POSITIONS", "draw_tarot",
     "tarot_outcome_prior", "tarot_auspice",
+    # astrology
+    "ZodiacSign", "ZODIAC", "NatalChart", "ASTRO_ELEMENTS",
+    "ASTRO_ELEMENT_COLOR", "sun_sign", "natal_chart",
+    "astro_outcome_prior", "astro_auspice",
 ]

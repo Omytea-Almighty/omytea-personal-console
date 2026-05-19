@@ -560,7 +560,9 @@ def _render_traditional_lens(
         index=0,
         key=f"{key_prefix}_system",
     )
-    needs_birth = system in (_mp.SYSTEM_BAZI, _mp.SYSTEM_ZIWEI)
+    needs_birth = system in (
+        _mp.SYSTEM_BAZI, _mp.SYSTEM_ZIWEI, _mp.SYSTEM_ASTRO,
+    )
 
     # ---- Birth-data row (八字 / 紫微 only) ----
     sy, sm, sd, sh = sample_birth

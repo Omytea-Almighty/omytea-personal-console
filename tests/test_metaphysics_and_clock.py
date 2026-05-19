@@ -160,6 +160,47 @@ def test_tarot_prior_and_auspice_bounded() -> None:
 
 
 # ---------------------------------------------------------------------------
+# 占星 — natal chart
+# ---------------------------------------------------------------------------
+
+
+def test_sun_sign_dates_are_exact() -> None:
+    cases = [
+        (3, 21, "aries"), (3, 20, "pisces"), (7, 23, "leo"),
+        (7, 22, "cancer"), (12, 25, "capricorn"), (1, 1, "capricorn"),
+        (1, 20, "aquarius"), (10, 23, "scorpio"),
+    ]
+    for month, day, expected in cases:
+        bd = mp.BirthData(2000, month, day, 12)
+        assert mp.ZODIAC[mp.sun_sign(bd)].key == expected, (month, day)
+
+
+def test_natal_chart_and_priors_bounded() -> None:
+    chart = mp.natal_chart(mp.BirthData(1996, 8, 9, 16))
+    assert 0 <= chart.sun < 12
+    assert 0 <= chart.moon < 12
+    assert 0 <= chart.rising < 12
+    for outcome in mp.OUTCOME_CATEGORIES:
+        assert 0.0 <= mp.astro_outcome_prior(chart, outcome) <= 1.0
+    assert 0.0 <= mp.astro_auspice(chart) <= 1.0
+
+
+def test_astro_renderer_shows_zodiac() -> None:
+    bd = mp.BirthData(2000, 6, 15, 12)
+    reading = mp.compute_reading("astro", birth=bd, seed="s",
+                                 outcome="career_success")
+    svg = render_reading_svg(
+        reading, _SAMPLE_BRANCHES,
+        center_top_label="MODEL", center_top_value="30%",
+        center_bottom_label="COMBINED", center_bottom_value="42%",
+        center_meta="ASTRO",
+    )
+    assert "SUN" in svg and "MOON" in svg and "RISING" in svg
+    # at least one zodiac glyph rendered
+    assert any(g in svg for g in [s.glyph for s in mp.ZODIAC])
+
+
+# ---------------------------------------------------------------------------
 # unified compute_reading
 # ---------------------------------------------------------------------------
 
