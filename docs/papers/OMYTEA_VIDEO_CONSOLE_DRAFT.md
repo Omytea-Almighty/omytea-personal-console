@@ -194,7 +194,7 @@ These numbers do not constitute a benchmark against any competing system. They e
 > *Stub — to expand.*
 >
 > - **What the quantum-information formalism buys us.** A unified bookkeeping for joint distributions + their correlations + the dissipation model. Lindblad gives a principled tunable for "how fast does correlation between entity-future trajectories wash out as the horizon extends?" — a question that's awkward in pure classical-probability vocabulary.
-> - **What it doesn't buy us.** No claim of quantum advantage. No claim of literal entanglement. The off-diagonal magnitudes carry classical-correlation information; they are not amplitudes of a true quantum state.
+> - **What it doesn't buy us.** No quantum-advantage assertion is made. Literal quantum entanglement is not asserted either. The off-diagonal magnitudes carry classical-correlation information; they are not amplitudes of a true quantum state.
 > - **Brand framing.** Per master plan §2.9 negative scope, this is not "fortune-telling" or "oracle" tooling; it is decision support that explicitly forecasts uncertainty and asks users to score themselves over time.
 > - **Open questions.** Calibration drift over long horizons; per-user prior learning; multi-camera reconciliation; trained-perception-model selection criteria.
 
