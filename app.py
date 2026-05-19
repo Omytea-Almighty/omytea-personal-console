@@ -532,42 +532,60 @@ def _render_traditional_lens(
     sample_birth: tuple[int, int, int, int] = (2000, 6, 15, 12),
     sample_branches: list[tuple[str, float, str]] | None = None,
 ) -> None:
-    """Render the dual-input row + Nye-clock dial + tri-metric readout.
+    """Render the 玄学 lens — system selector + instrument + readout.
 
     Shared between the result-page expander and the standalone Mode 7
-    page. ``key_prefix`` namespaces the widget keys so the two
-    surfaces don't fight over the same st.session_state slot.
+    page. ``key_prefix`` namespaces the widget keys so the two surfaces
+    don't fight over the same st.session_state slot; it also seeds the
+    deterministic 易经 / 塔罗 cast (same prediction → same reading).
 
-    ``branches_or_none`` is the list of ConsoleHypothesis-like objects
-    from the most recent prediction (each carries ``label``,
-    ``probability``, ``branch_type``). When ``None`` (e.g. the user
-    hit Mode 7 before generating any prediction), we render the dial
-    with ``sample_branches`` so the instrument is never empty — the
-    "alive on first view" requirement.
+    Four divination systems behind one selector:
+      • 八字 / 紫微 read from the birth-date row.
+      • 易经 / 塔罗 are a deterministic cast from the prediction seed —
+        no birth data needed; the birth row is hidden for them.
+
+    The model's branch distribution is fed through
+    ``_metaphysics.apply_lens_to_branches`` (the per-branch Bayesian
+    reweight) so the instrument's inner ring visibly responds to α.
     """
     import _metaphysics as _mp
-    from _clock import render_nye_clock_svg
+    from _clock import render_reading_svg
 
-    # ---- Birth-data row ----
+    # ---- System selector ----
+    system = st.radio(
+        T("trad.system.label"),
+        options=list(_mp.SYSTEMS),
+        format_func=lambda k: T(f"trad.system.{k}"),
+        horizontal=True,
+        index=0,
+        key=f"{key_prefix}_system",
+    )
+    needs_birth = system in (_mp.SYSTEM_BAZI, _mp.SYSTEM_ZIWEI)
+
+    # ---- Birth-data row (八字 / 紫微 only) ----
     sy, sm, sd, sh = sample_birth
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        b_year = st.number_input(
-            T("trad.birth.year"), min_value=1900, max_value=2100,
-            value=sy, step=1, key=f"{key_prefix}_y")
-    with c2:
-        b_month = st.number_input(
-            T("trad.birth.month"), min_value=1, max_value=12,
-            value=sm, step=1, key=f"{key_prefix}_m")
-    with c3:
-        b_day = st.number_input(
-            T("trad.birth.day"), min_value=1, max_value=31,
-            value=sd, step=1, key=f"{key_prefix}_d")
-    with c4:
-        b_hour = st.number_input(
-            T("trad.birth.hour"), min_value=0, max_value=23,
-            value=sh, step=1, key=f"{key_prefix}_h")
-    st.caption(T("trad.birth.hint"))
+    if needs_birth:
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            b_year = st.number_input(
+                T("trad.birth.year"), min_value=1900, max_value=2100,
+                value=sy, step=1, key=f"{key_prefix}_y")
+        with c2:
+            b_month = st.number_input(
+                T("trad.birth.month"), min_value=1, max_value=12,
+                value=sm, step=1, key=f"{key_prefix}_m")
+        with c3:
+            b_day = st.number_input(
+                T("trad.birth.day"), min_value=1, max_value=31,
+                value=sd, step=1, key=f"{key_prefix}_d")
+        with c4:
+            b_hour = st.number_input(
+                T("trad.birth.hour"), min_value=0, max_value=23,
+                value=sh, step=1, key=f"{key_prefix}_h")
+        st.caption(T("trad.birth.hint"))
+    else:
+        b_year, b_month, b_day, b_hour = sy, sm, sd, sh
+        st.caption(T("trad.cast.hint"))
 
     # ---- Outcome + combination controls ----
     cc1, cc2, cc3 = st.columns([2, 2, 1.4])
@@ -596,13 +614,13 @@ def _render_traditional_lens(
             help=T("trad.alpha.hint"),
         )
 
-    # ---- Derive 八字 + 五行 balance + focal-outcome prior ----
-    bd = _mp.BirthData(year=int(b_year), month=int(b_month),
-                       day=int(b_day), hour=int(b_hour))
-    bazi = _mp.bazi_from_birth(bd)
-    balance = _mp.wuxing_balance(bazi)
-    dominant_key = _mp.dominant_element(balance)
-    tradition_prob = _mp.outcome_prior(bazi, str(outcome))
+    # ---- Run the chosen divination system ----
+    birth = _mp.BirthData(year=int(b_year), month=int(b_month),
+                          day=int(b_day), hour=int(b_hour))
+    reading = _mp.compute_reading(
+        str(system), birth=birth, seed=key_prefix, outcome=str(outcome),
+    )
+    tradition_prob = reading.prior
 
     # ---- Choose the focal branch (real or sample) ----
     using_sample = False
@@ -633,23 +651,27 @@ def _render_traditional_lens(
     )
     if mode == "bayesian":
         # Renormalize the focal posterior against its complement for
-        # display. (The dial focuses on ONE outcome category, so the
-        # 2-bin renormalization is honest; per-branch reweighting
-        # under Bayesian would require classifying every branch into
-        # one of the 6 categories, which is deferred.)
+        # display (the dial centre focuses on ONE outcome category).
         denom = combined + (1 - tradition_prob) * (1 - model_prob)
         combined = combined / denom if denom > 1e-9 else combined
 
-    # ---- Dial centre labels: model-only / combined stacked ----
+    # ---- Per-branch Bayesian reweight (item b) — drives the inner
+    # ring. A favourable reading (auspice→1) pulls mass toward the
+    # wishful anchor; α scales the pull. mode "off" → no reweight. ----
+    eff_alpha = 0.0 if mode == "off" else float(alpha)
+    display_branches = _mp.apply_lens_to_branches(
+        branch_data, reading.auspice, eff_alpha,
+    )
+
+    # ---- Instrument render ----
     model_value = f"{model_prob * 100:.1f}%"
     combined_value = f"{combined * 100:.1f}%"
     meta_tag = (
-        f"{dominant_key.upper()} · "
+        f"{T(f'trad.system.{system}').upper()} · "
         f"{'α=' + format(alpha, '.2f') if mode != 'off' else 'model only'}"
     )
-
-    instrument_svg = render_nye_clock_svg(
-        bazi, balance, branch_data,
+    instrument_svg = render_reading_svg(
+        reading, display_branches,
         center_top_label=T("trad.metric.model_short"),
         center_top_value=model_value,
         center_bottom_label=T("trad.metric.combined_short"),
@@ -661,7 +683,7 @@ def _render_traditional_lens(
     st.markdown(
         f"<div style='background:#11141b;border:1px solid #232834;"
         f"border-radius:12px;padding:20px 16px;margin:18px auto 8px;"
-        f"max-width:520px;"
+        f"max-width:540px;"
         f"box-shadow:0 12px 50px rgba(0,0,0,0.4),"
         f"0 1px 0 rgba(255,255,255,0.025) inset;'>"
         f"{instrument_svg}"
@@ -672,7 +694,7 @@ def _render_traditional_lens(
     if using_sample:
         st.caption(T("trad.using_sample"))
 
-    # ---- Tri-metric readout sits below the dial ----
+    # ---- Tri-metric readout sits below the instrument ----
     m1, m2, m3 = st.columns(3)
     with m1:
         st.metric(T("trad.metric.model"), f"{model_prob * 100:.1f}%")

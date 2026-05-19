@@ -270,34 +270,36 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_FR: "Traditionnel × Calibré",
     },
     "trad.hero.title": {
-        LANG_EN: "Two priors, one dial.",
-        LANG_ZH: "两种先验，一个表盘。",
-        LANG_ES: "Dos priors, un dial.",
-        LANG_FR: "Deux a priori, un cadran.",
+        LANG_EN: "Two priors, one instrument.",
+        LANG_ZH: "两种先验，一台仪器。",
+        LANG_ES: "Dos priors, un instrumento.",
+        LANG_FR: "Deux a priori, un instrument.",
     },
     "trad.hero.subtitle": {
         LANG_EN: (
-            "The outer ring is your 八字 五行 balance — wood, fire, earth, "
-            "metal, water. The inner ring is the model's calibrated "
-            "branch distribution. The centre is the posterior when both "
-            "are weighted together. Pick the weight; the dial moves."
+            "Read the same prediction through a time-honored lens — "
+            "八字, 紫微斗数, 易经, or Tarot. Each is an explicitly "
+            "weighted prior, never a verdict; the model's own number is "
+            "always shown beside the combined one. Pick the system, "
+            "pick the weight, watch it move."
         ),
         LANG_ZH: (
-            "外圈是你八字的五行分布——木火土金水；内圈是模型校准过的"
-            "未来分支；中心读数是两者按你设定的权重融合后的后验。"
-            "权重一调，表盘就动。"
+            "用一种古法视角重读同一份预测——八字、紫微斗数、易经、"
+            "或塔罗。每一种都只是一个可调权重的先验，绝非定论；模型"
+            "自己的数字始终与融合后的数字并列展示。选体系、调权重，"
+            "看仪器随之转动。"
         ),
         LANG_ES: (
-            "El anillo exterior es tu balance 五行 de 八字 — madera, "
-            "fuego, tierra, metal, agua. El anillo interior es la "
-            "distribución calibrada del modelo. El centro es el "
-            "posterior cuando ambos se ponderan juntos."
+            "Lee la misma predicción a través de una lente tradicional "
+            "— 八字, 紫微, 易经 o Tarot. Cada una es un prior con peso "
+            "explícito, nunca un veredicto; el número del modelo "
+            "siempre se muestra junto al combinado."
         ),
         LANG_FR: (
-            "L'anneau externe est ton équilibre 五行 du 八字 — bois, feu, "
-            "terre, métal, eau. L'anneau interne est la distribution "
-            "calibrée du modèle. Le centre est le postérieur quand les "
-            "deux sont pondérés ensemble."
+            "Lisez la même prédiction à travers une lentille "
+            "traditionnelle — 八字, 紫微, 易经 ou Tarot. Chacune est un "
+            "prior pondéré explicitement, jamais un verdict ; le chiffre "
+            "du modèle est toujours affiché à côté du combiné."
         ),
     },
     "trad.birth.section": {
@@ -305,6 +307,57 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_ZH: "出生信息",
         LANG_ES: "Tu nacimiento",
         LANG_FR: "Votre naissance",
+    },
+    "trad.system.label": {
+        LANG_EN: "Divination system",
+        LANG_ZH: "占卜体系",
+        LANG_ES: "Sistema de adivinación",
+        LANG_FR: "Système de divination",
+    },
+    "trad.system.bazi": {
+        LANG_EN: "八字 BaZi",
+        LANG_ZH: "八字",
+        LANG_ES: "八字 BaZi",
+        LANG_FR: "八字 BaZi",
+    },
+    "trad.system.ziwei": {
+        LANG_EN: "紫微 ZiWei",
+        LANG_ZH: "紫微斗数",
+        LANG_ES: "紫微 ZiWei",
+        LANG_FR: "紫微 ZiWei",
+    },
+    "trad.system.iching": {
+        LANG_EN: "易经 I Ching",
+        LANG_ZH: "易经",
+        LANG_ES: "易经 I Ching",
+        LANG_FR: "易经 Yi Jing",
+    },
+    "trad.system.tarot": {
+        LANG_EN: "Tarot",
+        LANG_ZH: "塔罗牌",
+        LANG_ES: "Tarot",
+        LANG_FR: "Tarot",
+    },
+    "trad.cast.hint": {
+        LANG_EN: (
+            "Cast deterministically from this prediction — the same "
+            "prediction always yields the same reading. No birth data "
+            "needed for this system."
+        ),
+        LANG_ZH: (
+            "由这份预测确定性地起卦 / 抽牌——同一份预测每次结果相同。"
+            "这个体系不需要出生信息。"
+        ),
+        LANG_ES: (
+            "Se obtiene de forma determinista de esta predicción — la "
+            "misma predicción siempre da la misma lectura. Este sistema "
+            "no necesita datos de nacimiento."
+        ),
+        LANG_FR: (
+            "Tiré de manière déterministe de cette prédiction — la même "
+            "prédiction donne toujours la même lecture. Pas de données "
+            "de naissance nécessaires."
+        ),
     },
     "trad.birth.year": {
         LANG_EN: "Year",
