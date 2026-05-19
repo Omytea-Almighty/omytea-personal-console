@@ -46,6 +46,10 @@ from .gemini_backend import GeminiBackend
 from .groq_backend import GroqBackend
 from .mock_backend import MockBackend
 from .ollama_backend import OllamaBackend
+from .ollama_vision_backend import (
+    OllamaVisionBackend,
+    OllamaVisionRequest,
+)
 from .openai_backend import OpenAIBackend
 from .quota import (
     DEFAULT_POLICIES,
@@ -225,6 +229,8 @@ __all__ = [
     "CloudflareWorkersAIBackend",
     "OpenAIBackend",
     "OllamaBackend",
+    "OllamaVisionBackend",
+    "OllamaVisionRequest",
     "RotatingBackend",
     "QuotaExhaustedError",
     "QuotaGuardedBackend",

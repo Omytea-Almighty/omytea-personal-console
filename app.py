@@ -62,8 +62,9 @@ def render_sidebar() -> str:
     mode = st.sidebar.radio(
         "Mode",
         options=(
-            "New prediction", "Measurement update",
-            "Calibration history", "Pricing & pre-order",
+            "New prediction", "Video query",
+            "Measurement update", "Calibration history",
+            "Pricing & pre-order",
         ),
         index=0,
     )
@@ -915,6 +916,56 @@ def render_measurement_update() -> None:
         "How likely would you recommend this tool to a friend? (0-10 NPS)",
         min_value=0, max_value=10, value=5,
     )
+
+    # v4.16 playbook-adopt: Sean Ellis disappointment test.
+    # Anthropic founder's playbook §4 (MVP), canonical PMF indicator.
+    # >40% "very disappointed" across active users = meaningful PMF.
+    st.divider()
+    st.markdown("**Sean Ellis disappointment test** (PMF indicator)")
+    sean_ellis_label_map = {
+        "very_disappointed": "Very disappointed",
+        "somewhat_disappointed": "Somewhat disappointed",
+        "not_disappointed": "Not disappointed",
+    }
+    sean_ellis_response = st.radio(
+        "If you could no longer use this prediction tool, how would you feel?",
+        options=list(sean_ellis_label_map.keys()),
+        format_func=lambda k: sean_ellis_label_map[k],
+        index=1,  # default to middle (somewhat) so we don't anchor anyone
+        help=(
+            "Standard PMF instrument. We tally the share of users who "
+            "say 'very disappointed' — when that share crosses 40% "
+            "across real (non-owner) users, that's a meaningful signal "
+            "of product-market fit."
+        ),
+    )
+
+    # v4.16 playbook-adopt: effort test (push → pull retention transition).
+    st.markdown("**Effort test** (retention quality over the measurement window)")
+    effort_label_map = {
+        "self_returned": (
+            "I came back to it on my own initiative "
+            "(opened it without being reminded)"
+        ),
+        "needed_reminder": (
+            "I came back only when reminded "
+            "(the operator nudged me)"
+        ),
+        "did_not_return": "I did not return to the tool",
+    }
+    effort_test_response = st.radio(
+        "Over the past 6 weeks, did you self-return to the tool?",
+        options=list(effort_label_map.keys()),
+        format_func=lambda k: effort_label_map[k],
+        index=1,  # default to needed_reminder (the honest pre-PMF state)
+        help=(
+            "Pre-PMF retention requires founder energy pushing users; "
+            "post-PMF, the product 'starts doing that work on its "
+            "own' (per Anthropic founder's playbook §4)."
+        ),
+    )
+
+    st.divider()
     notes = st.text_area("Notes (optional)")
 
     if st.button("Submit measurement update"):
@@ -942,6 +993,8 @@ def render_measurement_update() -> None:
             calibration_delta=cal,
             user_satisfaction=nps,
             user_notes=notes,
+            sean_ellis_response=sean_ellis_response,
+            effort_test_response=effort_test_response,
         )
         storage.save_measurement(upd)
 
@@ -1166,10 +1219,452 @@ def render_pricing_and_preorder() -> None:
         )
 
 
+def render_video_query() -> None:
+    """Mode 5 — Video Query: upload a video file, ask a question,
+    get probabilistic predictions about the scene.
+
+    Pipeline:
+    1. User uploads mp4/mov/webm
+    2. video_ingest samples N frames + runs perception (substrate's
+       MotionFallbackDetector + IoUTracker)
+    3. Sampled JPEG frames + tracked-entity summaries are sent to
+       OllamaVisionBackend via compile_scene_query
+    4. The resulting BeliefProgram is converted to the same
+       ConsoleResult the New-prediction mode uses, so all
+       existing visualization paths (story view / comparison
+       table / decision timeline / continuous distribution /
+       coherence decay / evidence ΔP) just work.
+
+    Master plan §9 first-cut consumer surface for the video path.
+    """
+    st.title("🎥 Video query")
+    st.write(
+        "Upload a short video (mp4 / mov / webm). The system samples "
+        "keyframes, runs local perception (substrate's tracked-entity "
+        "detector), then asks a local vision-LLM to read the scene "
+        "and emit calibrated future-scenario branches. No external "
+        "API required — everything runs on your machine via Ollama."
+    )
+
+    # System status sub-block for video mode specifically
+    with st.expander(
+        "System status (local vision LLM check)", expanded=False,
+    ):
+        try:
+            from llm_backends import OllamaVisionBackend
+            vb = OllamaVisionBackend()
+            if vb.is_available():
+                st.success(
+                    f"✓ Ollama vision backend ready · model: "
+                    f"`{vb._get_model()}`"
+                )
+            else:
+                st.warning(
+                    f"⚠ Ollama vision backend not ready. "
+                    f"Either start the Ollama daemon, or run: "
+                    f"`ollama pull {vb._get_model()}`. "
+                    f"If you want to test the flow without a vision "
+                    f"model, set `OMYTEA_CONSOLE_MOCK=1` in your "
+                    f"shell before running Streamlit."
+                )
+        except ImportError as exc:
+            st.error(f"OllamaVisionBackend not importable: {exc}")
+
+    uploaded = st.file_uploader(
+        "Video file",
+        type=["mp4", "mov", "webm", "avi", "mkv"],
+        accept_multiple_files=False,
+        help=(
+            "Smaller files = faster processing. Recommended: <30 "
+            "seconds, <50 MB. The first run may be slow as the "
+            "vision model warms up."
+        ),
+    )
+
+    user_query = st.text_area(
+        "Your question about the scene",
+        value="What might happen next? What are the most likely outcomes?",
+        height=80,
+        help=(
+            "Ask anything about the future of the scene. Examples: "
+            "'If the person on the left keeps walking, where will "
+            "they be in 30 seconds?'  /  'What's the most likely "
+            "next action?'  /  'What could go wrong here?'"
+        ),
+    )
+
+    user_id = st.text_input(
+        "Your handle (for measurement-update tracking)",
+        help=(
+            "Any string. Used to look up the prediction later via "
+            "the Measurement update tab. No PII, no registration."
+        ),
+    )
+
+    n_sample_frames = st.slider(
+        "Number of sampled keyframes",
+        min_value=2, max_value=12, value=3,
+        help=(
+            "More frames = better entity tracking but slower "
+            "vision-LLM call. 3 is a fast default for CPU-only "
+            "inference. Bump to 5-8 if your machine has a GPU."
+        ),
+    )
+
+    submit = st.button("🚀 Analyze video", type="primary")
+
+    if not submit:
+        return
+
+    if uploaded is None:
+        st.error("Please upload a video file first.")
+        return
+    if not user_query.strip():
+        st.error("Please enter a question about the scene.")
+        return
+    if not user_id.strip():
+        st.error("Please provide a handle (any string).")
+        return
+
+    # Step 1: ingest video → sampled frames + tracked entities
+    with st.spinner(
+        "Step 1/3 — Sampling frames + running substrate perception…"
+    ):
+        from video_ingest import ingest_video_file
+
+        file_bytes = uploaded.read()
+        ingest_result = ingest_video_file(
+            file_bytes=file_bytes,
+            n_sample_frames=n_sample_frames,
+        )
+
+    if not ingest_result.available:
+        st.error(
+            f"Video ingestion failed: {ingest_result.reason}\n\n"
+            f"If this says 'opencv-python or numpy not installed', "
+            f"run: `pip install opencv-python-headless`. If it says "
+            f"'mock mode enabled', unset `OMYTEA_CONSOLE_MOCK` in "
+            f"your shell."
+        )
+        return
+
+    st.success(
+        f"✓ Sampled {ingest_result.sampled_count} frames · "
+        f"{len(ingest_result.tracked_entities)} entities tracked · "
+        f"detector: `{ingest_result.detector_used}` · "
+        f"video duration: {ingest_result.duration_seconds:.1f}s @ "
+        f"{ingest_result.fps:.0f}fps"
+    )
+
+    # Show a thumbnail strip of sampled frames so the user sees what
+    # the model is looking at. Each frame gets detection bounding
+    # box + trajectory polyline overlays for entities tracked on
+    # or before that frame.
+    if ingest_result.sampled_frames:
+        st.markdown("**Sampled keyframes with detection overlays**")
+        from visualization import render_frame_with_overlays
+        entity_dicts_for_overlay = [
+            {
+                "object_id": e.object_id,
+                "label": e.label,
+                "trajectory": list(e.trajectory),
+                "confidence": e.confidence,
+            }
+            for e in ingest_result.tracked_entities
+        ]
+        cols = st.columns(min(len(ingest_result.sampled_frames), 6))
+        for i, sf in enumerate(ingest_result.sampled_frames):
+            overlay_bytes = render_frame_with_overlays(
+                image_bytes=sf.image_bytes,
+                frame_idx=sf.frame_idx,
+                tracked_entities=entity_dicts_for_overlay,
+                frame_width=sf.width,
+                frame_height=sf.height,
+            )
+            with cols[i % len(cols)]:
+                st.image(
+                    overlay_bytes,
+                    caption=(
+                        f"t={sf.timestamp_seconds:.1f}s "
+                        f"(frame {sf.frame_idx})"
+                    ),
+                    use_container_width=True,
+                )
+
+    # Entity summary table
+    if ingest_result.tracked_entities:
+        st.markdown("**Tracked entities (top by track-length × confidence)**")
+        entity_rows = []
+        for e in ingest_result.tracked_entities:
+            entity_rows.append({
+                "Entity ID": e.object_id,
+                "Label": e.label,
+                "First frame": e.first_frame_idx,
+                "Last frame": e.last_frame_idx,
+                "Trajectory length": len(e.trajectory),
+                "Confidence": f"{e.confidence:.2f}",
+            })
+        st.dataframe(
+            entity_rows, hide_index=True, use_container_width=True,
+        )
+
+    # Step 2: scene-compile via vision LLM
+    with st.spinner(
+        f"Step 2/3 — Asking local vision LLM to read the scene ({n_sample_frames} frames)…"
+    ):
+        from compiler import compile_scene_query
+
+        entity_summaries = [
+            {
+                "object_id": e.object_id,
+                "label": e.label,
+                "trajectory": list(e.trajectory),
+                "confidence": e.confidence,
+            }
+            for e in ingest_result.tracked_entities
+        ]
+        try:
+            program = compile_scene_query(
+                user_query=user_query.strip(),
+                sampled_frame_jpegs=[
+                    sf.image_bytes for sf in ingest_result.sampled_frames
+                ],
+                tracked_entities_summary=entity_summaries,
+            )
+        except Exception as exc:  # noqa: BLE001
+            st.error(f"Scene compilation failed: {exc}")
+            return
+
+    # Step 3: convert to ConsoleResult + persist + render via existing UI
+    with st.spinner("Step 3/3 — Building belief state + applying quantum operator…"):
+        from console import belief_program_to_console
+        result = belief_program_to_console(program)
+
+    # Surface fallback warning if the vision LLM timed out / failed.
+    fallback_reason = program.raw.get("_fallback_reason", "")
+    if fallback_reason:
+        st.warning(
+            f"⚠ Vision LLM fallback engaged. {fallback_reason}\n\n"
+            f"The branches below come from a deterministic stub and "
+            f"are NOT grounded in the specific video content. The "
+            f"entity-tracking + quantum-operator evolution still "
+            f"uses the real per-frame detections."
+        )
+    else:
+        st.success("✓ Scene analysis complete.")
+
+    st.divider()
+
+    # Persist as a prediction (so it shows up in Measurement update later)
+    rec = storage.PredictionRecord(
+        prediction_id=storage.new_prediction_id(),
+        user_id=user_id.strip(),
+        scenario="video_scene_query",
+        created_at=storage.now_unix(),
+        user_input={
+            "user_query": user_query.strip(),
+            "n_sample_frames": n_sample_frames,
+            "video_duration_seconds": ingest_result.duration_seconds,
+            "n_entities": len(ingest_result.tracked_entities),
+            "detector": ingest_result.detector_used,
+            "is_owner_bias_flagged": False,
+        },
+        belief_program=program.raw,
+        wavefunction_snapshot={
+            "hypotheses": [h.to_dict() for h in result.hypotheses],
+        },
+        joint_offdiag={
+            "entries": [o.to_dict() for o in result.joint_offdiag],
+        },
+        is_owner_bias_flagged=False,
+    )
+    storage.save_prediction(rec)
+    st.caption(
+        f"Prediction ID (save this for later measurement-update): "
+        f"`{rec.prediction_id}`"
+    )
+
+    st.divider()
+    # Render the per-entity quantum-state evolution alongside the
+    # scene-level branches. This is the operator-algebra-level
+    # quantum operator on a tracked-entity JointWaveFunction,
+    # distinct from the scene-level branch coherence shown below.
+    if ingest_result.tracked_entities:
+        _render_entity_quantum_evolution(
+            entity_summaries=entity_summaries,
+            ingest_result=ingest_result,
+        )
+    st.divider()
+    # Reuse the existing result-rendering machinery from
+    # _render_result, including story view / comparison / timeline /
+    # continuous-distribution / coherence-decay / evidence ΔP.
+    user_input_proxy = {
+        "time_horizon": "6 months",  # placeholder; the C1 UI uses this
+        "user_query": user_query.strip(),
+    }
+    _render_result(
+        result, user_input_proxy, "video_scene_query",
+        rec.user_id, program,
+        prediction_id=rec.prediction_id,
+    )
+
+
+def _render_entity_quantum_evolution(
+    entity_summaries: list[dict[str, Any]],
+    ingest_result: Any,
+) -> None:
+    """Build per-entity hypothesis bundles → JointWaveFunction → run
+    LindbladOperator → visualize the off-diagonal coherence decay
+    between entity-trajectory futures.
+
+    This is the operator-algebra-level quantum operator applied to
+    the actual tracked entities from the video, separate from the
+    BeliefProgram branches the vision LLM emits.
+    """
+    import video_state
+
+    st.subheader("⚛ Entity-trajectory quantum evolution")
+    st.caption(
+        "For each tracked entity, the system synthesizes three "
+        "future-position hypotheses (continue / accelerate / "
+        "decelerate). These are combined into a JointWaveFunction "
+        "across up to 3 entities, then evolved under a Lindblad "
+        "open-system operator over a short horizon. The decaying "
+        "off-diagonal magnitudes below show how correlations "
+        "between entity-trajectory futures wash out into "
+        "independent classical outcomes."
+    )
+
+    bundles = video_state.build_entity_hypothesis_bundles(
+        entity_summaries, max_entities=3,
+    )
+
+    if not bundles:
+        st.info("No trackable entities to evolve.")
+        return
+
+    # Bundle preview table
+    bundle_rows = []
+    for b in bundles:
+        bundle_rows.append({
+            "Entity": f"{b.entity_id} ({b.label})",
+            "Last x (norm)": f"{b.last_observed_cx:.2f}",
+            "Last y (norm)": f"{b.last_observed_cy:.2f}",
+            "Velocity x": f"{b.velocity_x:+.3f}",
+            "Velocity y": f"{b.velocity_y:+.3f}",
+            "Continue prior": f"{b.hypothesis_weights[0]:.0%}",
+            "Accelerate prior": f"{b.hypothesis_weights[1]:.0%}",
+            "Decelerate prior": f"{b.hypothesis_weights[2]:.0%}",
+        })
+    st.dataframe(
+        bundle_rows, hide_index=True, use_container_width=True,
+    )
+
+    jwf = video_state.build_joint_wavefunction(bundles)
+    if jwf is None:
+        st.warning(
+            "Substrate unavailable — cannot run quantum evolution. "
+            "Install the parent WMDB package or set "
+            "`OMYTEA_CONSOLE_MOCK=1` and try again with mock data."
+        )
+        return
+
+    n_joint = len(jwf.hypotheses)
+    n_offdiag_pairs = len(jwf.off_diagonal_couplings) // 2
+
+    cols = st.columns(3)
+    with cols[0]:
+        st.metric("Joint hypotheses", n_joint)
+    with cols[1]:
+        st.metric("Off-diagonal pairs", n_offdiag_pairs)
+    with cols[2]:
+        st.metric("Entities evolved", len(bundles))
+
+    if n_offdiag_pairs == 0:
+        st.info(
+            "No off-diagonal coherences generated (need ≥2 entities "
+            "with informative trajectories). Skipping evolution."
+        )
+        return
+
+    horizon_steps = st.slider(
+        "Evolution horizon (Lindblad ticks)",
+        min_value=2, max_value=12, value=6,
+        help=(
+            "Each tick = one unit of decoherence time. More ticks "
+            "show fuller decay; fewer ticks = faster compute."
+        ),
+    )
+    decoherence_rate = st.slider(
+        "Decoherence rate γ (per tick)",
+        min_value=0.02, max_value=0.30, value=0.08, step=0.02,
+        help=(
+            "Higher γ = faster coherence collapse. Lower γ = "
+            "futures stay correlated longer."
+        ),
+    )
+
+    evo = video_state.evolve_entity_joint(
+        jwf,
+        time_horizon_steps=horizon_steps,
+        decoherence_rate=decoherence_rate,
+    )
+
+    if evo.get("skipped"):
+        st.error(
+            f"Evolution skipped: {evo.get('reason', 'unknown')}"
+        )
+        return
+
+    # Per-pair magnitude over time → line chart
+    snapshots = evo["snapshots"]
+    if not snapshots:
+        st.info("No evolution snapshots to display.")
+        return
+
+    # Build series: one line per off-diagonal pair (deduped by sorted i,j)
+    seen_pairs: set[tuple[int, int]] = set()
+    pair_series: dict[str, list[float]] = {}
+    for snap in snapshots:
+        for entry in snap["entries"]:
+            i, j = entry["row"], entry["col"]
+            key = (min(i, j), max(i, j))
+            if key not in seen_pairs:
+                # Find or initialize this pair's series across all
+                # snapshots seen so far + this one
+                seen_pairs.add(key)
+                pair_series[f"(j{key[0]}, j{key[1]})"] = []
+
+    # Now fill series consistently across all snapshots
+    for snap in snapshots:
+        pair_mags: dict[tuple[int, int], float] = {}
+        for entry in snap["entries"]:
+            i, j = entry["row"], entry["col"]
+            key = (min(i, j), max(i, j))
+            pair_mags[key] = max(
+                pair_mags.get(key, 0.0), entry["magnitude"]
+            )
+        for key in seen_pairs:
+            label = f"(j{key[0]}, j{key[1]})"
+            pair_series[label].append(pair_mags.get(key, 0.0))
+
+    st.line_chart(pair_series)
+    st.caption(
+        f"Off-diagonal magnitude |⟨joint_i | ρ | joint_j⟩| over "
+        f"{horizon_steps} Lindblad ticks at γ={decoherence_rate:.2f}. "
+        f"Each line = one joint-hypothesis pair. Lines converging to "
+        f"zero = those two correlated futures have lost their "
+        f"coherence and are now effectively independent classical "
+        f"outcomes."
+    )
+
+
 def main() -> None:
     mode = render_sidebar()
     if mode == "New prediction":
         render_new_prediction()
+    elif mode == "Video query":
+        render_video_query()
     elif mode == "Measurement update":
         render_measurement_update()
     elif mode == "Calibration history":

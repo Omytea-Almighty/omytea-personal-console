@@ -35,7 +35,7 @@ Two options:
 **Recommendation**: **Option B for public deploy.** Reasons:
 - WMDB has sensitive `legal/` artifacts + research drafts we don't want public-visible (even with .gitignore, public repos are forensically scannable)
 - Cleaner separation: deployment repo = product surface; WMDB = R&D
-- Easier for cofounder to push frontend fixes without touching WMDB
+- Easier for a second contributor to push frontend fixes without touching the upstream substrate repo
 - Public repo lets us accept GitHub Issues from friend testers
 
 Plan: when ready to deploy, `git subtree split` the `omytea-personal-console/` subtree into a new public repo `Adonyth/omytea-personal-console` (or similar org/repo).
@@ -222,7 +222,7 @@ Replace SQLite with a Postgres connection (free tier). Update `storage.py` to su
 
 After deploy:
 
-- [ ] Day 1: founder + cofounder use the public URL to test. Verify substrate works.
+- [ ] Day 1: operator team uses the public URL to test. Verify substrate works.
 - [ ] Day 1-3: invite 3 friends to Path β URL. Watch logs.
 - [ ] Day 3-7: invite remaining 5-7 friends.
 - [ ] Daily: check Anthropic API usage on console (predict.streamlit cap)

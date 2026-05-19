@@ -1,6 +1,6 @@
-"""Operator Library protocols — PLAN.md "Operator Library", WORK_PLAN_V04 §5 #7.
+"""Operator Library protocols — the upstream Omytea plan document "Operator Library", the upstream Omytea work plan §5 #7.
 
-BeliefState / JointBeliefState are concrete bridge types from PLAN.md's hierarchy:
+BeliefState / JointBeliefState are concrete bridge types from the upstream Omytea plan document's hierarchy:
 per-entity categorical belief is :class:`omytea.quantum.WaveFunction`; joint grids are
 :class:`omytea.joint_belief.JointWaveFunction`. These are distinct from density-matrix
 API payloads elsewhere — do not alias them verbally.
@@ -97,7 +97,7 @@ class Operator(Protocol):
     ``observe`` = incorporate a new observation (posterior / ingest).
 
     v0.4 ships :class:`omytea.dynamics.kinematic.KinematicOperator` only; other domains
-    are roadmap per PLAN.md.
+    are roadmap per the upstream Omytea plan document.
     """
 
     name: str

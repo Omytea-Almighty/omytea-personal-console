@@ -536,3 +536,359 @@ def compile_branch_drilldown(
         ) from exc
 
     return response.program_json
+
+
+# ============================================================
+# v4.16 Video Era — scene-description compiler call
+# ============================================================
+
+
+SYSTEM_PROMPT_SCENE_COMPILER = """You are the Omytea Scene Compiler — a vision-LLM that translates a sampled video (a few keyframes) plus user query into a strict-JSON BeliefProgram describing the present scene and predicted near-future branches.
+
+Given:
+  - K sampled video frames (passed as image inputs)
+  - A short list of detected entities with normalized (x,y,size) trajectories across those frames
+  - The user's natural-language question
+
+Emit a strict JSON BeliefProgram with this shape:
+
+{
+  "scenario": "video_scene_query",
+  "decision_options": ["<short label for each plausible viewer-level decision the user might be considering>", ...],
+  "branches": [
+    {
+      "label": "<short branch label>",
+      "branch_type": "wishful" | "worst" | "realistic",
+      "narrative": "<one or two sentences describing the predicted near-future of the scene, grounded in visible evidence + tracked entity motion>",
+      "probability_prior": <float in [0,1]>,
+      "key_uncertainty_driver": "<the single biggest unknown that could change this branch>",
+      "depends_on_decision": "<option label or null>"
+    },
+    ...  // 6-8 branches total
+  ],
+  "joint_offdiag": [
+    {
+      "branch_a": "<label>",
+      "branch_b": "<label>",
+      "coherence_strength": <float in [-1, 1]>,
+      "rationale": "<one sentence>"
+    },
+    ...
+  ],
+  "recommended_evidence": [
+    {
+      "evidence_label": "<what to look for in the scene to disambiguate>",
+      "expected_delta_p": <float in [0, 100] — percentage points>,
+      "target_branch": "<branch label or null>",
+      "rationale": "<one sentence>"
+    },
+    ...
+  ]
+}
+
+Strict requirements:
+- Total branches: 6-8.
+- EXACTLY ONE branch with `branch_type: "wishful"` (best-plausible near-future, low probability 3-10%).
+- EXACTLY ONE branch with `branch_type: "worst"` (worst-plausible near-future, low probability 3-10%).
+- 4-6 "realistic" branches spanning likely outcomes (5-35% each).
+- All `probability_prior` values sum to 1.0 ± 1e-3.
+- Branches must be GROUNDED in what's visible. Cite specific tracked-entity behavior (e.g., "the person on the left has accelerated toward the door across frames 0→3").
+- Never emit numeric predictions of exact times / distances / dollar amounts. Talk about plausible directions / outcomes / states.
+- Never use: "fortune", "destiny", "predict", "horoscope", "oracle", "tarot", "算命" or similar.
+- `expected_delta_p`: ABSOLUTE expected change in the most-likely branch's probability if this evidence is observed, in percentage points (range [0, 100] but typically 5-30). Use percentage points (e.g., 12), NOT 0-1 fractions.
+- Output ONLY the JSON object. No prose before or after.
+"""
+
+
+def _mock_scene_compile(user_query: str) -> dict[str, Any]:
+    """Deterministic stub for OMYTEA_CONSOLE_MOCK=1 video mode.
+
+    Returns a generic "scene-shaped" BeliefProgram independent of
+    actual frame content. The realistic branches reference the
+    user's query phrasing where possible so the mock isn't entirely
+    detached from the input.
+    """
+    q = (user_query or "what's happening?")[:200]
+    return {
+        "scenario": "video_scene_query",
+        "decision_options": [
+            "observe_and_wait",
+            "intervene_now",
+            "redirect_attention",
+        ],
+        "branches": [
+            {
+                "label": "everything_resolves_calmly",
+                "branch_type": "wishful",
+                "narrative": (
+                    "The activity visible in the frames concludes "
+                    "uneventfully; tracked entities continue their "
+                    "current trajectory without disruption or "
+                    "external intervention required. The user's "
+                    "implicit concern (per query: "
+                    f"'{q}') turns out to be unfounded."
+                ),
+                "probability_prior": 0.05,
+                "key_uncertainty_driver": "scene_calmness",
+                "depends_on_decision": "observe_and_wait",
+            },
+            {
+                "label": "current_trajectory_continues",
+                "branch_type": "realistic",
+                "narrative": (
+                    "Tracked entities maintain approximately their "
+                    "current motion vectors across the next short "
+                    "horizon; the scene evolves predictably from "
+                    "what the sampled frames show."
+                ),
+                "probability_prior": 0.32,
+                "key_uncertainty_driver": "trajectory_continuity",
+                "depends_on_decision": "observe_and_wait",
+            },
+            {
+                "label": "minor_perturbation_changes_outcome",
+                "branch_type": "realistic",
+                "narrative": (
+                    "A small external factor (lighting change, "
+                    "off-screen entity entering, or one tracked "
+                    "entity changing direction) shifts the "
+                    "scene's near-future meaningfully."
+                ),
+                "probability_prior": 0.22,
+                "key_uncertainty_driver": "off_screen_actor",
+                "depends_on_decision": None,
+            },
+            {
+                "label": "user_intervention_shifts_outcome",
+                "branch_type": "realistic",
+                "narrative": (
+                    "If the user (or someone in the user's "
+                    "position) acts on the scene, the immediate "
+                    "future shifts toward the intervened-for "
+                    "outcome."
+                ),
+                "probability_prior": 0.18,
+                "key_uncertainty_driver": "intervention_effectiveness",
+                "depends_on_decision": "intervene_now",
+            },
+            {
+                "label": "attention_redirected_loses_signal",
+                "branch_type": "realistic",
+                "narrative": (
+                    "If attention is redirected away from the "
+                    "current focus, important information may be "
+                    "missed; outcome shifts toward less-tracked "
+                    "branches."
+                ),
+                "probability_prior": 0.12,
+                "key_uncertainty_driver": "attention_value",
+                "depends_on_decision": "redirect_attention",
+            },
+            {
+                "label": "near_term_status_quo",
+                "branch_type": "realistic",
+                "narrative": (
+                    "Over the next short horizon, the scene "
+                    "settles into a steady state similar to what "
+                    "the last sampled frame shows."
+                ),
+                "probability_prior": 0.08,
+                "key_uncertainty_driver": "scene_stability",
+                "depends_on_decision": None,
+            },
+            {
+                "label": "compounding_disruption",
+                "branch_type": "worst",
+                "narrative": (
+                    "Multiple small disruptions compound: a "
+                    "tracked entity loses its current trajectory, "
+                    "off-screen factors interact unpredictably, "
+                    "and the situation becomes harder to "
+                    "interpret in real time. This is the future "
+                    "to actively monitor for."
+                ),
+                "probability_prior": 0.03,
+                "key_uncertainty_driver": "disruption_cascade",
+                "depends_on_decision": None,
+            },
+        ],
+        "joint_offdiag": [
+            {
+                "branch_a": "current_trajectory_continues",
+                "branch_b": "minor_perturbation_changes_outcome",
+                "coherence_strength": -0.45,
+                "rationale": (
+                    "Continuing trajectory is mutually exclusive "
+                    "with a meaningful perturbation."
+                ),
+            },
+            {
+                "branch_a": "user_intervention_shifts_outcome",
+                "branch_b": "attention_redirected_loses_signal",
+                "coherence_strength": -0.30,
+                "rationale": (
+                    "Active intervention and attention-redirection "
+                    "are competing allocation strategies."
+                ),
+            },
+        ],
+        "recommended_evidence": [
+            {
+                "evidence_label": "watch_for_off_screen_entity_entry",
+                "expected_delta_p": 18.0,
+                "target_branch": "minor_perturbation_changes_outcome",
+                "rationale": (
+                    "An entity entering the visible region from "
+                    "off-screen sharply shifts probability "
+                    "mass toward perturbation branches."
+                ),
+            },
+            {
+                "evidence_label": "track_for_entity_acceleration_change",
+                "expected_delta_p": 12.0,
+                "target_branch": "current_trajectory_continues",
+                "rationale": (
+                    "If tracked entities maintain near-constant "
+                    "velocity over the next interval, the "
+                    "trajectory-continues branch becomes more "
+                    "likely."
+                ),
+            },
+            {
+                "evidence_label": "wait_one_full_horizon_and_re_observe",
+                "expected_delta_p": 25.0,
+                "target_branch": None,
+                "rationale": (
+                    "Most uncertainty in this scenario resolves "
+                    "with one additional observation cycle; "
+                    "patience produces the largest delta."
+                ),
+            },
+        ],
+    }
+
+
+def compile_scene_query(
+    user_query: str,
+    sampled_frame_jpegs: list[bytes],
+    tracked_entities_summary: list[dict[str, Any]],
+    scenario: str = "video_scene_query",
+    max_tokens: int = 4096,
+) -> CompiledBeliefProgram:
+    """Vision-LLM scene-understanding compile.
+
+    Args:
+      user_query: user's natural-language question about the video.
+      sampled_frame_jpegs: list of JPEG bytes for the sampled
+        keyframes. Pass 2-5 frames for reasonable latency; more
+        frames = better tracking but slower vision LLM.
+      tracked_entities_summary: dict per entity with at minimum
+        'object_id', 'label', 'trajectory' (list of (frame_idx,
+        cx_norm, cy_norm, area_norm)), 'confidence'. This is what
+        ``video_ingest.TrackedEntity.__dict__`` produces (caller
+        converts).
+      scenario: scenario tag; defaults to 'video_scene_query'.
+      max_tokens: hard cap on vision-LLM output.
+
+    Returns:
+      CompiledBeliefProgram conforming to the standard schema +
+      §15.5 PMF-discipline-ready output.
+
+    Raises:
+      RuntimeError if vision backend is unavailable + mock mode is
+      not enabled.
+
+    Mock mode (OMYTEA_CONSOLE_MOCK=1) returns a deterministic stub
+    via `_mock_scene_compile`.
+    """
+    if os.environ.get("OMYTEA_CONSOLE_MOCK") == "1":
+        return CompiledBeliefProgram(raw=_mock_scene_compile(user_query))
+
+    # Build context message: user query + entity summary.
+    entity_lines: list[str] = []
+    for e in tracked_entities_summary[:5]:  # cap context length
+        oid = e.get("object_id", "?")
+        label = e.get("label", "?")
+        traj = e.get("trajectory", [])
+        if traj:
+            first = traj[0]
+            last = traj[-1]
+            entity_lines.append(
+                f"  - {oid} ({label}): first observed frame "
+                f"{first[0]} at (x={first[1]:.2f}, y={first[2]:.2f}, "
+                f"size={first[3]:.3f}); last observed frame "
+                f"{last[0]} at (x={last[1]:.2f}, y={last[2]:.2f}, "
+                f"size={last[3]:.3f})"
+            )
+
+    entity_block = "\n".join(entity_lines) or "  (no entities detected)"
+    user_message = (
+        f"User query: {user_query}\n\n"
+        f"Tracked entities across {len(sampled_frame_jpegs)} sampled "
+        f"frames (positions normalized to [0,1] of frame):\n"
+        f"{entity_block}\n\n"
+        f"Emit the strict-JSON BeliefProgram per your instructions."
+    )
+
+    try:
+        from llm_backends import OllamaVisionBackend, OllamaVisionRequest
+    except ImportError as exc:
+        raise RuntimeError(
+            f"OllamaVisionBackend not importable: {exc}"
+        ) from exc
+
+    backend = OllamaVisionBackend()
+    if not backend.is_available():
+        raise RuntimeError(
+            "OllamaVisionBackend not available. Either start the "
+            "Ollama daemon and `ollama pull llava:7b`, or set "
+            "OMYTEA_CONSOLE_MOCK=1 to use the offline stub."
+        )
+
+    request = OllamaVisionRequest(
+        system_prompt=SYSTEM_PROMPT_SCENE_COMPILER,
+        user_message=user_message,
+        images=tuple(sampled_frame_jpegs),
+        max_tokens=max_tokens,
+        temperature=0.4,
+    )
+
+    try:
+        response = backend.vision_compile(request)
+    except LLMBackendError as exc:
+        # Vision LLM is slow + unreliable on consumer hardware. Read
+        # timeouts + transient HTTP failures should NOT bring down
+        # the demo — fall back to the mock with a warning embedded
+        # in the scenario field so the UI can surface it.
+        msg = str(exc).lower()
+        is_recoverable = (
+            "read timed out" in msg
+            or "timeout" in msg
+            or exc.retriable
+        )
+        if is_recoverable:
+            stub = _mock_scene_compile(user_query)
+            stub["scenario"] = "video_scene_query__fallback_after_timeout"
+            stub["_fallback_reason"] = (
+                f"Vision LLM call timed out or failed ({exc.provider}). "
+                f"Showing stub predictions instead. Try a smaller "
+                f"video, fewer sample frames, a faster machine, or "
+                f"`ollama pull llava:7b` if you haven't yet."
+            )
+            return CompiledBeliefProgram(raw=stub)
+        raise RuntimeError(
+            f"Scene compilation failed ({exc.provider}): {exc}"
+        ) from exc
+
+    if not response.program_json:
+        # Vision LLM produced text but no JSON. Honest-fallback
+        # to mock so the demo doesn't hard-fail.
+        stub = _mock_scene_compile(user_query)
+        stub["scenario"] = "video_scene_query__fallback_no_json"
+        stub["_fallback_reason"] = (
+            "Vision LLM produced text but no parseable JSON. Stub "
+            "predictions shown. Consider a different question phrasing."
+        )
+        return CompiledBeliefProgram(raw=stub)
+
+    return CompiledBeliefProgram(raw=response.program_json)

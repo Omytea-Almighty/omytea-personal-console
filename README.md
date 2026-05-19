@@ -1,10 +1,130 @@
 # Omytea Personal Future Console — MVP
 
-**A probability-calibrated decision-support tool for personal futures.**
+**A probability-calibrated decision-support tool for personal futures, with local video understanding.**
 
-Built on Omytea's quantum-enhanced world-model substrate. Input your situation, get multiple future scenarios with calibrated probabilities, see how new evidence updates those probabilities over time.
+Built on Omytea's quantum-enhanced world-model substrate. Type a decision **or** upload a short video; get multiple future scenarios with calibrated probabilities, watch the quantum-operator coherence between those scenarios decay over time, and see how new evidence shifts the predictions.
 
-> **Not a deterministic prediction system. Not "fortune-telling." A measurement-update-aware probabilistic decision-support tool.**
+> **Not a deterministic prediction system. Not "fortune-telling." A measurement-update-aware probabilistic decision-support tool with a local-first runtime (no external API required).**
+
+## Quick start — 3 commands
+
+```bash
+# 1. Install (creates venv, installs deps, checks Ollama)
+bash scripts/install.sh
+
+# 2. Pull a local vision LLM (≈4.5 GB; one-time)
+ollama pull llava:7b
+ollama pull qwen2.5:7b-instruct
+
+# 3. Run
+source .venv/bin/activate && streamlit run app.py
+```
+
+Then open http://localhost:8501 → switch to **Video query** mode → upload an mp4 and ask a question.
+
+For the full step-by-step + troubleshooting, see [§ Install and run](#install-and-run) below.
+
+---
+
+## Install and run
+
+### Prerequisites
+
+- macOS 12+, Linux (Ubuntu 22.04+ tested), or Windows 11 (WSL2)
+- Python 3.11 or newer
+- ~6 GB free disk space (mostly for the local LLMs)
+- 16 GB RAM recommended (8 GB works for `llava:7b` text-only mode but is tight)
+- [Ollama](https://ollama.com/download) installed — the install script will check + prompt
+
+### Step 1 — Clone and bootstrap
+
+```bash
+git clone https://github.com/Adonyth/omytea-personal-console.git
+cd omytea-personal-console
+bash scripts/install.sh
+```
+
+What `install.sh` does:
+- Creates `.venv` (Python virtualenv) if absent
+- Installs `requirements.txt` (Streamlit, Pydantic, OpenCV-headless, LLM SDKs, etc.)
+- Checks whether Ollama is on `$PATH` and reachable on `localhost:11434`
+- Prints next-step instructions (model pulls + launch command)
+
+If you prefer manual install:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### Step 2 — Install Ollama and pull local models
+
+Install Ollama from <https://ollama.com/download> (one-click installer for macOS / Linux / Windows).
+
+Then pull the models the Console uses:
+
+```bash
+# Vision model for Video Query mode (~4.5 GB)
+ollama pull llava:7b
+
+# Text model for the New Prediction mode (~4.5 GB)
+ollama pull qwen2.5:7b-instruct
+```
+
+Both models are open-weight (LLaVA: Apache 2.0; Qwen: Apache 2.0). No account required.
+
+If you don't want to install Ollama yet, you can still run the console in **mock mode** to inspect the UI:
+
+```bash
+OMYTEA_CONSOLE_MOCK=1 streamlit run app.py
+```
+
+Mock mode returns deterministic stub predictions — useful for development but not for real decision support.
+
+### Step 3 — Launch the Console
+
+```bash
+source .venv/bin/activate
+streamlit run app.py
+```
+
+Open <http://localhost:8501> in your browser. The sidebar has 5 modes:
+
+| Mode | What it does |
+|---|---|
+| **New prediction** | Text-input career / lifestyle decision → branches + drilldown + coherence chart |
+| **Video query** | Upload a video file → entity tracking + scene-LLM analysis + branches + per-entity quantum-state evolution |
+| Measurement update | 6-week-later report on a prior prediction → calibration delta + Sean Ellis + effort test |
+| Calibration history | Aggregate Brier / log-loss across all predictions with owner-bias breakdown |
+| Pricing & pre-order | (Pre-revenue PMF research) tier comparison + willingness-to-pay capture |
+
+### Step 4 — Try the Video query mode
+
+1. Sidebar → "Video query"
+2. Upload a short video (mp4 / mov / webm). Recommended: <30 seconds, <50 MB.
+3. Type a question: "What might happen next?" / "If the person on the left keeps walking, where will they be in 30 seconds?" / "What could go wrong here?"
+4. Pick the number of sampled keyframes (default 5; more = better tracking + slower)
+5. Click **🚀 Analyze video**
+6. Wait ~30–90 seconds (depending on your hardware — first call may be slower as Ollama warms up the model)
+7. Browse the result: sampled keyframes with detection overlays + tracked entities + entity-trajectory quantum evolution chart + 6-8 future branches + ΔP evidence list
+
+### Troubleshooting
+
+- **"OpenCV not installed"** → run `pip install opencv-python-headless` inside the venv
+- **"Ollama vision backend not ready"** → start the Ollama daemon (`ollama serve` if it isn't running automatically) and verify `ollama pull llava:7b` finished
+- **Vision LLM very slow** → first call always warms the model. Subsequent calls are 5–10× faster. If still slow after warm-up: your hardware is CPU-only and inference is bound by your CPU speed. Try `llava:7b` (faster) instead of `llava:13b` (more accurate).
+- **"substrate not importable"** → Omytea quantum substrate needs to be installable. If you cloned this repo, the substrate is vendored in `omytea/`. If you got a release zip, the substrate package should be alongside. If neither, set `OMYTEA_CONSOLE_MOCK=1` to use the offline stub.
+
+### Uninstall
+
+```bash
+rm -rf .venv
+# Optional: remove local models
+ollama rm llava:7b qwen2.5:7b-instruct
+```
+
+Your local SQLite of predictions lives at `~/.omytea-personal-console/predictions.db` — delete it manually if you want a clean slate.
 
 ---
 

@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 
-SCHEMA_VERSION = 4  # v4.16 P6: + entitlements + preorder_interest tables
+SCHEMA_VERSION = 5  # v4.16 playbook adopt: + sean_ellis + effort_test columns
 
 DEFAULT_DB_PATH = Path(
     os.environ.get(
@@ -105,7 +105,28 @@ class BranchDrilldown:
 
 @dataclass(frozen=True, slots=True)
 class MeasurementUpdate:
-    """One actual-outcome observation, keyed to a prior prediction."""
+    """One actual-outcome observation, keyed to a prior prediction.
+
+    Adopts the Anthropic founder's playbook (2026-05-14) PMF
+    instruments:
+      - sean_ellis_response: canonical Sean Ellis question
+        ("How would you feel if you could no longer use this
+        product?") with three buckets — `very_disappointed`,
+        `somewhat_disappointed`, `not_disappointed`. >40% in
+        ``very_disappointed`` across users is the playbook's PMF
+        threshold.
+      - effort_test_response: did the user self-return to the
+        product over the 6-week measurement window, or only when
+        the operator nudged them? Buckets — `self_returned`,
+        `needed_reminder`, `did_not_return`. Pre-PMF retention
+        requires "heroic founder energy"; post-PMF the product
+        "starts doing that work on its own." Captures that
+        push→pull transition signal.
+
+    Empty strings = not yet captured (legacy rows or older
+    questionnaire iterations). Aggregate queries should treat the
+    empty-string state as "missing", not as a fourth bucket.
+    """
 
     update_id: str
     prediction_id: str
@@ -115,6 +136,8 @@ class MeasurementUpdate:
     calibration_delta: dict[str, float]  # Brier / log-loss vs original
     user_satisfaction: int | None = None  # NPS-style 0-10
     user_notes: str = ""
+    sean_ellis_response: str = ""
+    effort_test_response: str = ""
 
 
 def _column_exists(
@@ -243,6 +266,21 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
         "ON preorder_interest(user_id)"
     )
 
+    # v4.16 playbook-adopt migration: Sean Ellis test + effort test
+    # columns on measurement_updates. Both default to empty string so
+    # legacy rows stay legible. ALTER TABLE IF NOT EXISTS is gated by
+    # _column_exists since SQLite < 3.35 lacks the IF NOT EXISTS form.
+    if not _column_exists(conn, "measurement_updates", "sean_ellis_response"):
+        cur.execute(
+            "ALTER TABLE measurement_updates "
+            "ADD COLUMN sean_ellis_response TEXT DEFAULT ''"
+        )
+    if not _column_exists(conn, "measurement_updates", "effort_test_response"):
+        cur.execute(
+            "ALTER TABLE measurement_updates "
+            "ADD COLUMN effort_test_response TEXT DEFAULT ''"
+        )
+
     cur.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     conn.commit()
 
@@ -297,8 +335,9 @@ def save_measurement(rec: MeasurementUpdate, db_path: Path | None = None) -> Non
             INSERT INTO measurement_updates (
                 update_id, prediction_id, user_id, observed_at,
                 actual_outcome_json, calibration_json,
-                user_satisfaction, user_notes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                user_satisfaction, user_notes,
+                sean_ellis_response, effort_test_response
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 rec.update_id,
@@ -309,6 +348,8 @@ def save_measurement(rec: MeasurementUpdate, db_path: Path | None = None) -> Non
                 json.dumps(rec.calibration_delta, ensure_ascii=False),
                 rec.user_satisfaction,
                 rec.user_notes,
+                rec.sean_ellis_response,
+                rec.effort_test_response,
             ),
         )
         conn.commit()
@@ -416,6 +457,149 @@ def get_calibration_aggregate(
     if log_losses:
         out["mean_log_loss"] = sum(log_losses) / len(log_losses)
     return out
+
+
+def get_sean_ellis_summary(
+    user_id: str | None = None,
+    bias_filter: str = "exclude_owner",
+    db_path: Path | None = None,
+) -> dict[str, Any]:
+    """v4.16 playbook-adopt — Sean Ellis disappointment aggregate.
+
+    Anthropic's playbook §4 (MVP) calls out the canonical PMF
+    indicator: among active users, the share who answer "very
+    disappointed" to "How would you feel if you could no longer use
+    this product?" If >40% say very_disappointed, that's a meaningful
+    PMF signal.
+
+    Args:
+      user_id: optional user filter (None = aggregate across users).
+      bias_filter: default ``"exclude_owner"`` — playbook intent is
+        market signal, so owner self-tests should be excluded by
+        default. Pass ``"all"`` if you want every response.
+      db_path: override db path.
+
+    Returns:
+      Dict with keys:
+        - ``n``: total measurements with a Sean Ellis response set
+          (rows whose response is "" are excluded as missing data)
+        - ``very_disappointed``, ``somewhat_disappointed``,
+          ``not_disappointed``: raw counts
+        - ``very_disappointed_pct``: percentage of n in
+          very_disappointed bucket
+        - ``meets_threshold``: bool — True if
+          very_disappointed_pct ≥ 40 (the playbook threshold)
+      Empty dict if no responses recorded yet.
+    """
+    if bias_filter not in ("all", "exclude_owner", "owner_only"):
+        raise ValueError(
+            f"bias_filter must be 'all' | 'exclude_owner' | 'owner_only'"
+        )
+    bias_where = ""
+    if bias_filter == "exclude_owner":
+        bias_where = " AND COALESCE(p.is_owner_bias_flagged, 0) = 0"
+    elif bias_filter == "owner_only":
+        bias_where = " AND COALESCE(p.is_owner_bias_flagged, 0) = 1"
+
+    with db_connect(db_path) as conn:
+        if user_id:
+            sql = (
+                "SELECT m.sean_ellis_response FROM measurement_updates m "
+                "JOIN predictions p ON p.prediction_id = m.prediction_id "
+                "WHERE m.user_id = ? AND m.sean_ellis_response != ''"
+                + bias_where
+            )
+            rows = conn.execute(sql, (user_id,)).fetchall()
+        else:
+            sql = (
+                "SELECT m.sean_ellis_response FROM measurement_updates m "
+                "JOIN predictions p ON p.prediction_id = m.prediction_id "
+                "WHERE 1=1 AND m.sean_ellis_response != ''"
+                + bias_where
+            )
+            rows = conn.execute(sql).fetchall()
+    if not rows:
+        return {}
+
+    very = sum(1 for r in rows if r["sean_ellis_response"] == "very_disappointed")
+    somewhat = sum(1 for r in rows if r["sean_ellis_response"] == "somewhat_disappointed")
+    not_d = sum(1 for r in rows if r["sean_ellis_response"] == "not_disappointed")
+    n = len(rows)
+    very_pct = (very / n) * 100.0 if n > 0 else 0.0
+    return {
+        "n": n,
+        "very_disappointed": very,
+        "somewhat_disappointed": somewhat,
+        "not_disappointed": not_d,
+        "very_disappointed_pct": very_pct,
+        "meets_threshold": very_pct >= 40.0,
+    }
+
+
+def get_effort_test_summary(
+    user_id: str | None = None,
+    bias_filter: str = "exclude_owner",
+    db_path: Path | None = None,
+) -> dict[str, Any]:
+    """v4.16 playbook-adopt — effort test (push→pull transition).
+
+    Anthropic's playbook §4 (MVP): pre-PMF retention requires
+    "heroic founder energy" pushing users; post-PMF the product
+    "starts doing that work on its own." Captures whether users
+    self-returned to the product over the measurement window, or
+    only when the operator nudged them.
+
+    Returns:
+      Dict with:
+        - n
+        - self_returned, needed_reminder, did_not_return (raw counts)
+        - self_returned_pct
+        - leans_pull: bool — True if self_returned > 50% of n
+      Empty dict if no responses.
+    """
+    if bias_filter not in ("all", "exclude_owner", "owner_only"):
+        raise ValueError(
+            f"bias_filter must be 'all' | 'exclude_owner' | 'owner_only'"
+        )
+    bias_where = ""
+    if bias_filter == "exclude_owner":
+        bias_where = " AND COALESCE(p.is_owner_bias_flagged, 0) = 0"
+    elif bias_filter == "owner_only":
+        bias_where = " AND COALESCE(p.is_owner_bias_flagged, 0) = 1"
+
+    with db_connect(db_path) as conn:
+        if user_id:
+            sql = (
+                "SELECT m.effort_test_response FROM measurement_updates m "
+                "JOIN predictions p ON p.prediction_id = m.prediction_id "
+                "WHERE m.user_id = ? AND m.effort_test_response != ''"
+                + bias_where
+            )
+            rows = conn.execute(sql, (user_id,)).fetchall()
+        else:
+            sql = (
+                "SELECT m.effort_test_response FROM measurement_updates m "
+                "JOIN predictions p ON p.prediction_id = m.prediction_id "
+                "WHERE 1=1 AND m.effort_test_response != ''"
+                + bias_where
+            )
+            rows = conn.execute(sql).fetchall()
+    if not rows:
+        return {}
+
+    self_r = sum(1 for r in rows if r["effort_test_response"] == "self_returned")
+    needed = sum(1 for r in rows if r["effort_test_response"] == "needed_reminder")
+    didnt = sum(1 for r in rows if r["effort_test_response"] == "did_not_return")
+    n = len(rows)
+    self_pct = (self_r / n) * 100.0 if n > 0 else 0.0
+    return {
+        "n": n,
+        "self_returned": self_r,
+        "needed_reminder": needed,
+        "did_not_return": didnt,
+        "self_returned_pct": self_pct,
+        "leans_pull": self_pct > 50.0,
+    }
 
 
 def get_calibration_bias_breakdown(

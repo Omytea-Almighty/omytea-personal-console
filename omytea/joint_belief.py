@@ -1,6 +1,6 @@
 """Joint belief state for v0.4 multi-entity correlated futures.
 
-Per ``PLAN.md`` "State Representation Hierarchy" and ``WORK_PLAN_V04.md`` §3.1:
+Per the upstream Omytea plan document "State Representation Hierarchy" and the upstream Omytea work plan §3.1:
 
 - ``JointBranchHypothesis`` is one cell in the joint hypothesis grid: a mapping
   from entity_id → its hypothesis_id (referencing the per-entity
@@ -13,9 +13,9 @@ Per ``PLAN.md`` "State Representation Hierarchy" and ``WORK_PLAN_V04.md`` §3.1:
 - ``JointCoupling`` is a real-valued log-potential; ``DistanceCoupling`` is the
   v0.4 ship default (single global κ, hand-coded per scenario, pairwise on
   predicted positions). Other coupling types and per-type-pair κ are explicitly
-  out of scope for v0.4 — see ``WORK_PLAN_V04.md`` §3.2.
+  out of scope for v0.4 — see the upstream Omytea work plan §3.2.
 
-Pruning order is locked in M1 (``WORK_PLAN_V04.md`` §3.1): when joint
+Pruning order is locked in M1 (the upstream Omytea work plan §3.1): when joint
 enumeration would exceed ``max_joint_branches``, prune in **ascending weight**
 order; ties break **lexicographically** by the tuple of branch ids in
 ``entity_ids`` order. Determinism is required — no reliance on dict insertion
@@ -23,7 +23,7 @@ order or float-equality ambiguity.
 
 Architecture inspired in part by MiroFish's ontology-pattern (AGPL-3.0;
 ``docs/research/MIROFISH_NOTES.md``); no code copied. The Operator Library
-framing in ``PLAN.md`` makes this module a strict v0.4 deliverable: the
+framing in the upstream Omytea plan document makes this module a strict v0.4 deliverable: the
 operator-protocol surface itself lands at v0.4 M5 (acceptance criterion 7).
 """
 
@@ -112,10 +112,10 @@ class DistanceCoupling:
       faraway pairs, joint weight reduced when entities far apart).
     - ``κ < 0`` encourages avoidance.
     - ``κ = 0`` is the **marginal-recovery sanity invariant** of
-      ``WORK_PLAN_V04.md`` §5 criterion 2: the joint must reduce exactly to the
+      the upstream Omytea work plan §5 criterion 2: the joint must reduce exactly to the
       product of marginals within ε.
 
-    Per ``WORK_PLAN_V04.md`` §3.2, v0.4 ships exactly **one** coupling type
+    Per the upstream Omytea work plan §3.2, v0.4 ships exactly **one** coupling type
     (``DistanceCoupling``) and a single global ``kappa`` value. Per-type-pair
     κ, learned κ, and synchronized-discrete coupling are explicitly out of
     scope for v0.4 and tracked as v0.5+ items.
@@ -357,7 +357,7 @@ class JointWaveFunction:
         With ``coupling=None`` (or with a coupling whose ``log_potential`` is
         identically zero, e.g. ``DistanceCoupling(kappa=0.0)``), the joint
         reduces exactly to the product of marginals. This is the marginal-
-        recovery invariant from ``WORK_PLAN_V04.md`` §5 criterion 2.
+        recovery invariant from the upstream Omytea work plan §5 criterion 2.
 
         **v3.5 S2 — tensor-network high-N path (Strategy B default)**:
         When the entity count is high (``N >= 4``) or the implied state
@@ -377,7 +377,7 @@ class JointWaveFunction:
         mass). The helper sets ``HighNJointResult.top_k_exact=False`` whenever
         ``coupling`` is provided. For **bit-identical** agreement with the
         legacy softmax + prune path (full d^N, same tie-break as
-        ``WORK_PLAN_V04`` §3.1), pass ``use_tensor_network=False`` — that is
+        the upstream Omytea work plan §3.1), pass ``use_tensor_network=False`` — that is
         the supported escape hatch for audits and golden tests.
 
         ``use_tensor_network`` override:
@@ -592,7 +592,7 @@ class JointWaveFunction:
     def pruned(self, max_joint_branches: int) -> "JointWaveFunction":
         """Prune to at most ``max_joint_branches`` cells, then renormalize.
 
-        Order locked in ``WORK_PLAN_V04.md`` §3.1:
+        Order locked in the upstream Omytea work plan §3.1:
 
         1. Cells with **lower probability** are pruned first (ascending
            weight removed first).
@@ -666,7 +666,7 @@ class JointWaveFunction:
         """v0.4 M3: P(all entities in ``region``) under this joint.
 
         Sums joint cell probabilities where every entity's selected branch
-        has its position inside the region. Used by ``WORK_PLAN_V04.md`` §5
+        has its position inside the region. Used by the upstream Omytea work plan §5
         criterion 4(a) — the Bernoulli interpretability metric ("all in
         region R at horizon").
 
@@ -713,7 +713,7 @@ class JointWaveFunction:
         result is a programmer error upstream — caller should verify
         the entities are in ``self.entity_ids``).
 
-        Used by ``WORK_PLAN_V04.md`` §5 criterion 4(b) — the continuous-CRPS
+        Used by the upstream Omytea work plan §5 criterion 4(b) — the continuous-CRPS
         statistical metric on horizon-time pair separation. Feed the result
         directly into :func:`omytea.scoring.crps_empirical_weighted`.
         """
@@ -749,7 +749,7 @@ class JointWaveFunction:
             weights.append(cell.probability)
         return samples, weights
 
-    # ----- density-matrix bridge (PLAN.md primary representation) -------
+    # ----- density-matrix bridge (the upstream Omytea plan document primary representation) -------
 
     def to_joint_diagonal_rho(self) -> JointDiagonalRho:
         """v0.4-style sparse diagonal view (ignores off-diagonal couplings)."""
