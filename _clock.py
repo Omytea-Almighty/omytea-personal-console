@@ -1370,18 +1370,21 @@ def _nye_defs() -> str:
         '<stop offset="72%" stop-color="rgba(70,140,220,0)"/>'
         '</radialGradient>'
         # sun
-        '<radialGradient id="nye-sun-core" cx="32%" cy="30%" r="55%">'
-        '<stop offset="0%" stop-color="#ffffff"/>'
-        '<stop offset="14%" stop-color="#fff8e8"/>'
-        '<stop offset="32%" stop-color="#ffe4a8"/>'
-        '<stop offset="55%" stop-color="#ff9c40"/>'
-        '<stop offset="78%" stop-color="#d85818"/>'
-        '<stop offset="100%" stop-color="rgba(90,28,6,0)"/>'
+        # CENTRED fiery disc — a self-luminous star is brightest dead
+        # centre (an off-centre highlight reads as a lit glass ball).
+        '<radialGradient id="nye-sun-core" cx="50%" cy="50%" r="52%">'
+        '<stop offset="0%" stop-color="#fffdf6"/>'
+        '<stop offset="20%" stop-color="#fff0bf"/>'
+        '<stop offset="42%" stop-color="#ffd166"/>'
+        '<stop offset="64%" stop-color="#ff9a2e"/>'
+        '<stop offset="84%" stop-color="#f06b16"/>'
+        '<stop offset="100%" stop-color="#bc4408"/>'
         '</radialGradient>'
-        '<radialGradient id="nye-sun-inner" cx="45%" cy="42%" r="48%">'
-        '<stop offset="0%" stop-color="#fffef8"/>'
-        '<stop offset="40%" stop-color="#ffd888"/>'
-        '<stop offset="100%" stop-color="rgba(200,80,20,0.15)"/>'
+        '<radialGradient id="nye-sun-inner" cx="50%" cy="50%" r="50%">'
+        '<stop offset="0%" stop-color="#ffffff"/>'
+        '<stop offset="34%" stop-color="rgba(255,247,214,0.92)"/>'
+        '<stop offset="70%" stop-color="rgba(255,205,110,0.30)"/>'
+        '<stop offset="100%" stop-color="rgba(255,160,60,0)"/>'
         '</radialGradient>'
         '<radialGradient id="nye-sun-corona" cx="50%" cy="50%" r="50%">'
         '<stop offset="0%" stop-color="rgba(255,248,220,0.88)"/>'
@@ -1414,10 +1417,11 @@ def _nye_defs() -> str:
         '<stop offset="62%" stop-color="#0a3550"/>'
         '<stop offset="100%" stop-color="#020a14"/>'
         '</radialGradient>'
-        '<radialGradient id="nye-earth-land" cx="58%" cy="36%" r="52%">'
-        '<stop offset="0%" stop-color="rgba(110,175,108,0.92)"/>'
-        '<stop offset="42%" stop-color="rgba(32,88,52,0.58)"/>'
-        '<stop offset="100%" stop-color="rgba(0,0,0,0)"/>'
+        '<radialGradient id="nye-earth-land" cx="60%" cy="34%" r="80%">'
+        '<stop offset="0%" stop-color="#8fb572"/>'
+        '<stop offset="38%" stop-color="#6e9a52"/>'
+        '<stop offset="66%" stop-color="#8a7846"/>'
+        '<stop offset="100%" stop-color="#3f3a26"/>'
         '</radialGradient>'
         '<radialGradient id="nye-earth-atmo" cx="50%" cy="26%" r="82%">'
         '<stop offset="0%" stop-color="rgba(200,240,255,0.55)"/>'
@@ -1479,6 +1483,50 @@ def _nye_defs() -> str:
         'result="b"/>'
         '<feMerge><feMergeNode in="b"/>'
         '<feMergeNode in="SourceGraphic"/></feMerge>'
+        '</filter>'
+        # --- celestial-body surface textures: GPU-free fractal-noise
+        #     filters. These lift the bodies from smooth glass balls to
+        #     real, textured, lit spheres (static SVG only). ---
+        # Sun: warp the fiery disc into churning plasma.
+        '<filter id="nye-sun-plasma" x="-34%" y="-34%" '
+        'width="168%" height="168%">'
+        '<feTurbulence type="fractalNoise" baseFrequency="0.013" '
+        'numOctaves="4" seed="17" result="t"/>'
+        '<feDisplacementMap in="SourceGraphic" in2="t" scale="30" '
+        'xChannelSelector="R" yChannelSelector="G"/>'
+        '</filter>'
+        # Sun: dark granulation cells stippling the photosphere.
+        '<filter id="nye-sun-granule">'
+        '<feTurbulence type="fractalNoise" baseFrequency="0.058" '
+        'numOctaves="3" seed="9" result="g"/>'
+        '<feColorMatrix in="g" type="matrix" values="0 0 0 0 0 '
+        '0 0 0 0 0 0 0 0 0 0 0 0 0 1.05 -0.5" result="m"/>'
+        '<feComposite in="m" in2="SourceAlpha" operator="in"/>'
+        '</filter>'
+        # Earth: fractal continents masked out of a green disc.
+        '<filter id="nye-earth-conti">'
+        '<feTurbulence type="fractalNoise" baseFrequency="0.026" '
+        'numOctaves="5" seed="5" result="c"/>'
+        '<feComponentTransfer in="c" result="thr">'
+        '<feFuncA type="discrete" tableValues="0 0 0 0 0 1 1 1"/>'
+        '</feComponentTransfer>'
+        '<feComposite in="SourceGraphic" in2="thr" operator="in"/>'
+        '</filter>'
+        # Earth: soft white cloud wisps.
+        '<filter id="nye-earth-cloud">'
+        '<feTurbulence type="fractalNoise" baseFrequency="0.032" '
+        'numOctaves="4" seed="12" result="w"/>'
+        '<feColorMatrix in="w" type="matrix" values="0 0 0 0 1 '
+        '0 0 0 0 1 0 0 0 0 1 0 0 0 0.92 -0.4" result="cl"/>'
+        '<feComposite in="cl" in2="SourceAlpha" operator="in"/>'
+        '</filter>'
+        # Moon: cratered grey mottling.
+        '<filter id="nye-moon-tex">'
+        '<feTurbulence type="fractalNoise" baseFrequency="0.2" '
+        'numOctaves="3" seed="4" result="mn"/>'
+        '<feColorMatrix in="mn" type="matrix" values="0 0 0 0 0 '
+        '0 0 0 0 0 0 0 0 0 0 0 0 0 0.95 -0.42" result="mm"/>'
+        '<feComposite in="mm" in2="SourceAlpha" operator="in"/>'
         '</filter>'
         '</defs>'
     )
@@ -1546,25 +1594,28 @@ def _nye_sun(sun_sign_color: str) -> str:
             f'filter="url(#nye-sun-tight)"></circle>'
         )
     parts.append(
-        # warm bloom + corona behind the core
-        '<circle cx="0" cy="0" r="138" fill="url(#nye-sun-halo)" '
-        'opacity="0.55" filter="url(#nye-sun-bloom)"></circle>'
-        '<circle cx="0" cy="0" r="104" fill="url(#nye-sun-corona)" '
-        'opacity="0.62" filter="url(#nye-sun-bloom)"></circle>'
-        '<circle cx="0" cy="0" r="80" fill="url(#nye-sun-corona)" '
-        'opacity="0.42"></circle>'
-        # the glowing body — inner + core
-        '<circle cx="0" cy="0" r="64" fill="url(#nye-sun-inner)" '
+        # warm outer bloom + corona behind the body
+        '<circle cx="0" cy="0" r="152" fill="url(#nye-sun-halo)" '
+        'opacity="0.58" filter="url(#nye-sun-bloom)"></circle>'
+        '<circle cx="0" cy="0" r="112" fill="url(#nye-sun-corona)" '
+        'opacity="0.66" filter="url(#nye-sun-bloom)"></circle>'
+        '<circle cx="0" cy="0" r="84" fill="url(#nye-sun-corona)" '
+        'opacity="0.5"></circle>'
+        # the turbulent plasma disc — a centred fiery gradient warped
+        # into churning plasma by the fractal-noise displacement filter
+        '<circle cx="0" cy="0" r="66" fill="url(#nye-sun-core)" '
+        'filter="url(#nye-sun-plasma)"></circle>'
+        # dark granulation cells stippling the photosphere
+        '<circle cx="0" cy="0" r="62" fill="#000000" opacity="0.42" '
+        'filter="url(#nye-sun-granule)"></circle>'
+        # white-hot centred bloom
+        '<circle cx="0" cy="0" r="44" fill="url(#nye-sun-inner)" '
         'filter="url(#nye-sun-tight)"></circle>'
-        '<circle cx="0" cy="0" r="47" fill="url(#nye-sun-core)" '
-        'filter="url(#nye-soft-glow)"></circle>'
-        '<circle cx="0" cy="0" r="49" fill="none" '
-        'stroke="rgba(255,252,235,0.42)" stroke-width="1.15"></circle>'
-        f'<circle cx="0" cy="0" r="41" fill="none" '
-        f'stroke="{sun_sign_color}" stroke-opacity="0.5" '
-        f'stroke-width="0.9"></circle>'
-        '<circle cx="0" cy="0" r="32" fill="rgba(255,255,255,0.08)" '
-        'stroke="rgba(255,240,200,0.18)" stroke-width="0.35"></circle>'
+        # the 占星 Sun-sign hue — a soft tint washed into the corona,
+        # not a hard line drawn across the plasma
+        f'<circle cx="0" cy="0" r="94" fill="none" '
+        f'stroke="{sun_sign_color}" stroke-opacity="0.16" '
+        f'stroke-width="8" filter="url(#nye-sun-bloom)"></circle>'
         '</g>'
     )
     return "".join(parts)
@@ -1577,36 +1628,26 @@ def _nye_earth() -> str:
     onto the orbit."""
     return (
         '<g>'
-        '<circle r="52" cx="0" cy="0" fill="url(#nye-earth-atmo)" '
+        # atmospheric glow halo
+        '<circle r="54" cx="0" cy="0" fill="url(#nye-earth-atmo)" '
         'opacity="0.72"></circle>'
-        '<circle r="39" cx="0" cy="0" fill="url(#nye-earth-ocean)" '
-        'stroke="rgba(255,255,255,0.22)" stroke-width="0.62"></circle>'
+        # ocean sphere
+        '<circle r="39" cx="0" cy="0" fill="url(#nye-earth-ocean)">'
+        '</circle>'
+        # fractal-noise continents masked out of a lit green disc
         '<circle r="39" cx="0" cy="0" fill="url(#nye-earth-land)" '
-        'opacity="0.9"></circle>'
-        '<path d="M-26,-10 C-12,-22 10,-20 22,-8 S32,10 16,22 '
-        'C6,28 -10,26 -22,14 S-32,-4 -26,-10Z" '
-        'fill="rgba(48,118,78,0.58)" opacity="0.72"></path>'
-        '<path d="M-10,8 C4,-6 20,-2 26,12 S14,30 -6,26 '
-        'S-22,16 -10,8Z" fill="rgba(40,102,62,0.52)" '
-        'opacity="0.68"></path>'
-        '<path d="M8,-18 C22,-14 28,-4 24,8 S8,14 -4,6 '
-        'S-2,-14 8,-18Z" fill="rgba(55,125,85,0.45)" '
-        'opacity="0.62"></path>'
+        'filter="url(#nye-earth-conti)"></circle>'
+        # white cloud wisps
+        '<circle r="39" cx="0" cy="0" fill="#ffffff" opacity="0.6" '
+        'filter="url(#nye-earth-cloud)"></circle>'
+        # day / night terminator + limb highlight
         '<circle r="39" cx="0" cy="0" fill="url(#nye-earth-term)" '
-        'opacity="0.46"></circle>'
+        'opacity="0.5"></circle>'
         '<circle r="39" cx="0" cy="0" fill="url(#nye-earth-limb)" '
-        'opacity="0.55"></circle>'
-        '<ellipse rx="14" ry="21" cx="-13" cy="-12" '
-        'fill="rgba(255,255,255,0.32)" opacity="0.88"></ellipse>'
-        '<path d="M-30,-5 Q-10,12 22,2" fill="none" '
-        'stroke="rgba(255,255,255,0.16)" stroke-width="0.58" '
-        'stroke-linecap="round" opacity="0.92"></path>'
-        '<path d="M-12,14 Q8,24 26,10" fill="none" '
-        'stroke="rgba(255,255,255,0.11)" stroke-width="0.42" '
-        'stroke-linecap="round"></path>'
-        '<circle r="40.5" cx="0" cy="0" fill="none" '
-        'stroke="rgba(120,200,255,0.18)" stroke-width="0.45" '
-        'opacity="0.85"></circle>'
+        'opacity="0.5"></circle>'
+        # bright atmospheric rim
+        '<circle r="39" cx="0" cy="0" fill="none" '
+        'stroke="rgba(150,215,255,0.55)" stroke-width="1.2"></circle>'
         '</g>'
     )
 
@@ -1616,19 +1657,18 @@ def _nye_moon(cx: float, cy: float) -> str:
     to the Nye Clock orbHelioMoonNode."""
     return (
         f'<g transform="translate({cx:.2f},{cy:.2f})">'
-        '<circle r="11.2" cx="0" cy="0" fill="url(#nye-moon-surf)" '
-        'stroke="rgba(255,255,255,0.48)" stroke-width="0.48" '
-        'filter="url(#nye-soft-glow)"></circle>'
+        # lit grey surface
+        '<circle r="11.2" cx="0" cy="0" fill="url(#nye-moon-surf)">'
+        '</circle>'
+        # cratered fractal-noise mottling
+        '<circle r="11.2" cx="0" cy="0" fill="#000000" opacity="0.5" '
+        'filter="url(#nye-moon-tex)"></circle>'
+        # soft phase shade
         '<circle r="11.2" cx="0" cy="0" fill="url(#nye-moon-shade)" '
-        'opacity="0.85"></circle>'
-        '<ellipse cx="-3.2" cy="-2.8" rx="2.1" ry="1.6" '
-        'fill="rgba(0,0,0,0.14)"></ellipse>'
-        '<circle cx="3.5" cy="2.8" r="1.15" '
-        'fill="rgba(0,0,0,0.12)"></circle>'
-        '<circle cx="-2" cy="4" r="0.85" '
-        'fill="rgba(0,0,0,0.1)"></circle>'
-        '<ellipse cx="3" cy="-3" rx="1.4" ry="1" '
-        'fill="rgba(255,255,255,0.22)" opacity="0.9"></ellipse>'
+        'opacity="0.9"></circle>'
+        # crisp lit limb
+        '<circle r="11.2" cx="0" cy="0" fill="none" '
+        'stroke="rgba(255,255,255,0.34)" stroke-width="0.45"></circle>'
         '</g>'
     )
 
