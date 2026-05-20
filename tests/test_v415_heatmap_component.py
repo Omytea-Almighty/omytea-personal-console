@@ -211,6 +211,28 @@ def test_component_renders_idle_grid_when_no_branches() -> None:
     assert "Branch A" in html and "Branch E" in html
 
 
+def test_heatmap_grid_is_fine_and_compact() -> None:
+    """The heatmap uses a fine, compact grid (Acceptance #63).
+
+    The founder rejected oversized cells. The fix: many time columns,
+    a narrow left gutter, a short canvas, a per-cell height cap and a
+    width-capped column — so every cell reads small + precise rather
+    than as an oversized block. Lock those values so they cannot
+    silently regress back to the wide 9-column grid.
+    """
+    html = _build_html([])
+    # prediction / idle: 24 fine time columns, not the old 9.
+    assert "var ncols = 24;" in html
+    # narrow left gutter (was 200) keeps the grid wide → cells small.
+    assert "PADX_L = 96" in html
+    # short canvas + per-cell height cap keep rows from ballooning.
+    assert "SVG_H = 206" in html
+    assert "MAX_CELL_H = 30" in html
+    # the forecast column is width-capped so the SVG is not stretched
+    # across the full Console width.
+    assert ".forecast {" in html and "max-width: 680px" in html
+
+
 def test_component_exposes_test_hook() -> None:
     """A window.__omyteaHeatmap hook is exposed for verification."""
     html = _build_html([])

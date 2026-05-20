@@ -93,8 +93,10 @@ def branches_to_payload(hypotheses: list[Any]) -> list[dict[str, Any]]:
 
 # Component pixel height. Tall enough for the side-by-side layout (camera
 # preview column + heatmap column) without an inner scrollbar at the
-# default Console width; the iframe itself never scrolls.
-_COMPONENT_HEIGHT = 760
+# default Console width; the iframe itself never scrolls. Trimmed after
+# the heatmap canvas was shortened (Acceptance #63) so the panel is not
+# padded with dead space below a now-compact grid.
+_COMPONENT_HEIGHT = 620
 
 
 def render_heatmap_camera_component(
@@ -269,10 +271,20 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
     line-height: 1.5;
   }}
   .cam-note.show {{ display: block; }}
+  /* ---- forecast column ---- */
+  /* idle / prediction: cap the whole column so the heatmap + its
+     caption + legend stay a compact centred block; the live
+     side-by-side layout uses the full column width. */
+  .forecast {{ max-width: 680px; margin: 0 auto; }}
+  .stage.live .forecast {{ max-width: none; margin: 0; }}
   /* ---- heatmap card ---- */
+  /* The .forecast cap above bounds the rendered grid so each cell
+     stays small + precise (Acceptance #63) — an unbounded column
+     stretched the SVG across the full Console width and ballooned
+     every cell. */
   .heat-card {{
     background: var(--surface); border: 1px solid var(--hairline);
-    border-radius: 8px; padding: 8px 4px;
+    border-radius: 8px; padding: 10px 10px 6px;
     box-shadow: 0 10px 40px rgba(0,0,0,0.35),
       0 1px 0 rgba(255,255,255,0.025) inset;
   }}
@@ -381,7 +393,7 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
     <div class="forecast">
       <div class="heat-wrap">
         <div class="heat-card">
-          <svg id="heatmap" viewBox="0 0 760 380"
+          <svg id="heatmap" viewBox="0 0 760 206"
                preserveAspectRatio="xMidYMid meet"
                aria-label="Probability heatmap">
             <g id="heat-axis"></g>
@@ -604,10 +616,18 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
   }}
 
   // ===== heatmap geometry =====
-  var SVG_W = 760, SVG_H = 380;
-  var PADX_L = 200, PADX_R = 16, PADY_T = 16, PADY_B = 30;
+  // Cell sizing tracks the v10 marketing demo's finer grid: a narrow
+  // left gutter (96, not 200) so the grid is wide, many time columns
+  // so each cell is small + precise, and a shorter canvas so the rows
+  // do not balloon into oversized blocks. The grid stays centred so a
+  // few-row prediction does not stretch each cell vertically.
+  var SVG_W = 760, SVG_H = 206;
+  var PADX_L = 96, PADX_R = 16, PADY_T = 12, PADY_B = 26;
   var GRID_W = SVG_W - PADX_L - PADX_R;
   var GRID_H = SVG_H - PADY_T - PADY_B;
+  // hard cap on a single cell so a 5-row prediction grid never draws
+  // giant blocks — surplus vertical space becomes a centred margin.
+  var MAX_CELL_H = 30;
 
   // mode A — server prediction present: branch x time grid.
   // mode B — idle, no prediction: uniform branch x time grid.
@@ -649,10 +669,12 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
         kind: "live",
       }};
     }}
-    // prediction / idle: branch x time, sharpening uniform -> predicted
+    // prediction / idle: branch x time, sharpening uniform -> predicted.
+    // Many fine time columns (24) — a compact, precise grid like the
+    // v10 marketing demo's 31-step heatmap, not a few oversized blocks.
     var branches = BRANCHES.length > 0 ? BRANCHES : idleBranches();
     var n = branches.length;
-    var ncols = 9;
+    var ncols = 24;
     var uniform = 1 / n;
     var g = [];
     var gm = 0;
@@ -676,7 +698,7 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
       rows: n, cols: ncols, grid: g, gmax: gm || 1,
       rowLabels: branches.map(function (b, ix) {{
         var lbl = (b.label || ("Branch " + (ix + 1))).trim();
-        return lbl.length > 26 ? lbl.slice(0, 25) + "…" : lbl;
+        return lbl.length > 11 ? lbl.slice(0, 10) + "…" : lbl;
       }}),
       rowColors: colors,
       branches: branches,
@@ -701,20 +723,26 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
     GD = buildGrid();
     var rows = GD.rows, cols = GD.cols;
     var cellW = GRID_W / cols;
-    var cellH = GRID_H / rows;
+    // cap cell height so a few-row prediction grid stays compact; the
+    // surplus vertical space becomes a centred top/bottom margin.
+    var cellH = Math.min(MAX_CELL_H, GRID_H / rows);
+    var gridH = cellH * rows;
+    var gy0 = PADY_T + (GRID_H - gridH) / 2;
     var axis = "";
     var grid = "";
 
-    // row labels (left)
+    // row labels (left). Compact: smaller font for the narrow gutter.
     for (var r = 0; r < rows; r++) {{
-      var y = PADY_T + r * cellH + cellH / 2 + 4;
+      var y = gy0 + r * cellH + cellH / 2 + 3.4;
       var lab = GD.rowLabels[r]
         .replace(/&/g, "&amp;").replace(/</g, "&lt;");
-      axis += '<text x="' + (PADX_L - 10) + '" y="' + y.toFixed(1) +
+      axis += '<text x="' + (PADX_L - 8) + '" y="' + y.toFixed(1) +
         '" text-anchor="end" font-family="var(--mono)" ' +
-        'font-size="11" fill="#b9bfc8">' + lab + "</text>";
+        'font-size="9.5" fill="#b9bfc8">' + lab + "</text>";
     }}
-    // cells
+    // cells — fine grid: a hairline gap, crisp corners. The gap is a
+    // fixed 0.5px so cells stay precise + tight even when small.
+    var gap = 0.5;
     for (var c = 0; c < cols; c++) {{
       for (var r2 = 0; r2 < rows; r2++) {{
         var p = GD.grid[r2][c];
@@ -723,23 +751,23 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
         var glow = (c === cols - 1)
           ? ' filter="url(#heat-glow)"' : "";
         var cx = PADX_L + c * cellW;
-        var cy = PADY_T + r2 * cellH;
-        grid += '<rect class="heatmap-cell" x="' + (cx + 1).toFixed(1) +
-          '" y="' + (cy + 1).toFixed(1) + '" width="' +
-          (cellW - 2).toFixed(1) + '" height="' +
-          (cellH - 2).toFixed(1) + '" rx="2" fill="rgba(' + rgb + "," +
-          op + ')" stroke="#0a0c11" stroke-width="0.5"' + glow +
-          ' data-step="' + c + '" data-row="' + r2 +
+        var cy = gy0 + r2 * cellH;
+        grid += '<rect class="heatmap-cell" x="' + (cx + gap).toFixed(2) +
+          '" y="' + (cy + gap).toFixed(2) + '" width="' +
+          (cellW - 2 * gap).toFixed(2) + '" height="' +
+          (cellH - 2 * gap).toFixed(2) + '" rx="1" fill="rgba(' +
+          rgb + "," + op + ')" stroke="#0a0c11" stroke-width="0.35"' +
+          glow + ' data-step="' + c + '" data-row="' + r2 +
           '" data-prob="' + p.toFixed(4) + '"></rect>';
       }}
     }}
     // horizon column highlight
     var hlx = PADX_L + (cols - 1) * cellW;
-    grid += '<rect x="' + (hlx + 0.5).toFixed(1) + '" y="' +
-      (PADY_T - 3) + '" width="' + (cellW - 1).toFixed(1) +
-      '" height="' + (rows * cellH + 6).toFixed(1) +
-      '" rx="3" fill="none" stroke="rgba(139,140,255,0.55)" ' +
-      'stroke-width="1.1"></rect>';
+    grid += '<rect x="' + (hlx + 0.4).toFixed(1) + '" y="' +
+      (gy0 - 2.5).toFixed(1) + '" width="' + (cellW - 0.8).toFixed(1) +
+      '" height="' + (gridH + 5).toFixed(1) +
+      '" rx="2" fill="none" stroke="rgba(139,140,255,0.55)" ' +
+      'stroke-width="1.0"></rect>';
     // bottom NOW -> HORIZON axis
     var axisY = PADY_T + GRID_H + 14;
     axis += '<line x1="' + PADX_L + '" y1="' + (axisY - 8) +

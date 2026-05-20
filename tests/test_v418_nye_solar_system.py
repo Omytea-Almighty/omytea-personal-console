@@ -1,21 +1,23 @@
-"""Nye Clock 玄学 view (OMY-V415 / M2 / Acceptance #54, REBUILT for #61).
+"""Nye Clock 玄学 view (OMY-V415 / M2 / Acceptance #54, REBUILT for #64).
 
 The dense unified astrolabe (founder verdict "不知所云") is replaced by a
 faithful static-SVG recreation of the founder's real Nye Clock.
 
-Acceptance #61 REBUILT this view from the canonical final Nye Clock —
-``~/Downloads/UCSB/Adonyth/tw_.html`` — after the redesign Stage 3
-renderer was found to have been built from the WRONG reference
-(``academic-cv-site/nye-clock-backdrop.html``, an older CV-site
-backdrop). The tw_.html-faithful layout: the Earth globe is the heart
-of the instrument; the 干支 ride it as small 五行-tinted CIRCULAR COIN
-tokens in two concentric rings (inner 12 地支, outer 10 天干); the
-active day-pillar 干支 glow large and free-floating; the Sun is a
-separate body off-axis; the Moon a small lit sphere by the Earth.
+Acceptance #64 REBUILT this view (4th attempt) to faithfully match the
+canonical final Nye Clock — ``~/Downloads/UCSB/Adonyth/tw_.html``. The
+founder rejected the earlier Earth-centred, tight-busy-coin-wheel
+composition as "太乱" (wrong composition). The tw_.html-faithful layout
+is a STATIC visual style: a deep-black, spacious deep-space scene; a
+LARGE glowing Sun with several concentric translucent corona shells
+dominating the upper-right; a SMALL blue Earth tucked into the
+lower-left corner with a thin orbital ring, a small Moon and a TIGHT
+cluster of small 五行-tinted 干支 coin tokens; and large but faint 干支
+glyphs floating sparsely across the black field.
 
 These tests pin: (1) the view is the tw_.html Nye Clock, not the old
-astrolabe; (2) it is GPU-free static SVG; (3) the 八字 / 占星 data maps
-onto it legibly; (4) the geometry helpers are correct.
+astrolabe; (2) it is GPU-free static SVG; (3) the composition is
+Sun-dominant with the Earth in a corner; (4) the 八字 / 占星 data maps
+onto it legibly; (5) the geometry helpers are correct.
 """
 
 from __future__ import annotations
@@ -122,7 +124,8 @@ def test_lens_has_no_animation() -> None:
 
 def test_bazi_sexagenary_rails_are_ganzhi_coin_rings() -> None:
     """The 八字 movement is two concentric rings of 干支 COIN tokens
-    around the Earth — the tw_.html layout (Acceptance #61).
+    in a TIGHT cluster around the small corner Earth — the tw_.html
+    layout (Acceptance #64).
 
     Each coin is a 五行-tinted bezel ring + the character. There are 22
     coins total: an inner ring of 12 地支 + an outer ring of 10 天干.
@@ -145,25 +148,25 @@ def test_ganzhi_characters_render_on_the_coins() -> None:
         assert ch in svg, f"missing 地支 {ch}"
 
 
-def test_view_is_earth_centred_not_oblique() -> None:
-    """The tw_.html 玄学 view is an Earth-centred 干支 wheel — NOT the
-    old superseded 20-degree oblique solar-system frame."""
+def test_view_is_not_oblique() -> None:
+    """The tw_.html 玄学 view uses an upright deep-space frame — NOT
+    the old superseded 20-degree oblique solar-system frame."""
     rb, ra = _readings()
     svg = _render(rb, ra)
     # the old wrong-reference renderer tilted the whole scene 20°
     assert "rotate(20" not in svg
-    # the Earth-centred coin rings are the new structure
+    # the 干支 coin cluster is part of the new structure
     assert "url(#tw-coin-" in svg
 
 
-def test_four_pillars_appear_as_large_glowing_glyphs() -> None:
-    """All four 八字 pillars (year/month/day/hour) render as large
-    free-floating glowing glyphs — the enlarged glyphs in tw_.html."""
+def test_four_pillars_render_as_jewelled_markers() -> None:
+    """All four 八字 pillars (year/month/day/hour) render — small
+    jewelled 干支 markers in a column clear of the dominant Sun."""
     rb, ra = _readings()
     svg = _render(rb, ra)
     for name in ("YEAR", "MONTH", "DAY", "HOUR"):
         assert name in svg
-    # the active-glyph glow filter is applied
+    # the soft glyph-glow filter is applied
     assert "url(#tw-glyph-glow)" in svg
 
 
@@ -176,10 +179,12 @@ def test_readout_carries_model_and_consensus() -> None:
     assert "MODEL" in svg
 
 
-def test_sun_position_tracks_zodiac_sun_sign() -> None:
-    """Different birth charts → the Earth sits at a different ecliptic
-    angle on the orbit (the 占星 Sun sign drives placement). Two charts
-    with different Sun signs must yield different Earth translations."""
+def test_view_reflects_the_birth_chart() -> None:
+    """Different birth charts → a different rendered scene. The 占星
+    Sun sign tints the Sun's engraved ring + the Earth halo, and the
+    八字 day pillar lights different 干支 coins, so two distinct charts
+    must yield distinct SVGs (the view is genuinely data-driven, read
+    from the verified _metaphysics engine)."""
     # Pick two dates several months apart — different Sun signs.
     rb1, ra1 = _readings(1993, 1, 10, 8)
     rb2, ra2 = _readings(1993, 7, 10, 8)
@@ -187,8 +192,56 @@ def test_sun_position_tracks_zodiac_sun_sign() -> None:
     assert ra1.natal.sun != ra2.natal.sun
     svg1 = _render(rb1, ra1)
     svg2 = _render(rb2, ra2)
-    # The Earth-cluster translate(...) coordinates differ.
     assert svg1 != svg2
+
+
+# --------------------------------------------------------------------
+# the rebuilt composition — Sun-dominant, Earth in a corner, sparse
+# 干支 (Acceptance #64 — faithful to tw_.html)
+# --------------------------------------------------------------------
+
+def test_composition_is_sun_dominant_earth_in_corner() -> None:
+    """The view's composition matches the real tw_.html: a LARGE Sun
+    dominating the upper area, a SMALL Earth tucked into a lower
+    corner. Pin the layout constants so the rejected centred-Earth
+    composition cannot return.
+    """
+    # the Earth is small and the Sun is the big body
+    assert _clock._TW_EARTH_R <= 70, "the corner Earth must stay small"
+    # the Earth sits in the lower-left quadrant of the 1000x920 frame
+    assert _clock._TW_EARTH_CX < _clock._NYE_VB_W * 0.42
+    assert _clock._TW_EARTH_CY > _clock._NYE_VB_H * 0.55
+    # the Sun sits in the upper-right region, well clear of the Earth
+    assert _clock._TW_SUN_CX > _clock._NYE_VB_W * 0.55
+    assert _clock._TW_SUN_CY < _clock._NYE_VB_H * 0.5
+    # the coin cluster hugs the small Earth (tight rings)
+    assert _clock._TW_STEM_RING_R < 180, "coin cluster must stay tight"
+    assert _clock._TW_COIN_R <= 16, "干支 coins must be small tokens"
+
+
+def test_sun_has_concentric_corona_shells() -> None:
+    """The Sun carries several big concentric translucent corona /
+    atmosphere shells — the dominant nested-sphere look of tw_.html."""
+    rb, ra = _readings()
+    svg = _render(rb, ra)
+    # the soft corona-shell gradient is defined and used
+    assert 'id="nye-sun-shell"' in svg
+    assert svg.count("url(#nye-sun-shell)") >= 3
+
+
+def test_sparse_floating_ganzhi_glyphs_scatter_the_field() -> None:
+    """Large faint 干支 glyphs float sparsely across the black field
+    — the drifting characters of the real tw_.html scene."""
+    rb, ra = _readings()
+    svg = _render(rb, ra)
+    # the float-glyph layout table is sane: several, generously sized
+    glyphs = _clock._TW_FLOAT_GLYPHS
+    assert 6 <= len(glyphs) <= 12, "sparse — a handful, not a crowd"
+    for _x, _y, size, kind in glyphs:
+        assert size >= 36, "the floating glyphs are large"
+        assert kind in ("stem", "branch")
+    # they render dim (faint), not at full opacity
+    assert 'fill-opacity="0.30"' in svg
 
 
 # --------------------------------------------------------------------
