@@ -130,56 +130,62 @@ st.markdown(
         font-weight: 600;
     }
 
-    /* ---- Buttons: lifted surface, hairline, gentle depth.
-       Hover lifts toward lavender; primary carries the one
-       quiet glow. ---- */
-    .stButton > button, .stDownloadButton > button {
-        border-radius: 7px;
-        border: 1px solid #262b37;
-        background: linear-gradient(180deg, #1b2029, #15191f);
+    /* ---- Buttons — v10 .ctl / .scenario-btn language: a flat
+       surface fill, ONE fine hairline, ~9px radius, calm hover
+       toward lavender. No gradients — v10 buttons are solid
+       planes, restraint over depth. ---- */
+    .stButton > button, .stDownloadButton > button,
+    .stLinkButton > a {
+        border-radius: 9px;
+        border: 1px solid #232834;
+        background: #11141b;
         color: #e7e9ee;
         font-weight: 500;
+        font-size: 13.5px;
         letter-spacing: -0.003em;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.35);
-        transition: border-color 0.16s ease, background 0.16s ease,
-                    box-shadow 0.16s ease, transform 0.16s ease;
+        padding: 8px 16px;
+        box-shadow: none;
+        transition: border-color 0.15s ease, background 0.15s ease,
+                    color 0.15s ease;
     }
-    .stButton > button:hover, .stDownloadButton > button:hover {
-        background: linear-gradient(180deg, #222734, #1a1f29);
-        border-color: rgba(139,140,255,0.55);
+    .stButton > button:hover, .stDownloadButton > button:hover,
+    .stLinkButton > a:hover {
+        background: #181c25;
+        border-color: #8b8cff;
         color: #f0f2f5;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.45);
+        box-shadow: none;
     }
     .stButton > button:active, .stDownloadButton > button:active {
-        transform: translateY(0.5px);
+        background: #1f2530;
     }
-    .stButton > button:focus-visible, .stDownloadButton > button:focus-visible {
+    .stButton > button:focus-visible, .stDownloadButton > button:focus-visible,
+    .stLinkButton > a:focus-visible {
         outline: none;
-        box-shadow: 0 0 0 1px rgba(139,140,255,0.7),
-                    0 0 14px rgba(139,140,255,0.22);
+        border-color: #8b8cff;
+        box-shadow: 0 0 0 3px rgba(139,140,255,0.15);
     }
-    /* Primary — the lavender call-to-action. Restrained: a
-       lifted lavender-tinted surface + a fine bright edge +
-       one quiet halo, not a saturated slab. */
+    /* Primary — v10's .ask-btn: a solid lavender plane, canvas-dark
+       label. The one assertive control; not a glow slab. */
     .stButton > button[kind="primary"], .stButton > button[data-testid="baseButton-primary"],
     .stButton > button[kind="primaryFormSubmit"],
     .stFormSubmitButton > button {
-        background: linear-gradient(180deg,
-            rgba(139,140,255,0.30), rgba(139,140,255,0.16));
-        border: 1px solid rgba(139,140,255,0.58);
-        color: #f6f5ff;
-        font-weight: 550;
-        box-shadow: 0 0 18px rgba(139,140,255,0.16),
-                    inset 0 1px 0 rgba(255,255,255,0.06);
+        background: #8b8cff;
+        border: 1px solid #8b8cff;
+        color: #0a0c11;
+        font-weight: 600;
+        box-shadow: none;
     }
     .stButton > button[kind="primary"]:hover,
     .stButton > button[kind="primaryFormSubmit"]:hover,
     .stFormSubmitButton > button:hover {
-        background: linear-gradient(180deg,
-            rgba(139,140,255,0.40), rgba(139,140,255,0.23));
-        border-color: rgba(139,140,255,0.80);
-        box-shadow: 0 0 26px rgba(139,140,255,0.26),
-                    inset 0 1px 0 rgba(255,255,255,0.08);
+        background: #9d9eff;
+        border-color: #9d9eff;
+        color: #0a0c11;
+        box-shadow: 0 0 0 3px rgba(139,140,255,0.15);
+    }
+    .stFormSubmitButton > button:focus-visible,
+    .stButton > button[kind="primary"]:focus-visible {
+        box-shadow: 0 0 0 3px rgba(139,140,255,0.22);
     }
 
     /* ---- Sidebar buttons: quieter than the main column.
@@ -209,82 +215,141 @@ st.markdown(
         color: #f0f2f5;
         box-shadow: none;
     }
-    /* The "✦ New prediction" button keeps the lavender treatment */
+    /* The "✦ New prediction" button — v10 solid-lavender plane,
+       matching the main-column primary. The one assertive
+       control in the rail. */
     section[data-testid="stSidebar"] .stButton:first-of-type > button {
-        background: linear-gradient(180deg,
-            rgba(139,140,255,0.28), rgba(139,140,255,0.14));
-        border: 1px solid rgba(139,140,255,0.54);
-        border-radius: 8px;
-        color: #f6f5ff;
-        font-weight: 550;
+        background: #8b8cff;
+        border: 1px solid #8b8cff;
+        border-radius: 9px;
+        color: #0a0c11;
+        font-weight: 600;
         text-align: center;
         justify-content: center;
         padding: 9px 12px;
-        box-shadow: 0 0 16px rgba(139,140,255,0.14);
+        box-shadow: none;
     }
     section[data-testid="stSidebar"] .stButton:first-of-type > button:hover {
-        background: linear-gradient(180deg,
-            rgba(139,140,255,0.38), rgba(139,140,255,0.21));
-        border-color: rgba(139,140,255,0.76);
-        box-shadow: 0 0 22px rgba(139,140,255,0.22);
+        background: #9d9eff;
+        border-color: #9d9eff;
+        color: #0a0c11;
+        box-shadow: 0 0 0 3px rgba(139,140,255,0.15);
     }
 
-    /* ---- Text inputs / textareas / selects: lifted panels,
-       fine borders, a clean lavender focus ring. ---- */
-    .stTextInput input, .stTextArea textarea,
-    .stNumberInput input,
+    /* ---- Text inputs / textareas / selects — v10 input-field
+       language: a flat #11141b fill, ONE 1px #232834 hairline,
+       ~10px radius, comfortable padding, a clean lavender focus
+       border. BaseWeb wraps the field in nested nodes; the outer
+       wrapper carries the border, the inner nodes go transparent
+       so there is exactly one visible line. ---- */
+    .stTextInput div[data-baseweb="base-input"],
+    .stTextArea div[data-baseweb="base-input"],
+    div[data-baseweb="textarea"],
+    .stNumberInput div[data-baseweb="base-input"],
     .stSelectbox div[data-baseweb="select"] > div,
     div[data-baseweb="select"] > div {
-        background: #14171f !important;
-        border: 1px solid #242935 !important;
-        border-radius: 7px !important;
+        background: #11141b !important;
+        border: 1px solid #232834 !important;
+        border-radius: 10px !important;
         color: #e7e9ee !important;
         transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
+    /* Inner BaseWeb nodes — keep them clear so the wrapper's
+       single hairline is the only line the eye sees. */
+    [data-testid="stTextArea"] textarea,
+    [data-testid="stTextInput"] input,
+    .stTextInput input, .stTextArea textarea,
+    .stNumberInput input,
+    div[data-baseweb="base-input"] input,
+    div[data-baseweb="textarea"] textarea {
+        background: transparent !important;
+        border: none !important;
+        color: #e7e9ee !important;
+        font-size: 14px !important;
+        padding: 9px 12px !important;
+        -webkit-text-fill-color: #e7e9ee;
+    }
+    [data-testid="stTextInput"] input::placeholder,
+    [data-testid="stTextArea"] textarea::placeholder,
     .stTextInput input::placeholder, .stTextArea textarea::placeholder {
-        color: #5a626e !important;
+        color: #4b525d !important;
+        -webkit-text-fill-color: #4b525d;
     }
-    .stTextArea textarea:focus, .stTextInput input:focus,
-    .stNumberInput input:focus {
-        border-color: rgba(139,140,255,0.75) !important;
-        box-shadow: 0 0 0 1px rgba(139,140,255,0.55),
-                    0 0 14px rgba(139,140,255,0.16) !important;
-    }
+    /* Focus — v10 lavender border, a soft halo, no glow slab. */
+    .stTextInput div[data-baseweb="base-input"]:focus-within,
+    .stTextArea div[data-baseweb="base-input"]:focus-within,
+    div[data-baseweb="textarea"]:focus-within,
+    .stNumberInput div[data-baseweb="base-input"]:focus-within,
     div[data-baseweb="select"]:focus-within > div {
-        border-color: rgba(139,140,255,0.7) !important;
-        box-shadow: 0 0 0 1px rgba(139,140,255,0.5) !important;
+        border-color: #8b8cff !important;
+        box-shadow: 0 0 0 3px rgba(139,140,255,0.15) !important;
     }
-    /* Selectbox + popover dropdown panels */
+    /* Hover — a quiet brightening of the hairline (v10 .ctl:hover). */
+    .stTextInput div[data-baseweb="base-input"]:hover,
+    .stTextArea div[data-baseweb="base-input"]:hover,
+    div[data-baseweb="textarea"]:hover,
+    div[data-baseweb="select"]:hover > div {
+        border-color: #2f3542 !important;
+    }
+    /* Suppress BaseWeb's own focus outline on the inner field. */
+    [data-testid="stTextArea"] textarea:focus,
+    [data-testid="stTextInput"] input:focus,
+    div[data-baseweb="base-input"] input:focus,
+    div[data-baseweb="textarea"] textarea:focus {
+        outline: none !important;
+        box-shadow: none !important;
+    }
+    /* Selectbox + popover dropdown panels — v10 surface-3 card,
+       a fine hairline, restrained shadow. */
     div[data-baseweb="popover"] [role="listbox"],
     div[data-baseweb="menu"] {
         background: #181c25 !important;
-        border: 1px solid #2a303d !important;
-        border-radius: 8px !important;
-        box-shadow: 0 12px 34px rgba(0,0,0,0.6) !important;
+        border: 1px solid #232834 !important;
+        border-radius: 10px !important;
+        box-shadow: 0 12px 34px rgba(0,0,0,0.55) !important;
+    }
+    li[role="option"], div[data-baseweb="menu"] li {
+        font-size: 13.5px !important;
+        color: #b9bfc8 !important;
     }
     li[role="option"]:hover, div[data-baseweb="menu"] li:hover {
         background: rgba(139,140,255,0.12) !important;
+        color: #f0f2f5 !important;
+    }
+    li[role="option"][aria-selected="true"] {
+        background: rgba(139,140,255,0.15) !important;
+        color: #f0f2f5 !important;
     }
 
-    /* ---- Labels above widgets ---- */
+    /* ---- Labels above widgets — v10 field-label tone: a quiet
+       --ink-2 grey, light weight, just enough presence. ---- */
     .stTextInput label, .stTextArea label, .stSelectbox label,
-    .stNumberInput label, .stRadio label, .stFileUploader label {
-        color: #8b93a0 !important;
+    .stNumberInput label, .stRadio label, .stFileUploader label,
+    .stCheckbox label, .stToggle label {
+        color: #76808d !important;
         font-size: 12.5px !important;
         font-weight: 500 !important;
-        letter-spacing: 0.002em;
+        letter-spacing: 0.004em;
+    }
+    /* Toggle / checkbox inline labels read at body size — they
+       are statements, not field captions. */
+    .stToggle label p, .stCheckbox label p {
+        color: #b9bfc8 !important;
+        font-size: 13.5px !important;
     }
 
-    /* ---- Expanders: flat lifted card, fine border, calm
-       hover. Opened body sits on the surface tone. ---- */
+    /* ---- Expanders — v10 card language: a flat #11141b plane,
+       ONE 1px #232834 hairline, 12px radius. The "More details"
+       composer expander reads as a quiet card you can open. ---- */
     [data-testid="stExpander"] {
-        border: 1px solid #1f2430;
-        border-radius: 9px;
-        background: #10131a;
+        border: 1px solid #232834;
+        border-radius: 12px;
+        background: #11141b;
         overflow: hidden;
     }
     section[data-testid="stSidebar"] [data-testid="stExpander"] {
         margin-bottom: 7px;
+        border-radius: 10px;
         background: #0f1219;
     }
     section[data-testid="stSidebar"] [data-testid="stExpander"] summary {
@@ -297,57 +362,90 @@ st.markdown(
     }
     [data-testid="stExpander"] summary,
     [data-testid="stExpander"] details > summary {
-        background: #14171f;
+        background: #11141b;
         border: none;
         border-radius: 0;
-        padding: 11px 14px;
-        color: #c7cdd6;
+        padding: 11px 15px;
+        color: #b9bfc8;
         font-weight: 500;
+        font-size: 13px;
         transition: background 0.15s ease, color 0.15s ease;
     }
     [data-testid="stExpander"] summary:hover {
-        background: #181c26;
+        background: #181c25;
         color: #f0f2f5;
     }
+    /* Expander chevron — quiet --ink-2, brightens with the row. */
+    [data-testid="stExpander"] summary svg { fill: #76808d; }
+    [data-testid="stExpander"] summary:hover svg { fill: #b9bfc8; }
     [data-testid="stExpander"] [data-testid="stExpanderDetails"] {
-        background: #10131a;
-        padding: 4px 14px 12px;
+        background: #11141b;
+        padding: 6px 15px 14px;
     }
 
-    /* ---- Toggles: track + knob restyled; on-state glows
-       lavender (the live-video / 玄学-lens switches). ---- */
-    .stCheckbox [data-baseweb="checkbox"] div[role="checkbox"],
-    label[data-baseweb="checkbox"] > span:first-child {
-        border-color: #2f3542 !important;
-    }
+    /* ---- Toggles — the live-video / 玄学-lens switches. Off:
+       a v10 surface-3 track with a fine hairline + a pale knob.
+       On: a solid lavender track, canvas-dark knob — the v10
+       accent applied with restraint, no glow slab. ---- */
+    .stToggle [data-baseweb="checkbox"] [role="checkbox"],
     div[data-baseweb="toggle"] {
-        background: #20242f !important;
+        background: #1f2530 !important;
+        border: 1px solid #232834 !important;
     }
+    .stToggle [data-baseweb="checkbox"] [role="checkbox"][aria-checked="true"],
     div[data-baseweb="toggle"][aria-checked="true"],
     button[role="switch"][aria-checked="true"] {
-        background: rgba(139,140,255,0.85) !important;
-        box-shadow: 0 0 12px rgba(139,140,255,0.4) !important;
+        background: #8b8cff !important;
+        border-color: #8b8cff !important;
+        box-shadow: none !important;
     }
-    div[data-baseweb="toggle"] div {
-        background: #f0f2f5 !important;
+    /* The knob — a clean disc; rides dark on the lavender track. */
+    .stToggle [data-baseweb="checkbox"] [role="checkbox"] > div,
+    div[data-baseweb="toggle"] > div {
+        background: #b9bfc8 !important;
+    }
+    .stToggle [data-baseweb="checkbox"] [role="checkbox"][aria-checked="true"] > div,
+    div[data-baseweb="toggle"][aria-checked="true"] > div {
+        background: #0a0c11 !important;
+    }
+    /* Plain checkbox (owner-bias flag) — v10 hairline box,
+       lavender when checked. */
+    .stCheckbox [data-baseweb="checkbox"] [role="checkbox"] {
+        background: #11141b !important;
+        border: 1px solid #232834 !important;
+        border-radius: 4px !important;
+    }
+    .stCheckbox [data-baseweb="checkbox"] [role="checkbox"][aria-checked="true"] {
+        background: #8b8cff !important;
+        border-color: #8b8cff !important;
     }
 
-    /* ---- Popover (the "+ Attach" control) ---- */
+    /* ---- Popover panel (the "+ Attach" control) — a v10 card:
+       #181c25 surface, 1px #232834 hairline, 12px radius. The
+       trigger button inherits the secondary-button language
+       above. ---- */
     div[data-baseweb="popover"] > div {
-        background: #14171f !important;
-        border: 1px solid #2a303d !important;
-        border-radius: 10px !important;
-        box-shadow: 0 16px 40px rgba(0,0,0,0.62) !important;
+        background: #181c25 !important;
+        border: 1px solid #232834 !important;
+        border-radius: 12px !important;
+        box-shadow: 0 16px 40px rgba(0,0,0,0.55) !important;
+    }
+    [data-testid="stPopoverBody"] {
+        background: #181c25 !important;
+        padding: 16px !important;
     }
 
-    /* ---- File uploader dropzone ---- */
+    /* ---- File uploader dropzone — v10 input-card look, a dashed
+       hairline that turns lavender on hover. ---- */
     [data-testid="stFileUploaderDropzone"] {
-        background: #14171f !important;
+        background: #11141b !important;
         border: 1px dashed #2c3340 !important;
-        border-radius: 8px !important;
+        border-radius: 10px !important;
+        transition: border-color 0.15s ease, background 0.15s ease;
     }
     [data-testid="stFileUploaderDropzone"]:hover {
-        border-color: rgba(139,140,255,0.5) !important;
+        border-color: #8b8cff !important;
+        background: #181c25 !important;
     }
 
     /* ---- Sliders ---- */
@@ -436,16 +534,18 @@ st.markdown(
         text-transform: uppercase;
     }
 
-    /* ---- Bordered containers — the composer card, embedded
-       panels: surface tone, fine border, soft depth. ---- */
+    /* ---- Bordered containers — the composer card + embedded
+       panels. v10 .preview-card / .cf-card language: a flat
+       #11141b plane, ONE 1px #232834 hairline, 13px radius,
+       generous padding. Restraint over depth — no gradient,
+       no heavy drop shadow. ---- */
     [data-testid="stContainer"][data-border="true"],
     div[data-testid="stVerticalBlockBorderWrapper"],
     div[data-testid="stContainer"]:has(> div[data-testid="stContainerBorder"]) {
-        background: linear-gradient(180deg, #12151d, #0f1219);
-        border: 1px solid #20242f !important;
-        border-radius: 12px;
-        box-shadow: 0 1px 0 rgba(255,255,255,0.02) inset,
-                    0 10px 30px rgba(0,0,0,0.35);
+        background: #11141b;
+        border: 1px solid #232834 !important;
+        border-radius: 13px;
+        box-shadow: none;
     }
 
     /* ---- Tabs ---- */
@@ -462,10 +562,32 @@ st.markdown(
     }
     .stTabs [data-baseweb="tab-highlight"] { background: #8b8cff !important; }
 
-    /* ---- Alerts — calm, fine-bordered, not loud blocks ---- */
+    /* ---- Alerts — calm, fine-bordered, not loud blocks. v10
+       semantics: teal = ready/wired, red = error, amber =
+       caution — applied as a tinted surface + hairline. ---- */
     [data-testid="stAlert"] {
-        border-radius: 9px;
-        border: 1px solid #20242f;
+        border-radius: 10px;
+        border: 1px solid #232834;
+        background: #11141b;
+    }
+    [data-testid="stAlert"] p { color: #b9bfc8 !important; }
+    /* Success — v10 teal "wired/ready" tone (the attach confirms). */
+    [data-testid="stAlert"]:has([data-testid="stAlertContentSuccess"]),
+    div[data-baseweb="notification"][kind="positive"] {
+        border-color: rgba(88,197,180,0.35);
+        background: rgba(88,197,180,0.07);
+    }
+    /* Error — v10 red. */
+    [data-testid="stAlert"]:has([data-testid="stAlertContentError"]),
+    div[data-baseweb="notification"][kind="negative"] {
+        border-color: rgba(255,94,110,0.35);
+        background: rgba(255,94,110,0.07);
+    }
+    /* Warning — v10 amber. */
+    [data-testid="stAlert"]:has([data-testid="stAlertContentWarning"]),
+    div[data-baseweb="notification"][kind="warning"] {
+        border-color: rgba(216,166,87,0.32);
+        background: rgba(216,166,87,0.07);
     }
 
     /* ---- Tables / dataframes ---- */
@@ -873,7 +995,7 @@ def render_sidebar() -> tuple[str, Any]:
         f"{T('brand.disclaimer')}"
         f"</div>"
         f"<div style='color:#76808d;font-size:11px;margin-top:12px;'>"
-        f"{_brand.footer_markdown()}"
+        f"{_brand.footer_html()}"
         f"</div>"
         # Tiny build marker — lets the user confirm which build the
         # Streamlit Cloud worker is actually serving.

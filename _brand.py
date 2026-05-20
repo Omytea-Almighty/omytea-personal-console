@@ -57,6 +57,23 @@ def footer_markdown() -> str:
     )
 
 
+def footer_html() -> str:
+    """Return the footer as an HTML fragment (links + bold rendered).
+
+    ``footer_markdown()`` is correct only when handed to a markdown
+    renderer. When the footer is interpolated into a raw ``<div>`` block
+    passed to ``st.markdown(..., unsafe_allow_html=True)``, Streamlit does
+    not re-parse the markdown — ``**bold**`` and ``[label](url)`` would
+    render literally. This variant emits the same content as HTML so the
+    sidebar footer renders correctly."""
+    return (
+        f"<strong>{BRAND_NAME_SHORT}</strong> v{BRAND_VERSION} · "
+        f'<a href="{BRAND_REPO_URL}" target="_blank">GitHub</a> · '
+        f'<a href="{BRAND_PRIVACY_URL}" target="_blank">Privacy</a> · '
+        f'<a href="{BRAND_HOMEPAGE}" target="_blank">Home</a>'
+    )
+
+
 def emoji_for(mode: str) -> str:
     """Lookup the canonical emoji for a mode. Falls back to a neutral
     bullet if a mode name isn't recognised — keeps the UI from
@@ -75,5 +92,6 @@ __all__ = [
     "BRAND_LIVE_DEMO_URL",
     "MODE_EMOJI",
     "footer_markdown",
+    "footer_html",
     "emoji_for",
 ]
