@@ -82,31 +82,70 @@ _V10_PATH = Path(__file__).resolve().parent / "static" / LIVE_VIDEO_V10_FILE
 # pane (one-screen layout) without the pane itself scrolling.
 _LIVE_VIDEO_HEIGHT = 392
 
-# CSS + JS injected into the embedded v10 copy so the console surfaces
-# ONLY v10's "see-both-at-once" panel — the camera preview beside the
-# quantum heatmap. The console composer owns ALL prediction input, so
-# the output region must hold output only: v10's onboarding chrome
-# (scenario picker, branding topbar, upload card, now-banner) AND its
-# two remaining input controls — the "Use my camera" start card
-# (.input-row) and the "What would change this picture?" counterfactual
-# box (.cf-card) — are all hidden. With no in-iframe start button the
-# injected script auto-starts the camera on load: the user flipped the
-# composer's "Live video" toggle, which IS the intent to go live.
-# v10's side-by-side grid normally needs >=1100px; the console forces
-# it on here regardless of width.
+# CSS + JS injected into the embedded v10 copy. The console output
+# region holds OUTPUT ONLY, and the surviving camera + heatmap surface
+# is polished to sit beside the console's own quantum-heatmap as one
+# consistent, premium surface. Hidden: v10's onboarding chrome
+# (scenario picker, topbar, upload, now-banner), its input controls
+# (the "Use my camera" .input-row + the "What would change this
+# picture?" .cf-card), and its verbose explanatory copy (the
+# .honesty-note essay under the camera + the .caveat under the answer).
+# The heatmap header is kept to one line (it wrapped in the narrow
+# side-by-side column) and the camera | heatmap grid is forced on
+# (v10's own grid needs >=1100px). With no in-iframe start button the
+# injected script auto-starts the camera on load — flipping the
+# composer's "Live video" toggle is the single start control.
 _V10_EMBED_SCOPE = """
 <style id="omytea-embed-scope">
-.topbar,#scenario-card,#input-file,#input-scenario,
+/* hide v10's onboarding chrome, input controls + verbose copy — the
+   console composer owns input, the output region is output-only */
+.topbar,.menu-btn,#scenario-card,#input-file,#input-scenario,
 .now-banner,.hero-head,.more-row,footer.footer,
-.input-row,.cf-card{display:none!important;}
-main{max-width:none!important;margin:0!important;padding:12px 14px!important;}
+.input-row,.cf-card,.honesty-note,.file-info,
+.answer-text .caveat{display:none!important;}
+/* full-bleed — the console output pane is the frame */
+html,body{background:#0a0c11!important;}
+main{max-width:none!important;margin:0!important;
+ padding:18px 20px!important;}
+body:not(.camera-active) main{max-width:740px!important;
+ margin:0 auto!important;}
+/* camera | heatmap side-by-side + a full-width one-line read */
 body.camera-active main{display:grid!important;
- grid-template-columns:minmax(240px,38%) 1fr!important;
- gap:16px!important;max-width:none!important;}
-#preview-card{top:0!important;}
-body{background:#0a0c11!important;}
+ grid-template-columns:minmax(250px,40%) 1fr!important;
+ gap:16px 20px!important;align-items:start!important;}
+body.camera-active #preview-card{grid-area:1/1/2/2!important;}
+body.camera-active .heat-card{grid-area:1/2/2/3!important;}
+body.camera-active .answer-text{grid-area:2/1/3/3!important;}
 @media (max-width:560px){
- body.camera-active main{grid-template-columns:1fr!important;}}
+ body.camera-active main{grid-template-columns:1fr!important;}
+ body.camera-active #preview-card,body.camera-active .heat-card,
+ body.camera-active .answer-text{grid-area:auto!important;}}
+/* shared card chrome — both cards read as one refined surface,
+   matching the console's own quantum-heatmap card */
+#preview-card,.heat-card{position:static!important;margin:0!important;
+ border-radius:8px!important;
+ border:1px solid var(--hairline)!important;
+ box-shadow:0 10px 40px rgba(0,0,0,0.35),
+  0 1px 0 rgba(255,255,255,0.03) inset!important;}
+#preview-card{overflow:hidden!important;padding:14px!important;}
+.preview-card .video-wrap{border-radius:7px!important;
+ overflow:hidden!important;}
+.preview-card .label{margin-bottom:10px!important;}
+.heat-card{padding:15px 17px 11px!important;}
+/* the header wrapped to two lines in the narrow side-by-side column —
+   keep the title on one line, drop v10's verbose reading hint */
+.heat-card .head{align-items:center!important;gap:10px!important;
+ margin-bottom:10px!important;}
+.heat-card .head .title{white-space:nowrap!important;
+ font-size:11px!important;letter-spacing:0.13em!important;}
+.heat-card .head .reading-hint{display:none!important;}
+/* soften the heatmap cells — rounded corners read more refined */
+.heatmap-cell{rx:2px!important;ry:2px!important;}
+/* the one-line plain-English read — centred, quiet, premium */
+.answer-text{text-align:center!important;max-width:none!important;
+ margin:2px 8px 0!important;padding:0!important;
+ font-size:12.5px!important;line-height:1.6!important;
+ color:var(--ink-1)!important;}
 </style>
 <script id="omytea-embed-autostart">
 /* The console composer owns all input — v10's own "Use my camera"

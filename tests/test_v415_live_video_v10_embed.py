@@ -287,6 +287,9 @@ def test_embed_scope_removes_v10_input_chrome_and_autostarts_camera() -> None:
     scope = _heatmap_component._V10_EMBED_SCOPE
     # Both of v10's leftover input controls are hidden.
     assert ".input-row" in scope and ".cf-card" in scope
+    # v10's verbose explanatory copy is hidden too — output region
+    # holds output only, no walls of essay text.
+    assert ".honesty-note" in scope and ".caveat" in scope
     # The camera auto-starts: an injected script clicks v10's trigger.
     assert "<script" in scope
     assert "input-camera" in scope and "click()" in scope
