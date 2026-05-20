@@ -698,16 +698,23 @@ def _render_traditional_lens(
         ausp = readings[sysk].auspice
         col = ("#58c5b4" if ausp >= 0.56
                else "#ff5e6e" if ausp <= 0.44 else "#8b8cff")
+        pct = ausp * 100.0
         chips.append(
-            f'<div style="flex:1;min-width:108px;background:#11141b;'
+            f'<div style="flex:1;min-width:112px;background:#11141b;'
             f'border:1px solid #232834;border-radius:8px;'
-            f'padding:8px 10px;text-align:center;">'
-            f'<div style="color:#76808d;font-size:9px;'
-            f'letter-spacing:0.13em;text-transform:uppercase;">'
-            f'{_html.escape(str(T(f"trad.system.{sysk}")))}</div>'
-            f'<div style="color:{col};font-size:18px;font-weight:600;'
-            f"font-family:'Cormorant Garamond',Georgia,serif;"
-            f'margin-top:2px;">{ausp * 100:.0f}%</div></div>'
+            f'padding:9px 11px 10px;">'
+            f'<div style="display:flex;justify-content:space-between;'
+            f'align-items:baseline;">'
+            f'<span style="color:#76808d;font-size:8.5px;'
+            f'letter-spacing:0.12em;text-transform:uppercase;">'
+            f'{_html.escape(str(T(f"trad.system.{sysk}")))}</span>'
+            f'<span style="color:{col};font-size:15px;font-weight:600;'
+            f"font-family:'Cormorant Garamond',Georgia,serif;\">"
+            f'{pct:.0f}%</span></div>'
+            f'<div style="margin-top:6px;height:4px;border-radius:2px;'
+            f'background:#232834;overflow:hidden;">'
+            f'<div style="height:100%;width:{pct:.0f}%;background:{col};'
+            f'border-radius:2px;"></div></div></div>'
         )
     chips.append('</div>')
     st.markdown("".join(chips), unsafe_allow_html=True)
@@ -1323,11 +1330,14 @@ def _render_probability_heatmap(
         for c in range(cols):
             cx = grid_x + c * cell_w
             alpha = 0.05 + 0.93 * (grid[i][c] / gmax)
+            # the resolved column (your moment) glows — the distribution
+            # visibly "lands" as the horizon arrives.
+            glow = ' filter="url(#heat-glow)"' if c == cols - 1 else ""
             parts.append(
                 f'<rect x="{cx + 1:.1f}" y="{y + 1:.1f}" '
                 f'width="{cell_w - 2:.1f}" height="{row_h - 2}" rx="2" '
                 f'fill="rgba({rgb},{alpha:.3f})" '
-                f'stroke="#0a0c11" stroke-width="0.5"></rect>'
+                f'stroke="#0a0c11" stroke-width="0.5"{glow}></rect>'
             )
         # right-edge final probability
         parts.append(
@@ -1393,6 +1403,10 @@ def _render_probability_heatmap(
         f'0 1px 0 rgba(255,255,255,0.025) inset;">'
         f'<svg viewBox="0 0 {vb_w} {total_h}" width="100%" '
         f'preserveAspectRatio="xMidYMid meet" style="display:block;">'
+        f'<defs><filter id="heat-glow" x="-40%" y="-40%" width="180%" '
+        f'height="180%"><feGaussianBlur stdDeviation="2.4" result="b"/>'
+        f'<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/>'
+        f'</feMerge></filter></defs>'
         f'{"".join(parts)}'
         f'</svg>'
         f'</div>'
