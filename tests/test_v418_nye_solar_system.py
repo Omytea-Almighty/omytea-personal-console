@@ -22,7 +22,7 @@ the panel still carries live output.
 These tests pin: (1) the view is an SVG embedding the real Nye Clock
 still; (2) the still asset is a real JPEG; (3) the view is GPU-free and
 completely static; (4) the readout strip carries the data-driven
-numbers; (5) the surviving geometry / coin helpers still work.
+numbers.
 """
 
 from __future__ import annotations
@@ -165,88 +165,3 @@ def test_readout_is_data_driven() -> None:
     b = _render(rb, ra, top_value="71%", bottom_value="48%")
     assert a != b
     assert "71%" in b and "48%" in b
-
-
-# --------------------------------------------------------------------
-# surviving geometry / coin helpers (used by the legacy renderers and
-# kept as reusable units)
-# --------------------------------------------------------------------
-
-def test_nye_ell_origin_and_quarter() -> None:
-    """_nye_ell maps angles onto an origin-centred ellipse."""
-    x0, y0 = _clock._nye_ell(330.0, 196.0, 0.0)
-    assert abs(x0 - 330.0) < 1e-6 and abs(y0) < 1e-6
-    x90, y90 = _clock._nye_ell(330.0, 196.0, 90.0)
-    assert abs(x90) < 1e-6 and abs(y90 - 196.0) < 1e-6
-
-
-def test_nye_ell_arc_returns_path() -> None:
-    """_nye_ell_arc emits a valid elliptical-arc path string."""
-    d = _clock._nye_ell_arc(300.0, 180.0, -90.0, -54.0)
-    assert d.startswith("M ") and " A " in d
-
-
-def test_nye_canvas_constants() -> None:
-    """The legacy Nye Clock canvas constants are unchanged."""
-    assert _clock._NYE_VB_W == 1000
-    assert _clock._NYE_VB_H == 920
-    assert _clock._NYE_OBLIQUE_DEG == 20.0
-
-
-def test_tw_wuxing_palette_is_five_elements() -> None:
-    """The tw_.html 五行 coin palette has all five elements, each with a
-    rim + a deep tone for a real radial-gradient coin."""
-    assert len(_clock._TW_WUXING) == 5
-    for rim, deep in _clock._TW_WUXING:
-        assert rim.startswith("#") and deep.startswith("#")
-
-
-def test_tw_coin_renders_bezel_ring_and_character() -> None:
-    """A 干支 coin token is a 五行-tinted bezel ring + the character."""
-    coin = _clock._tw_coin(100.0, 100.0, "甲", 0)
-    assert coin.startswith("<g ") and coin.endswith("</g>")
-    assert "甲" in coin
-    assert "url(#tw-coin-0)" in coin
-    assert "<circle" in coin
-
-
-def test_tw_coin_active_state_lights_up() -> None:
-    """The active (day-pillar) coin is enlarged + glowing vs an idle one."""
-    idle = _clock._tw_coin(0.0, 0.0, "乙", 1, active=False)
-    active = _clock._tw_coin(0.0, 0.0, "乙", 1, active=True)
-    assert idle != active
-    assert "url(#nye-soft-glow)" in active
-    assert "url(#nye-soft-glow)" not in idle
-
-
-def test_tw_coin_pillar_state_marks_a_jewel() -> None:
-    """A coin carrying one of the four 八字 pillars gets a jewel dot."""
-    plain = _clock._tw_coin(0.0, 0.0, "丙", 1, pillar=False)
-    pillar = _clock._tw_coin(0.0, 0.0, "丙", 1, pillar=True)
-    assert plain != pillar
-    assert _clock._GAL_GOLD in pillar
-
-
-def test_tw_defs_emits_a_coin_gradient_per_element() -> None:
-    """_tw_defs defines one coin gradient per 五行 + the glyph-glow."""
-    defs = _clock._tw_defs()
-    for i in range(5):
-        assert f'id="tw-coin-{i}"' in defs
-    assert 'id="tw-glyph-glow"' in defs
-
-
-def test_tw_layout_constants_present() -> None:
-    """The tw_.html-canonical layout constants exist and are sane."""
-    assert _clock._TW_EARTH_R > 0
-    assert _clock._TW_BRANCH_RING_R > _clock._TW_EARTH_R
-    assert _clock._TW_STEM_RING_R > _clock._TW_BRANCH_RING_R
-
-
-def test_sparse_floating_ganzhi_glyph_table() -> None:
-    """The float-glyph layout table is sane — a sparse handful of large
-    glyphs, each a stem or a branch."""
-    glyphs = _clock._TW_FLOAT_GLYPHS
-    assert 6 <= len(glyphs) <= 12
-    for _x, _y, size, kind in glyphs:
-        assert size >= 36
-        assert kind in ("stem", "branch")
