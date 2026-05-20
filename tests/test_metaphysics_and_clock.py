@@ -399,14 +399,14 @@ def test_aggregate_readings_is_bounded_equal_weight_mean() -> None:
 
 
 def test_render_celestial_svg_is_nye_solar_system() -> None:
-    """The 玄学 view is the Nye Clock — rebuilt from tw_.html (#61).
+    """The 玄学 view embeds the real Nye Clock as a static still (#64).
 
-    The dense unified astrolabe (founder verdict "不知所云") was replaced
-    by a faithful static-SVG recreation of the founder's real Nye Clock.
-    Acceptance #61 rebuilt it from the canonical final clock
-    ``tw_.html``: an Earth-centred 干支-coin wheel — the Earth globe at
-    the heart, two concentric rings of 五行-tinted 干支 coin tokens, the
-    Sun a separate off-axis body. This test pins the new contract.
+    The founder compared the hand-built static-SVG recreation against
+    the real Nye Clock app and ruled the real app decisively better, so
+    the view now embeds a COMPLETELY STATIC, high-resolution still
+    captured off the real Nye Clock 3-D scene (``tw_.html``) — a single
+    base64 JPEG inside a lightweight SVG, with Omytea's decision numbers
+    in a readout strip beneath it. This test pins the new contract.
     """
     bd = mp.BirthData(1988, 2, 29, 9)
     rb = mp.compute_reading("bazi", birth=bd, seed="s",
@@ -420,24 +420,14 @@ def test_render_celestial_svg_is_nye_solar_system() -> None:
         center_meta="八字 ⊕ 占星",
     )
     assert svg.startswith("<svg ") and svg.endswith("</svg>")
-    # The Nye Clock canvas — NOT the old 480x480 astrolabe.
-    assert 'viewBox="0 0 1000 920"' in svg
-    # The Earth + Sun + Moon bodies' gradient defs.
-    assert "url(#nye-sun-core)" in svg
-    assert "url(#nye-earth-ocean)" in svg
-    assert "url(#nye-moon-surf)" in svg
-    # the deep-space cosmic backdrop
-    assert "url(#nye-cosmos-bg)" in svg
-    assert "url(#nye-vignette)" in svg
-    # the 干支 ride the Earth as 五行-tinted coin tokens (22 of them)
-    assert svg.count("url(#tw-coin-") == 22
-    # the new Earth-centred wheel — NOT the old 20-degree oblique frame
+    # The Nye Clock still + readout-strip canvas.
+    assert 'viewBox="0 0 1200 945"' in svg
+    # The celestial scene is the real Nye Clock — an embedded JPEG still.
+    assert "<image " in svg
+    assert "data:image/jpeg;base64," in svg
+    # NOT the old 20-degree oblique astrolabe frame.
     assert "rotate(20" not in svg
-    # the four 八字 pillars appear as large glowing glyphs
-    assert "YEAR" in svg and "MONTH" in svg
-    assert "DAY" in svg and "HOUR" in svg
-    assert "url(#tw-glyph-glow)" in svg
-    # the dual readout still carries the model + combined values
+    # the readout strip still carries the model + combined values
     assert "34.2%" in svg and "48.0%" in svg
     assert "玄学" in svg
 
@@ -456,4 +446,5 @@ def test_render_celestial_svg_handles_missing_natal() -> None:
         center_meta="八字 only",
     )
     assert svg.startswith("<svg ") and svg.endswith("</svg>")
-    assert "url(#nye-sun-core)" in svg
+    assert "<image " in svg
+    assert "data:image/jpeg;base64," in svg

@@ -26,8 +26,10 @@ dispatches on `reading.system`.
 
 from __future__ import annotations
 
+import base64
 import html as _html
 import math
+from pathlib import Path
 from typing import Any
 
 from _metaphysics import (
@@ -1319,6 +1321,35 @@ _TW_WUXING: tuple[tuple[str, str], ...] = (
     ("#5aa6e4", "#214a6a"),   # 4 water
 )
 
+# --- the real Nye Clock, embedded as a completely static still ------
+# [OMY-V415 / M2 / Acceptance #64] The founder compared the hand-built
+# static-SVG recreation against the real Nye Clock app and ruled the
+# real app decisively better, instructing: "直接嵌入真正的 Nye Clock 的
+# UI 设计 ... 我们只要完全静态的 Nye Clock 就好不需要任何需要计算的运动".
+# The 玄学 view embeds a high-resolution still captured off the real
+# Nye Clock 3-D scene (~/Downloads/UCSB/Adonyth/tw_.html) — a single
+# base64 JPEG, no WebGL / Three.js / canvas / animation, zero per-frame
+# computation. The still ships in assets/nye_clock.jpg.
+_NYE_PHOTO_W = 1200
+_NYE_PHOTO_H = 845
+_NYE_STRIP_H = 100
+
+
+def _load_nye_clock_still() -> str:
+    """Base64 of the static Nye Clock still shipped in ``assets/``.
+
+    Read once at import. Returns ``""`` if the asset is missing so the
+    renderer can fall back gracefully rather than crash.
+    """
+    try:
+        path = Path(__file__).resolve().parent / "assets" / "nye_clock.jpg"
+        return base64.b64encode(path.read_bytes()).decode("ascii")
+    except Exception:
+        return ""
+
+
+_NYE_CLOCK_STILL_B64 = _load_nye_clock_still()
+
 
 def _nye_ell(rx: float, ry: float, deg: float) -> tuple[float, float]:
     """Point on an ellipse centred at the origin (the oblique frame
@@ -1801,227 +1832,136 @@ def _render_nye_solar_system(
     bottom_label: str, bottom_value: str,
     meta: str,
 ) -> str:
-    """The Nye Clock 玄学 view — a Sun-dominant deep-space scene.
+    """The Nye Clock 玄学 view — the real Nye Clock, embedded static.
 
-    [OMY-V415 / M2 / Acceptance #64] REBUILT (4th attempt) to faithfully
-    match the real Nye Clock ``~/Downloads/UCSB/Adonyth/tw_.html``. The
-    founder rejected the previous Earth-centred, tight-busy-coin-wheel
-    composition as "太乱" — wrong composition.
+    [OMY-V415 / M2 / Acceptance #64] The founder compared the hand-built
+    static-SVG recreation of the Nye Clock against the real Nye Clock
+    app, screenshot for screenshot, and ruled the real app decisively
+    better looking. Per the founder's instruction —
 
-    The composition, matching tw_.html screenshot-for-screenshot:
+        "直接嵌入真正的 Nye Clock 的 UI 设计吧，不过我们只要完全静态的
+         Nye Clock 就好不需要任何需要计算的运动"
 
-      • Deep black space, generous negative space — calm, spacious.
-      • A LARGE glowing Sun with several concentric translucent corona
-        rings — the dominant element, upper-right.
-      • A SMALL blue Earth globe tucked into the lower-left corner: a
-        thin orbital ring, a small Moon beside it, a TIGHT cluster of
-        small 五行-tinted 干支 coin tokens ringed close around it.
-      • Large but faint 干支 characters floating SPARSELY across the
-        black field at varied positions.
+    — this view embeds a COMPLETELY STATIC, high-resolution still
+    captured off the real Nye Clock 3-D scene
+    (``~/Downloads/UCSB/Adonyth/tw_.html``): the gorgeous realistic Sun,
+    the textured Earth with its 干支 coin ring, the Moon, the drifting
+    五行 glyphs — the genuine article.
 
-    A STATIC visual style only — NO live per-frame rendering, NO real
-    clock time, NO WebGL / Three.js / canvas / GPU. Lightweight SVG
-    that embeds verbatim. The 八字 / 占星 values come from the verified
-    ``_metaphysics`` engine (calendar logic unchanged — display only).
+    It is a single base64 JPEG inside a lightweight SVG: NO WebGL, NO
+    Three.js, NO ``<canvas>``, NO animation. It embeds verbatim through
+    ``st.markdown`` and costs zero per-frame computation — exactly the
+    "完全静态 ... 不需要任何需要计算的运动" the founder asked for.
 
-    `branch_probabilities` is accepted for call-site parity.
+    Omytea's own decision numbers — the focal MODEL probability and the
+    玄学 consensus — render beneath the still as a clean readout strip,
+    so the panel still carries live output: the celestial still is
+    fixed, the readout is data-driven.
+
+    The readings / ``branch_probabilities`` are accepted for call-site
+    parity with the previous data-driven renderer.
     """
-    _ = branch_probabilities
-    bazi = reading_bazi.bazi
-    chart = reading_astro.natal
+    _ = (reading_bazi, reading_astro, branch_probabilities)
 
-    # --- 占星: Sun / Moon zodiac indices (from the verified engine) ---
-    sun_idx = chart.sun if chart is not None else 0
-    moon_idx = chart.moon if chart is not None else 6
-    sun_color = (
-        ASTRO_ELEMENT_COLOR[ZODIAC[sun_idx].element]
-        if chart is not None else _GAL_GOLD
-    )
+    iw = _NYE_PHOTO_W
+    ih = _NYE_PHOTO_H
+    vb_h = ih + _NYE_STRIP_H
+    still = _NYE_CLOCK_STILL_B64
 
-    # --- 八字: the active stem / branch of the day pillar ---
-    day_stem_idx = bazi.day_pillar[0] if bazi is not None else 0
-    day_branch_idx = bazi.day_pillar[1] if bazi is not None else 0
-    # which 天干 / 地支 indices carry one of the four pillars
-    pillar_stems = (
-        {p[0] for p in (bazi.year_pillar, bazi.month_pillar,
-                        bazi.day_pillar, bazi.hour_pillar)}
-        if bazi is not None else set()
-    )
-    pillar_branches = (
-        {p[1] for p in (bazi.year_pillar, bazi.month_pillar,
-                        bazi.day_pillar, bazi.hour_pillar)}
-        if bazi is not None else set()
-    )
+    sans = "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+    gold = _GAL_GOLD
+    teal = "#5fccbb"
 
-    ecx, ecy = _TW_EARTH_CX, _TW_EARTH_CY
+    tl = _esc(top_label.upper(), 30)
+    tv = _esc(top_value, 14)
+    bl = _esc(bottom_label.upper(), 30)
+    bv = _esc(bottom_value, 14)
+    mt = _esc(meta, 60)
 
-    body: list[str] = [
-        f'<svg viewBox="0 0 {_NYE_VB_W} {_NYE_VB_H}" width="100%" '
+    lab_y = ih + 42
+    val_y = ih + 80
+
+    out: list[str] = [
+        f'<svg viewBox="0 0 {iw} {vb_h}" width="100%" '
         f'preserveAspectRatio="xMidYMid meet" style="display:block;" '
         f'role="img" aria-label="Nye Clock 玄学 view">',
-        _nye_defs(),
-        _tw_defs(),
-        _nye_cosmos(),
+        '<defs>',
+        f'<clipPath id="nye-still-clip"><rect x="0" y="0" width="{iw}" '
+        f'height="{ih}" rx="15" ry="15"></rect></clipPath>',
+        '<radialGradient id="nye-still-vig" cx="50%" cy="44%" r="82%">'
+        '<stop offset="0%" stop-color="#05070e" stop-opacity="0"></stop>'
+        '<stop offset="66%" stop-color="#05070e" stop-opacity="0"></stop>'
+        '<stop offset="100%" stop-color="#05070e" stop-opacity="0.36">'
+        '</stop></radialGradient>',
+        '</defs>',
+        # card-coloured base — the readout strip blends into the card
+        f'<rect x="0" y="0" width="{iw}" height="{vb_h}" '
+        f'fill="#11141b"></rect>',
     ]
 
-    # === sparse large 干支 glyphs drifting across the black field ===
-    # Drawn first so they sit BEHIND the bodies — faint, distant.
-    for gx, gy, gsize, kind in _TW_FLOAT_GLYPHS:
-        if kind == "stem":
-            gi = (int(gx + gy)) % 10
-            body.append(_tw_float_glyph(
-                gx, gy, gsize, HEAVENLY_STEMS[gi], WUXING_OF_STEM[gi]))
-        else:
-            gi = (int(gx + gy)) % 12
-            body.append(_tw_float_glyph(
-                gx, gy, gsize, EARTHLY_BRANCHES[gi],
-                WUXING_OF_BRANCH[gi]))
-
-    # === the Sun — the DOMINANT body, upper-right, full scale ===
-    body.append(
-        f'<g transform="translate({_TW_SUN_CX},{_TW_SUN_CY})">'
-        + _nye_sun(sun_color)
-        + '</g>'
-    )
-
-    # === the small corner Earth + its tight 干支-coin cluster ========
-    # A whisper of a 占星-Sun-sign-tinted atmospheric halo + a thin
-    # orbital ring around the small Earth.
-    body.append(
-        f'<circle cx="{ecx}" cy="{ecy}" r="{_TW_EARTH_R + 11:.1f}" '
-        f'fill="{sun_color}" fill-opacity="0.055"></circle>'
-        f'<circle cx="{ecx}" cy="{ecy}" r="{_TW_EARTH_R + 30:.1f}" '
-        f'fill="none" stroke="rgba(120,200,255,0.24)" '
-        f'stroke-width="0.9"></circle>'
-    )
-    # the two faint guide circles the coin cluster rides on
-    for ring_r in (_TW_BRANCH_RING_R, _TW_STEM_RING_R):
-        body.append(
-            f'<circle cx="{ecx}" cy="{ecy}" r="{ring_r}" fill="none" '
-            f'stroke="rgba(150,196,255,0.13)" stroke-width="0.8">'
-            f'</circle>'
+    if still:
+        # the real Nye Clock — a single, completely static still
+        out.append(
+            f'<image x="0" y="0" width="{iw}" height="{ih}" '
+            f'href="data:image/jpeg;base64,{still}" '
+            f'preserveAspectRatio="xMidYMid slice" '
+            f'clip-path="url(#nye-still-clip)"></image>'
+        )
+    else:
+        # graceful fallback if the asset is somehow missing
+        out.append(
+            f'<rect x="0" y="0" width="{iw}" height="{ih}" rx="15" '
+            f'fill="#080b14"></rect>'
+            f'<text x="{iw // 2}" y="{ih // 2}" text-anchor="middle" '
+            f'font-family="{sans}" font-size="22" '
+            f'fill="rgba(200,212,234,0.5)">Nye Clock</text>'
         )
 
-    # inner ring — 12 地支 coins, tinted by each branch's 五行
-    for i in range(12):
-        ang = i * 30.0
-        cx, cy = _polar(ecx, ecy, _TW_BRANCH_RING_R, ang)
-        body.append(_tw_coin(
-            cx, cy, EARTHLY_BRANCHES[i], WUXING_OF_BRANCH[i],
-            active=(i == day_branch_idx),
-            pillar=(i in pillar_branches),
-        ))
-    # outer ring — 10 天干 coins, tinted by each stem's 五行
-    for i in range(10):
-        ang = i * 36.0
-        cx, cy = _polar(ecx, ecy, _TW_STEM_RING_R, ang)
-        body.append(_tw_coin(
-            cx, cy, HEAVENLY_STEMS[i], WUXING_OF_STEM[i],
-            active=(i == day_stem_idx),
-            pillar=(i in pillar_stems),
-        ))
-
-    # the small Earth globe itself (_nye_earth() is drawn at r≈52)
-    earth_scale = _TW_EARTH_R / 52.0
-    body.append(
-        f'<g transform="translate({ecx},{ecy}) scale({earth_scale:.3f})">'
-        + _nye_earth()
-        + '</g>'
-    )
-    # the small Moon — a lit sphere just outside the Earth
-    mx, my = _polar(ecx, ecy, _TW_EARTH_R + 30.0, 48.0)
-    body.append(_nye_moon(mx, my))
-
-    # === the four 八字 pillars — small jewelled markers in a column on
-    # the right, clear of the Sun, reading the verified engine. ===
-    if bazi is not None:
-        pillars = (
-            (bazi.year_pillar,  "YEAR"),
-            (bazi.month_pillar, "MONTH"),
-            (bazi.day_pillar,   "DAY"),
-            (bazi.hour_pillar,  "HOUR"),
-        )
-        px = 902.0
-        py0 = 150.0
-        pgap = 96.0
-        for slot, (pil, name) in enumerate(pillars):
-            txt = pillar_text(pil)
-            rim, _d = _TW_WUXING[WUXING_OF_STEM[pil[0] % 10]]
-            idx = _sexagenary_index(pil)
-            gy = py0 + slot * pgap
-            body.append(
-                f'<g transform="translate({px},{gy})">'
-                f'<circle r="30" fill="{rim}" fill-opacity="0.10" '
-                f'filter="url(#tw-glyph-glow)"></circle>'
-                f'<circle r="25" fill="rgba(8,11,20,0.62)" '
-                f'stroke="{rim}" stroke-opacity="0.5" '
-                f'stroke-width="1.0"></circle>'
-                f'<text x="0" y="-3" font-family="{_SERIF}" '
-                f'font-size="24" fill="{rim}" font-weight="600" '
-                f'text-anchor="middle" dominant-baseline="middle">'
-                f'{_esc(txt[0] if txt else "", 1)}</text>'
-                f'<text x="0" y="13" font-family="{_SERIF}" '
-                f'font-size="13" fill="#cdd4e0" font-weight="600" '
-                f'text-anchor="middle" dominant-baseline="middle">'
-                f'{_esc(txt[1] if len(txt) > 1 else "", 1)}</text>'
-                f'<text x="0" y="40" font-family="{_MONO}" '
-                f'font-size="7.5" fill="{_INK3}" '
-                f'letter-spacing="0.14em" text-anchor="middle">'
-                f'{name} · {idx + 1:02d}/60</text>'
-                f'</g>'
-            )
-
-    # === readout plate — a compact instrument panel, lower-right, in
-    # the open space clear of the Earth corner and the Sun. ===
-    plate_w = 332.0
-    plate_h = 88.0
-    plate_x = _NYE_VB_W - plate_w - 40.0
-    plate_y = _NYE_VB_H - plate_h - 36.0
-    body.append(
-        f'<g transform="translate({plate_x:.1f},{plate_y:.1f})">'
-        f'<rect x="0" y="0" width="{plate_w}" height="{plate_h}" '
-        f'rx="13" fill="rgba(8,11,20,0.80)" '
-        f'stroke="rgba(255,255,255,0.10)" stroke-width="1"></rect>'
-        f'<rect x="0.8" y="0.8" width="{plate_w - 1.6}" '
-        f'height="{plate_h - 1.6}" rx="12" fill="none" '
-        f'stroke="rgba(255,255,255,0.04)" stroke-width="0.7"></rect>'
-        # left readout — MODEL
-        f'<text x="{plate_w * 0.27:.0f}" y="25" font-family="{_MONO}" '
-        f'font-size="8.5" fill="{_INK2}" letter-spacing="0.2em" '
-        f'text-anchor="middle">{_esc(top_label, 18)}</text>'
-        f'<text x="{plate_w * 0.27:.0f}" y="51" font-family="{_SERIF}" '
-        f'font-size="28" fill="{_INK0}" font-weight="600" '
-        f'text-anchor="middle" dominant-baseline="middle">'
-        f'{_esc(top_value, 10)}</text>'
-        # centre hairline divider
-        f'<line x1="{plate_w * 0.5:.0f}" y1="18" '
-        f'x2="{plate_w * 0.5:.0f}" y2="{plate_h - 18:.0f}" '
-        f'stroke="rgba(255,255,255,0.10)" stroke-width="0.9"></line>'
-        # right readout — 玄学 consensus
-        f'<text x="{plate_w * 0.73:.0f}" y="25" font-family="{_MONO}" '
-        f'font-size="8.5" fill="{_INK2}" letter-spacing="0.2em" '
-        f'text-anchor="middle">{_esc(bottom_label, 18)}</text>'
-        f'<text x="{plate_w * 0.73:.0f}" y="51" font-family="{_SERIF}" '
-        f'font-size="28" fill="{_GAL_GOLD}" font-weight="600" '
-        f'text-anchor="middle" dominant-baseline="middle">'
-        f'{_esc(bottom_value, 10)}</text>'
-        # meta strip along the bottom
-        f'<text x="{plate_w * 0.5:.0f}" y="{plate_h - 12:.0f}" '
-        f'font-family="{_MONO}" font-size="7" fill="{_INK3}" '
-        f'letter-spacing="0.12em" text-anchor="middle">'
-        f'{_esc(meta, 46)}</text>'
-        f'</g>'
-    )
-
-    # === a slim caption naming the lens, top-left ===
-    body.append(
-        f'<text x="46" y="44" font-family="{_MONO}" '
-        f'font-size="9" fill="{_INK3}" letter-spacing="0.30em" '
-        f'text-anchor="start">NYE CLOCK · 玄学 LENS</text>'
-    )
-
-    body.append('</svg>')
-    return "".join(body)
+    out += [
+        # premium vignette — gently sinks the four corners of the still
+        f'<rect x="0" y="0" width="{iw}" height="{ih}" '
+        f'fill="url(#nye-still-vig)" clip-path="url(#nye-still-clip)">'
+        f'</rect>',
+        # hairline frame around the still
+        f'<rect x="0.7" y="0.7" width="{iw - 1.4:.1f}" '
+        f'height="{ih - 1.4:.1f}" rx="15" ry="15" fill="none" '
+        f'stroke="rgba(150,180,255,0.12)" stroke-width="1.3"></rect>',
+        # discreet instrument wordmark, top-left over the still
+        f'<text x="36" y="47" font-family="{sans}" font-size="18" '
+        f'font-weight="600" letter-spacing="3.4" '
+        f'fill="rgba(234,240,252,0.66)">NYE CLOCK</text>',
+        f'<text x="37" y="70" font-family="{sans}" font-size="12" '
+        f'letter-spacing="5" fill="rgba(152,174,216,0.52)">'
+        f'玄学 LENS</text>',
+        # ---- readout strip — Omytea's live decision numbers ----
+        f'<rect x="34" y="{ih}" width="{iw - 68}" height="1.3" '
+        f'fill="rgba(150,180,255,0.16)"></rect>',
+        # MODEL column
+        f'<circle cx="56" cy="{lab_y - 4}" r="3.4" fill="{gold}">'
+        f'</circle>',
+        f'<text x="72" y="{lab_y}" font-family="{sans}" font-size="13" '
+        f'letter-spacing="2.6" font-weight="600" '
+        f'fill="rgba(168,184,218,0.76)">{tl}</text>',
+        f'<text x="72" y="{val_y}" font-family="{sans}" font-size="34" '
+        f'font-weight="700" fill="{gold}">{tv}</text>',
+        # divider
+        f'<rect x="452" y="{ih + 24}" width="1.2" height="56" '
+        f'fill="rgba(150,180,255,0.13)"></rect>',
+        # 玄学 CONSENSUS column
+        f'<circle cx="492" cy="{lab_y - 4}" r="3.4" fill="{teal}">'
+        f'</circle>',
+        f'<text x="508" y="{lab_y}" font-family="{sans}" font-size="13" '
+        f'letter-spacing="2.6" font-weight="600" '
+        f'fill="rgba(168,184,218,0.76)">{bl}</text>',
+        f'<text x="508" y="{val_y}" font-family="{sans}" font-size="34" '
+        f'font-weight="700" fill="{teal}">{bv}</text>',
+        # meta — right-aligned
+        f'<text x="{iw - 50}" y="{ih + 56}" text-anchor="end" '
+        f'font-family="{sans}" font-size="13" letter-spacing="1.3" '
+        f'fill="rgba(152,168,204,0.62)">{mt}</text>',
+        '</svg>',
+    ]
+    return "".join(out)
 
 
 # ======================================================================
