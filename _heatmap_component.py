@@ -71,18 +71,43 @@ __all__ = [
     "LIVE_VIDEO_V10_FILE",
 ]
 
-# The v10 marketing demo — a single, complete, working HTML/JS app:
-# camera + pixel-diff motion loop + live heatmap + see-both-at-once
-# layout, all integrated. It is kept verbatim in ``static/`` and
-# embedded WHOLE as the console's live-video surface — never recreated
-# piece by piece. See ``render_live_video_v10``.
+# The v10 marketing demo — a complete HTML/JS app: camera + pixel-diff
+# motion loop + live heatmap + see-both-at-once layout. Kept verbatim in
+# ``static/``; ``render_live_video_v10`` embeds it but SCOPES it down to
+# just the see-both-at-once panel (camera | heatmap) — see _V10_EMBED_SCOPE.
 LIVE_VIDEO_V10_FILE = "live_video_v10.html"
 _V10_PATH = Path(__file__).resolve().parent / "static" / LIVE_VIDEO_V10_FILE
 
-# Embedded-iframe pixel height for the v10 live-video app. The v10
-# layout (scenario row + see-both-at-once camera|heatmap grid) needs a
-# tall viewport; this matches the v10 demo's own comfortable height.
-_LIVE_VIDEO_HEIGHT = 860
+# Embedded-iframe pixel height. Sized to sit inside the workspace output
+# pane (one-screen layout) without the pane itself scrolling.
+_LIVE_VIDEO_HEIGHT = 392
+
+# CSS injected into the embedded v10 copy so the console surfaces ONLY
+# v10's "see-both-at-once" panel — the camera preview beside the quantum
+# heatmap. v10's own onboarding chrome (scenario picker, branding topbar,
+# upload card, info drawers, now-banner) is hidden: the console composer
+# owns ALL prediction input, so the output region must hold output only.
+# v10's side-by-side grid normally needs >=1100px; the console embeds it
+# narrower, so the grid is forced on here regardless of width.
+_V10_EMBED_SCOPE = """
+<style id="omytea-embed-scope">
+.topbar,#scenario-card,#input-file,#input-scenario,
+.now-banner,.hero-head,.more-row,footer.footer{display:none!important;}
+main{max-width:none!important;margin:0!important;padding:12px 14px!important;}
+body.camera-active main{display:grid!important;
+ grid-template-columns:minmax(240px,38%) 1fr!important;
+ gap:16px!important;max-width:none!important;}
+/* once the camera runs, the "Use my camera" start card is redundant —
+ hide it so the grid is exactly camera | heatmap, side by side. */
+body.camera-active .input-row{display:none!important;}
+#preview-card{top:0!important;}
+.input-row{justify-content:center!important;}
+#input-camera{max-width:460px!important;}
+body{background:#0a0c11!important;}
+@media (max-width:560px){
+ body.camera-active main{grid-template-columns:1fr!important;}}
+</style>
+"""
 
 
 def branches_to_payload(hypotheses: list[Any]) -> list[dict[str, Any]]:
@@ -111,25 +136,32 @@ def branches_to_payload(hypotheses: list[Any]) -> list[dict[str, Any]]:
 
 
 def _v10_srcdoc() -> str | None:
-    """Read the v10 app and escape it for an iframe ``srcdoc`` attribute.
+    """Read the v10 app, scope it to the see-both panel, escape for srcdoc.
 
     Returns ``None`` if the static file is missing (a deploy fault).
 
-    The escape is two passes. First :func:`html.escape` (``& < > " '``)
-    so the v10 source becomes a valid double-quoted attribute value.
-    Then every newline is collapsed to a numeric character reference:
-    the iframe must be ONE physical line, because ``st.markdown`` keeps
-    a raw ``<iframe>`` intact only as a single HTML block — a blank line
-    inside the attribute would split the block and spill v10 source as
-    markdown. The browser restores the newlines when it parses srcdoc.
+    Two transforms:
+
+    1. ``_V10_EMBED_SCOPE`` is injected before ``</body>`` so the embed
+       shows only v10's camera | heatmap see-both-at-once panel — v10's
+       own onboarding chrome is hidden (the console composer owns input).
+    2. The result is escaped for a double-quoted ``srcdoc`` attribute
+       (:func:`html.escape`), then every newline is collapsed to a
+       numeric character reference so the iframe stays ONE physical line
+       — ``st.markdown`` keeps a raw ``<iframe>`` intact only as a single
+       HTML block. The browser restores the newlines parsing srcdoc.
     """
     try:
         raw = _V10_PATH.read_text(encoding="utf-8")
     except OSError:
         return None
+    if "</body>" in raw:
+        raw = raw.replace("</body>", _V10_EMBED_SCOPE + "</body>", 1)
+    else:
+        raw = raw + _V10_EMBED_SCOPE
     escaped = _html.escape(raw, quote=True)
     # Collapse newlines to numeric refs — \r and \n kept distinct so the
-    # browser rebuilds the file byte-for-byte when it parses srcdoc.
+    # browser rebuilds the document faithfully when it parses srcdoc.
     return escaped.replace("\r", "&#13;").replace("\n", "&#10;")
 
 
@@ -139,10 +171,12 @@ def render_live_video_v10(*, height: int = _LIVE_VIDEO_HEIGHT) -> None:
     [OMY-V415 / M2 / Acceptance #65]
 
     The console's live-video output surface IS the v10 marketing demo
-    (``static/live_video_v10.html``) — a single complete, working
-    HTML/JS app: camera, pixel-diff motion loop, live heatmap and the
-    see-both-at-once layout, all integrated. It is embedded WHOLE, not
-    recreated piece by piece.
+    (``static/live_video_v10.html``) — its camera, pixel-diff motion
+    loop, live heatmap and see-both-at-once layout. Only v10's
+    see-both-at-once panel (camera beside the heatmap) is surfaced;
+    v10's onboarding chrome (scenario picker, branding, upload, info
+    drawers) is hidden so the output region holds output only. It is
+    v10's real code — scoped by ``_V10_EMBED_SCOPE``, never recreated.
 
     Camera permission — the one hard part, solved honestly
     ------------------------------------------------------
@@ -195,12 +229,9 @@ def render_live_video_v10(*, height: int = _LIVE_VIDEO_HEIGHT) -> None:
     st.caption(T("live_video.embed_caption"))
 
 
-# Component pixel height. Tall enough for the side-by-side layout (camera
-# preview column + heatmap column) without an inner scrollbar at the
-# default Console width; the iframe itself never scrolls. Trimmed after
-# the heatmap canvas was shortened (Acceptance #63) so the panel is not
-# padded with dead space below a now-compact grid.
-_COMPONENT_HEIGHT = 620
+# Component pixel height. Sized to sit inside the workspace output pane
+# (the one-screen layout) — the iframe itself never scrolls.
+_COMPONENT_HEIGHT = 392
 
 
 def render_heatmap_camera_component(
@@ -209,6 +240,7 @@ def render_heatmap_camera_component(
     *,
     height: int = _COMPONENT_HEIGHT,
     key_suffix: str = "",
+    show_camera: bool = True,
 ) -> None:
     """Render the embedded interactive heatmap + camera component.
 
@@ -249,6 +281,17 @@ def render_heatmap_camera_component(
     }
 
     html_doc = _build_component_html(payload_json, strings)
+    if not show_camera:
+        # Output-only heatmap: hide the component's own camera / video
+        # controls and the camera-preview column. Camera input belongs
+        # to the composer's "Live video" toggle, never the output region.
+        html_doc = html_doc.replace(
+            "</head>",
+            "<style>.controls,.cam-note,.preview"
+            "{display:none!important;}"
+            ".stage{display:block!important;}</style></head>",
+            1,
+        )
     components.html(html_doc, height=height, scrolling=False)
 
 

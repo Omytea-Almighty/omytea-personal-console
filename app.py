@@ -930,15 +930,34 @@ def _idle_heatmap_branches() -> list[Any]:
     ]
 
 
-# Fixed pixel heights for the two independently-scrolling workspace
-# panes (OMY-V415 / M2 / Acceptance #60 — requirement C). The output
-# pane is the larger one: the quantum heatmap is the centerpiece and
-# must stay visually stable during live video. The input composer pane
-# is smaller. Each region is its own ``st.container(height=…)`` — a
-# fixed-height scrollable box — so scrolling one never moves the other,
-# exactly like a two-pane IDE or a chatbox.
-_OUTPUT_PANE_HEIGHT = 720
-_COMPOSER_PANE_HEIGHT = 460
+# Fixed pixel heights for the two workspace panes. The page itself does
+# NOT scroll — the output pane + composer pane are sized to fit one
+# viewport (WeChat-style: the composer is always visible). Each is its
+# own ``st.container(height=…)`` scroll box, so scrolling one never
+# moves the other. The output pane is the larger one (the quantum
+# heatmap is the centerpiece); the composer pane is smaller.
+_OUTPUT_PANE_HEIGHT = 430
+_COMPOSER_PANE_HEIGHT = 285
+
+# Composer fields shown directly; every other scenario field folds into
+# the composer's "More details" expander so the composer stays compact.
+_COMPOSER_CORE_FIELDS = (
+    "current_role",
+    "decision_options",
+    "why_considering_change",
+    "time_horizon",
+)
+
+# Injected once at the top of the workspace: reclaim Streamlit's tall
+# default chrome padding so the output + composer panes fit one screen
+# with no marketing hero pushing them down.
+_WORKSPACE_CHROME_CSS = (
+    "<style>"
+    "header[data-testid='stHeader']{display:none!important;}"
+    ".block-container{padding-top:1.0rem!important;"
+    "padding-bottom:0.3rem!important;}"
+    "</style>"
+)
 
 
 def _render_xuanxue_output_view() -> None:
@@ -1134,6 +1153,33 @@ def _render_workspace_composer() -> None:
         _render_workspace_composer_body()
 
 
+def _render_composer_field(field: Any) -> Any:
+    """Render one composer input widget; return its value.
+
+    Textareas are height-floored so the composer stays a compact,
+    one-screen input bar. ``user_id`` is auto-suggested on first render
+    so the handle never blocks submission.
+    """
+    field_key = f"input_{field.key}"
+    if field.key == "user_id" and not st.session_state.get(field_key):
+        st.session_state[field_key] = st.session_state._default_user_id
+    placeholder = getattr(field, "placeholder", "") or ""
+    if field.field_type == "textarea":
+        return st.text_area(
+            field.label, help=field.hint, key=field_key,
+            placeholder=placeholder, height=68,
+        )
+    if field.field_type == "select":
+        return st.selectbox(
+            field.label, options=field.options,
+            help=field.hint, key=field_key,
+        )
+    return st.text_input(
+        field.label, help=field.hint, key=field_key,
+        placeholder=placeholder,
+    )
+
+
 def _render_workspace_composer_body() -> None:
     """The input composer's markup — text conditions + a "+" attach
     (video / files) + a live-video toggle + a 玄学-lens toggle, all
@@ -1150,21 +1196,6 @@ def _render_workspace_composer_body() -> None:
     # Shares the session-stable id with the history rail, so a
     # prediction created here appears in the sidebar immediately.
     session_user_id()
-
-    st.markdown(
-        f"<div style='display:flex;align-items:center;gap:9px;"
-        f"margin:10px 0 10px;'>"
-        f"<span style='width:4px;height:4px;border-radius:50%;"
-        f"background:#8b8cff;box-shadow:0 0 7px rgba(139,140,255,0.8);'>"
-        f"</span>"
-        f"<span style='color:#8b93a0;font-size:11px;letter-spacing:0.14em;"
-        f"text-transform:uppercase;font-weight:600;'>"
-        f"{T('composer.section')}</span>"
-        f"<span style='flex:1;height:1px;background:linear-gradient(90deg,"
-        f"#232834,rgba(35,40,52,0));'></span>"
-        f"</div>",
-        unsafe_allow_html=True,
-    )
 
     # ---- Modality bar: attach (+) · live video · 玄学 lens ----
     mod_attach, mod_live, mod_lens = st.columns([2, 2, 2])
@@ -1208,14 +1239,10 @@ def _render_workspace_composer_body() -> None:
 
     attached_video = st.session_state.get("_composer_video")
 
-    # ---- Live-video modality (OMY-V415 / M2 / Acceptance #65) ----
-    # When the toggle is on, the v10 live-video app runs as the OUTPUT
-    # surface above (see _render_workspace_output → render_live_video_v10
-    # — the v10 demo embedded WHOLE: camera + motion loop + live heatmap
-    # + see-both-at-once, one integrated unit). The composer only
-    # confirms it; it does not re-embed a recreated panel here.
-    if live_on:
-        st.info(T("composer.live.active_note"), icon="🎥")
+    # The live-video toggle (live_on) drives the OUTPUT region only:
+    # when on, _render_workspace_output renders the v10 see-both-at-once
+    # panel (camera | quantum heatmap). The composer carries NO
+    # live-video UI — all input here, all output in the region above.
 
     # ---- Attached-video modality: embed the video pipeline inline ----
     if attached_video is not None:
@@ -1225,12 +1252,9 @@ def _render_workspace_composer_body() -> None:
             render_video_query(embedded=True)
         st.divider()
 
-    # Scenario selection (only one scenario today — career_decision)
-    scenario = st.selectbox(
-        T("composer.scenario"),
-        options=list(AVAILABLE_SCENARIOS.keys()),
-        format_func=lambda k: AVAILABLE_SCENARIOS[k]["description"][:100],
-    )
+    # One scenario ships today (career_decision) — use it directly; no
+    # picker clutters the slim composer.
+    scenario = next(iter(AVAILABLE_SCENARIOS))
 
     # Fill / clear row — testers can land + click once + Generate.
     col_a, col_b = st.columns([3, 2])
@@ -1263,61 +1287,31 @@ def _render_workspace_composer_body() -> None:
                 st.session_state.pop(f"input_{field.key}", None)
             st.rerun()
 
-    st.divider()
-
-    # Render form fields. Each text/textarea field now gets a placeholder
-    # (greyed-out example inside the empty box) on top of the help-tooltip
-    # so users see a concrete example without having to read the tooltip.
+    # Form fields — the core fields are visible; secondary / optional
+    # fields fold into a "More details" expander so the composer stays a
+    # compact, always-visible input bar.
     form_data: dict[str, Any] = {}
+    fields = AVAILABLE_SCENARIOS[scenario]["input_fields"]
+    core = [f for f in fields if f.key in _COMPOSER_CORE_FIELDS]
+    extra = [f for f in fields if f.key not in _COMPOSER_CORE_FIELDS]
+
     with st.form(key=f"form_{scenario}"):
-        for field in AVAILABLE_SCENARIOS[scenario]["input_fields"]:
-            field_key = f"input_{field.key}"
-            # Auto-suggest handle on first render
-            if field.key == "user_id" and not st.session_state.get(field_key):
-                st.session_state[field_key] = st.session_state._default_user_id
+        for field in core:
+            form_data[field.key] = _render_composer_field(field)
 
-            placeholder = getattr(field, "placeholder", "") or ""
-
-            if field.field_type == "textarea":
-                form_data[field.key] = st.text_area(
-                    field.label,
-                    help=field.hint,
-                    key=field_key,
-                    placeholder=placeholder,
-                )
-            elif field.field_type == "text":
-                form_data[field.key] = st.text_input(
-                    field.label,
-                    help=field.hint,
-                    key=field_key,
-                    placeholder=placeholder,
-                )
-            elif field.field_type == "select":
-                form_data[field.key] = st.selectbox(
-                    field.label, options=field.options,
-                    help=field.hint, key=field_key,
-                )
-            else:
-                form_data[field.key] = st.text_input(
-                    field.label,
-                    help=field.hint,
-                    key=field_key,
-                    placeholder=placeholder,
-                )
-
-        # v4.16 P8: opt-in self-test flag so aggregate calibration view
-        # can separate owner data from real-user data.
-        form_data["is_owner_bias_flagged"] = st.checkbox(
-            T("new.owner_bias"),
-            value=False,
-            help=(
-                "Check this if you are the project founder or running an "
-                "internal self-test. Your data still counts in calibration "
-                "aggregates, but the Calibration history tab lets viewers "
-                "see the distribution both with and without owner-tagged "
-                "data points."
-            ),
-        )
+        with st.expander(T("composer.more_fields"), expanded=False):
+            for field in extra:
+                form_data[field.key] = _render_composer_field(field)
+            # Opt-in self-test flag — keeps owner data separable in the
+            # calibration aggregates.
+            form_data["is_owner_bias_flagged"] = st.checkbox(
+                T("new.owner_bias"),
+                value=False,
+                help=(
+                    "Check this if you are the project founder or "
+                    "running an internal self-test."
+                ),
+            )
 
         submit = st.form_submit_button(
             T("new.generate"),
@@ -1381,61 +1375,27 @@ def _render_workspace_composer_body() -> None:
 
 
 def render_new_prediction() -> None:
-    """Chatbox workspace — output region on top, input composer below.
+    """The workspace — output region on top, composer below, ONE screen.
 
-    Streamlit reruns top→bottom. The output region reads the last
+    The page itself does not scroll: the output region and the composer
+    are each a fixed-height ``st.container`` pane, sized so the two
+    together fit the viewport — the composer is always visible
+    (WeChat-style) and scrolling one pane never moves the other.
+
+    Streamlit reruns top→bottom: the output region reads the last
     prediction from ``st.session_state`` (idle heatmap if none); the
-    composer below computes a prediction, stores it, and reruns so the
-    top updates. Output-then-input ordering, like a chat app — though
-    the tool is explicitly NOT a turn-by-turn chatbox.
+    composer computes a prediction, stores it, and reruns so the top
+    updates. NOT a turn-by-turn chatbox — it borrows only the
+    "one composer + attach" affordance.
     """
-    # Hero — Apple-style: large serif title with restraint + generous
-    # whitespace + a single muted-color subtitle. No emoji, no badges.
-    st.markdown(
-        f"""
-        <div style='text-align:center;padding:40px 24px 18px;position:relative;'>
-          <div style='position:absolute;top:14px;left:50%;
-                      transform:translateX(-50%);width:340px;height:160px;
-                      background:radial-gradient(ellipse at center,
-                      rgba(139,140,255,0.16),rgba(139,140,255,0) 70%);
-                      pointer-events:none;'></div>
-          <h1 style='font-family:"Cormorant Garamond",Georgia,serif;
-                     font-size:52px;line-height:1.05;font-weight:500;
-                     letter-spacing:-0.025em;margin:0 0 14px;
-                     color:#f0f2f5;position:relative;'>
-            {T("new.hero.title")}
-          </h1>
-          <p style='color:#b9bfc8;font-size:15.5px;line-height:1.6;
-                    max-width:548px;margin:0 auto;letter-spacing:0.004em;
-                    position:relative;'>
-            {T("new.hero.subtitle")}
-          </p>
-          <div style='width:46px;height:1px;margin:22px auto 0;
-                      background:linear-gradient(90deg,
-                      rgba(139,140,255,0),rgba(139,140,255,0.6),
-                      rgba(139,140,255,0));'></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # Reclaim Streamlit's tall default chrome padding so the workspace
+    # starts at the top of the viewport — no marketing hero, the two
+    # panes fit one screen.
+    st.markdown(_WORKSPACE_CHROME_CSS, unsafe_allow_html=True)
 
-    # Tight "how it works" expander — collapsed by default, so the hero
-    # breathes. Anyone who needs the explainer is one click away.
-    with st.expander(T("new.howto.title"), expanded=False):
-        st.markdown(T("new.howto.body"))
-
-    # ============================================================
-    # Chatbox layout: OUTPUT region on top, INPUT composer below.
-    # The quantum probability heatmap is the permanent centerpiece of
-    # the output region — idle (flat uniform grid) before a prediction,
-    # the real distribution after. The composer sits underneath, so the
-    # flow reads output-then-input like a chat app. It borrows ONLY the
-    # "one composer + attach" affordance — NOT a turn-by-turn chatbox.
-    # ============================================================
+    # OUTPUT region on top (the quantum heatmap centerpiece / live video
+    # / 玄学 view — output only), INPUT composer directly below it.
     _render_workspace_output()
-
-    st.divider()
-
     _render_workspace_composer()
 
 
@@ -2222,7 +2182,12 @@ def _render_probability_heatmap(
     module docstring for the full rationale.
     """
     payload = branches_to_payload(hypotheses or [])
-    render_heatmap_camera_component(payload, horizon_label=horizon_label)
+    # Output-only: the default heatmap carries no camera/video input —
+    # that modality lives in the composer's "Live video" toggle, so the
+    # output region holds output only.
+    render_heatmap_camera_component(
+        payload, horizon_label=horizon_label, show_camera=False,
+    )
 
 
 def _render_result(

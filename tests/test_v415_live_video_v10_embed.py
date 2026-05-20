@@ -234,20 +234,44 @@ def test_embedded_iframe_is_not_a_components_html_sandbox() -> None:
     assert "sandbox" not in body
 
 
-def test_v10_srcdoc_round_trips_to_the_verbatim_v10_app() -> None:
-    """``_v10_srcdoc`` escaping is loss-free — the browser rebuilds v10.
+def test_v10_srcdoc_preserves_the_verbatim_v10_app() -> None:
+    """``_v10_srcdoc`` escaping is loss-free; only the scope block is added.
 
     HTML-unescaping the ``srcdoc`` attribute (what the browser does when
-    it parses the iframe) must yield the v10 file byte-for-byte. This is
-    the embed's correctness guarantee: the inlined app IS v10, whole.
+    it parses the iframe) yields the v10 file with exactly one injected
+    block — ``_V10_EMBED_SCOPE``. Strip that block back out and the
+    result is the v10 file byte-for-byte: the embed runs v10's real
+    code, only scoped to the see-both panel.
     """
     import html as _html_mod
 
     srcdoc = _heatmap_component._v10_srcdoc()
     assert srcdoc is not None
     rebuilt = _html_mod.unescape(srcdoc)
-    asset = STATIC_DIR / _heatmap_component.LIVE_VIDEO_V10_FILE
-    assert rebuilt == asset.read_text(encoding="utf-8")
+    assert "omytea-embed-scope" in rebuilt
+    verbatim = (
+        STATIC_DIR / _heatmap_component.LIVE_VIDEO_V10_FILE
+    ).read_text(encoding="utf-8")
+    stripped = rebuilt.replace(_heatmap_component._V10_EMBED_SCOPE, "", 1)
+    assert stripped == verbatim
+
+
+def test_embed_scope_hides_onboarding_and_forces_side_by_side() -> None:
+    """The injected scope block hides v10's onboarding and forces the
+    camera | heatmap side-by-side grid at the console's embed width.
+
+    These are the load-bearing CSS rules behind the founder's two
+    requirements: the output region holds output only (no v10 input
+    chrome), and the camera sits BESIDE the heatmap, not above it.
+    """
+    scope = _heatmap_component._V10_EMBED_SCOPE
+    # Onboarding chrome hidden — output region has no input surface.
+    for selector in ("#scenario-card", "#input-file", ".topbar"):
+        assert selector in scope
+    assert "display:none" in scope
+    # Side-by-side grid forced (v10's own grid only fires >=1100px).
+    assert "body.camera-active main" in scope
+    assert "grid" in scope
 
 
 # --------------------------------------------------------------------

@@ -353,6 +353,12 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_ES: "Lente 玄学",
         LANG_FR: "Lentille 玄学",
     },
+    "composer.more_fields": {
+        LANG_EN: "More details (optional)",
+        LANG_ZH: "更多字段（可选）",
+        LANG_ES: "Más detalles (opcional)",
+        LANG_FR: "Plus de détails (facultatif)",
+    },
     "composer.lens.hint": {
         LANG_EN: (
             "An optional traditional-prior lens on the same prediction. "
