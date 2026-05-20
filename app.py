@@ -65,112 +65,419 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    /* Typography — match the v10 demo */
+    /* ========================================================
+       Omytea Console — deep-space / cosmic theme
+       Restyle-only. Palette + the Nye Clock galaxy accents.
+       Canvas #0a0c11 · surface #11141b · lifted #181c25 ·
+       hairline #232834 · ink f0f2f5/b9bfc8/76808d ·
+       lavender #8b8cff · galaxy gold #f7c940 · cyan #44ecff.
+       Sophistication = discipline: limited palette, fine
+       linework, generous space, ONE quiet glow per surface.
+       Easily revertible — delete this block.
+       ======================================================== */
+
+    /* ---- Typography ---- */
     html, body, [class*="css"] {
         font-family: -apple-system, "Inter", system-ui, "Segoe UI",
                      Helvetica, Arial, sans-serif;
-        letter-spacing: -0.005em;
+        letter-spacing: -0.006em;
+        -webkit-font-smoothing: antialiased;
     }
     h1, h2, h3, h4 {
         font-family: "Cormorant Garamond", "Iowan Old Style", Georgia, serif;
-        letter-spacing: -0.015em;
+        letter-spacing: -0.018em;
         font-weight: 600;
+        color: #f0f2f5;
     }
-    /* Refine container chrome */
+    p, li, label, .stMarkdown { color: #b9bfc8; }
+
+    /* ---- Canvas: flat deep-space ink + one faint nebula bloom.
+       A single radial lavender glow drifting up-left of centre —
+       the quiet focal light, fixed so it never scrolls. ---- */
     .stApp {
-        background: #0a0c11;
+        background:
+            radial-gradient(900px 620px at 62% -8%,
+                rgba(139,140,255,0.10), rgba(139,140,255,0) 62%),
+            radial-gradient(1100px 800px at 18% 104%,
+                rgba(68,236,255,0.045), rgba(68,236,255,0) 60%),
+            #0a0c11;
+        background-attachment: fixed;
     }
+    [data-testid="stHeader"] { background: transparent; }
+    .block-container { padding-top: 2.4rem; }
+
+    /* ---- Sidebar: a hair lighter than canvas, fine right
+       hairline, the faintest top-down lift so the brand
+       wordmark sits in its own light. ---- */
     section[data-testid="stSidebar"] {
-        background: #11141b;
-        border-right: 1px solid #232834;
+        background:
+            linear-gradient(180deg,
+                rgba(139,140,255,0.05) 0%,
+                rgba(139,140,255,0) 220px),
+            #0d0f16;
+        border-right: 1px solid #1d212b;
     }
+    section[data-testid="stSidebar"] .block-container { padding-top: 2rem; }
     section[data-testid="stSidebar"] h1 {
         font-family: -apple-system, "Inter", system-ui, sans-serif;
         font-size: 17px !important;
         letter-spacing: -0.015em;
         font-weight: 600;
     }
-    /* Buttons — tighter radius, hairline border, refined hover */
+
+    /* ---- Buttons: lifted surface, hairline, gentle depth.
+       Hover lifts toward lavender; primary carries the one
+       quiet glow. ---- */
     .stButton > button, .stDownloadButton > button {
-        border-radius: 4px;
-        border: 1px solid #232834;
-        background: #181c25;
-        color: #f0f2f5;
+        border-radius: 7px;
+        border: 1px solid #262b37;
+        background: linear-gradient(180deg, #1b2029, #15191f);
+        color: #e7e9ee;
         font-weight: 500;
-        transition: all 0.15s ease;
+        letter-spacing: -0.003em;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.35);
+        transition: border-color 0.16s ease, background 0.16s ease,
+                    box-shadow 0.16s ease, transform 0.16s ease;
     }
     .stButton > button:hover, .stDownloadButton > button:hover {
-        background: #1f2530;
-        border-color: #8b8cff;
+        background: linear-gradient(180deg, #222734, #1a1f29);
+        border-color: rgba(139,140,255,0.55);
         color: #f0f2f5;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.45);
     }
-    .stButton > button[kind="primary"] {
-        background: rgba(139, 140, 255, 0.15);
-        border-color: #8b8cff;
+    .stButton > button:active, .stDownloadButton > button:active {
+        transform: translateY(0.5px);
+    }
+    .stButton > button:focus-visible, .stDownloadButton > button:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 1px rgba(139,140,255,0.7),
+                    0 0 14px rgba(139,140,255,0.22);
+    }
+    /* Primary — the lavender call-to-action. Restrained: a
+       lifted lavender-tinted surface + a fine bright edge +
+       one quiet halo, not a saturated slab. */
+    .stButton > button[kind="primary"], .stButton > button[data-testid="baseButton-primary"],
+    .stButton > button[kind="primaryFormSubmit"],
+    .stFormSubmitButton > button {
+        background: linear-gradient(180deg,
+            rgba(139,140,255,0.30), rgba(139,140,255,0.16));
+        border: 1px solid rgba(139,140,255,0.58);
+        color: #f6f5ff;
+        font-weight: 550;
+        box-shadow: 0 0 18px rgba(139,140,255,0.16),
+                    inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+    .stButton > button[kind="primary"]:hover,
+    .stButton > button[kind="primaryFormSubmit"]:hover,
+    .stFormSubmitButton > button:hover {
+        background: linear-gradient(180deg,
+            rgba(139,140,255,0.40), rgba(139,140,255,0.23));
+        border-color: rgba(139,140,255,0.80);
+        box-shadow: 0 0 26px rgba(139,140,255,0.26),
+                    inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+
+    /* ---- Sidebar buttons: quieter than the main column.
+       History rows read as a flat rail; the active row gets
+       a thin lavender spine. ---- */
+    section[data-testid="stSidebar"] .stButton > button {
+        background: transparent;
+        border: 1px solid transparent;
+        box-shadow: none;
+        text-align: left;
+        justify-content: flex-start;
+        color: #aab1bc;
+        font-weight: 450;
+        padding: 6px 10px;
+    }
+    section[data-testid="stSidebar"] .stButton > button:hover {
+        background: rgba(139,140,255,0.07);
+        border-color: #232834;
         color: #f0f2f5;
+        box-shadow: none;
     }
-    .stButton > button[kind="primary"]:hover {
-        background: rgba(139, 140, 255, 0.25);
-    }
-    /* Text inputs and textareas — calmer borders */
-    .stTextInput input, .stTextArea textarea,
-    .stSelectbox > div > div, .stNumberInput input {
-        background: #181c25 !important;
-        border: 1px solid #232834 !important;
-        border-radius: 4px !important;
-        color: #f0f2f5 !important;
-    }
-    .stTextArea textarea:focus, .stTextInput input:focus {
-        border-color: #8b8cff !important;
-        box-shadow: 0 0 0 1px #8b8cff !important;
-    }
-    /* Expander styling */
-    .streamlit-expanderHeader, [data-testid="stExpander"] summary {
-        background: #181c25;
-        border: 1px solid #232834;
+    section[data-testid="stSidebar"] .stButton > button[kind="primary"] {
+        background: rgba(139,140,255,0.13);
+        border: 1px solid transparent;
+        border-left: 2px solid #8b8cff;
         border-radius: 4px;
+        color: #f0f2f5;
+        box-shadow: none;
     }
-    /* Sliders — accent color */
+    /* The "✦ New prediction" button keeps the lavender treatment */
+    section[data-testid="stSidebar"] .stButton:first-of-type > button {
+        background: linear-gradient(180deg,
+            rgba(139,140,255,0.28), rgba(139,140,255,0.14));
+        border: 1px solid rgba(139,140,255,0.54);
+        border-radius: 8px;
+        color: #f6f5ff;
+        font-weight: 550;
+        text-align: center;
+        justify-content: center;
+        padding: 9px 12px;
+        box-shadow: 0 0 16px rgba(139,140,255,0.14);
+    }
+    section[data-testid="stSidebar"] .stButton:first-of-type > button:hover {
+        background: linear-gradient(180deg,
+            rgba(139,140,255,0.38), rgba(139,140,255,0.21));
+        border-color: rgba(139,140,255,0.76);
+        box-shadow: 0 0 22px rgba(139,140,255,0.22);
+    }
+
+    /* ---- Text inputs / textareas / selects: lifted panels,
+       fine borders, a clean lavender focus ring. ---- */
+    .stTextInput input, .stTextArea textarea,
+    .stNumberInput input,
+    .stSelectbox div[data-baseweb="select"] > div,
+    div[data-baseweb="select"] > div {
+        background: #14171f !important;
+        border: 1px solid #242935 !important;
+        border-radius: 7px !important;
+        color: #e7e9ee !important;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .stTextInput input::placeholder, .stTextArea textarea::placeholder {
+        color: #5a626e !important;
+    }
+    .stTextArea textarea:focus, .stTextInput input:focus,
+    .stNumberInput input:focus {
+        border-color: rgba(139,140,255,0.75) !important;
+        box-shadow: 0 0 0 1px rgba(139,140,255,0.55),
+                    0 0 14px rgba(139,140,255,0.16) !important;
+    }
+    div[data-baseweb="select"]:focus-within > div {
+        border-color: rgba(139,140,255,0.7) !important;
+        box-shadow: 0 0 0 1px rgba(139,140,255,0.5) !important;
+    }
+    /* Selectbox + popover dropdown panels */
+    div[data-baseweb="popover"] [role="listbox"],
+    div[data-baseweb="menu"] {
+        background: #181c25 !important;
+        border: 1px solid #2a303d !important;
+        border-radius: 8px !important;
+        box-shadow: 0 12px 34px rgba(0,0,0,0.6) !important;
+    }
+    li[role="option"]:hover, div[data-baseweb="menu"] li:hover {
+        background: rgba(139,140,255,0.12) !important;
+    }
+
+    /* ---- Labels above widgets ---- */
+    .stTextInput label, .stTextArea label, .stSelectbox label,
+    .stNumberInput label, .stRadio label, .stFileUploader label {
+        color: #8b93a0 !important;
+        font-size: 12.5px !important;
+        font-weight: 500 !important;
+        letter-spacing: 0.002em;
+    }
+
+    /* ---- Expanders: flat lifted card, fine border, calm
+       hover. Opened body sits on the surface tone. ---- */
+    [data-testid="stExpander"] {
+        border: 1px solid #1f2430;
+        border-radius: 9px;
+        background: #10131a;
+        overflow: hidden;
+    }
+    section[data-testid="stSidebar"] [data-testid="stExpander"] {
+        margin-bottom: 7px;
+        background: #0f1219;
+    }
+    section[data-testid="stSidebar"] [data-testid="stExpander"] summary {
+        background: #0f1219;
+        padding: 9px 12px;
+        font-size: 13px;
+    }
+    section[data-testid="stSidebar"] [data-testid="stExpander"] summary:hover {
+        background: #14171f;
+    }
+    [data-testid="stExpander"] summary,
+    [data-testid="stExpander"] details > summary {
+        background: #14171f;
+        border: none;
+        border-radius: 0;
+        padding: 11px 14px;
+        color: #c7cdd6;
+        font-weight: 500;
+        transition: background 0.15s ease, color 0.15s ease;
+    }
+    [data-testid="stExpander"] summary:hover {
+        background: #181c26;
+        color: #f0f2f5;
+    }
+    [data-testid="stExpander"] [data-testid="stExpanderDetails"] {
+        background: #10131a;
+        padding: 4px 14px 12px;
+    }
+
+    /* ---- Toggles: track + knob restyled; on-state glows
+       lavender (the live-video / 玄学-lens switches). ---- */
+    .stCheckbox [data-baseweb="checkbox"] div[role="checkbox"],
+    label[data-baseweb="checkbox"] > span:first-child {
+        border-color: #2f3542 !important;
+    }
+    div[data-baseweb="toggle"] {
+        background: #20242f !important;
+    }
+    div[data-baseweb="toggle"][aria-checked="true"],
+    button[role="switch"][aria-checked="true"] {
+        background: rgba(139,140,255,0.85) !important;
+        box-shadow: 0 0 12px rgba(139,140,255,0.4) !important;
+    }
+    div[data-baseweb="toggle"] div {
+        background: #f0f2f5 !important;
+    }
+
+    /* ---- Popover (the "+ Attach" control) ---- */
+    div[data-baseweb="popover"] > div {
+        background: #14171f !important;
+        border: 1px solid #2a303d !important;
+        border-radius: 10px !important;
+        box-shadow: 0 16px 40px rgba(0,0,0,0.62) !important;
+    }
+
+    /* ---- File uploader dropzone ---- */
+    [data-testid="stFileUploaderDropzone"] {
+        background: #14171f !important;
+        border: 1px dashed #2c3340 !important;
+        border-radius: 8px !important;
+    }
+    [data-testid="stFileUploaderDropzone"]:hover {
+        border-color: rgba(139,140,255,0.5) !important;
+    }
+
+    /* ---- Sliders ---- */
     .stSlider [role="slider"] {
         background: #8b8cff;
+        box-shadow: 0 0 10px rgba(139,140,255,0.45);
     }
-    /* Divider — fainter */
+    .stSlider [data-baseweb="slider"] div[data-testid] { background: #8b8cff; }
+
+    /* ---- Radio (Settings language picker) ---- */
+    .stRadio div[role="radiogroup"] label {
+        background: #14171f;
+        border: 1px solid #242935;
+        border-radius: 6px;
+        padding: 3px 10px;
+        transition: border-color 0.14s ease;
+    }
+    .stRadio div[role="radiogroup"] label:hover {
+        border-color: rgba(139,140,255,0.5);
+    }
+
+    /* ---- Dividers — a faint hairline, not a hard rule ---- */
     hr {
-        border-color: #232834 !important;
-        opacity: 0.6;
+        border: none !important;
+        height: 1px !important;
+        background: linear-gradient(90deg,
+            rgba(35,40,52,0), #232834 18%, #232834 82%,
+            rgba(35,40,52,0)) !important;
+        opacity: 0.85;
     }
-    /* Caption text — slightly dimmer */
+
+    /* ---- Captions ---- */
     .stCaption, [data-testid="stCaptionContainer"] {
-        color: #76808d !important;
+        color: #6a7280 !important;
+        letter-spacing: 0.004em;
     }
-    /* Code blocks */
+
+    /* ---- Links — lavender, quiet underline on hover ---- */
+    a, a:visited {
+        color: #9fa0ff !important;
+        text-decoration: none !important;
+        transition: color 0.14s ease;
+    }
+    a:hover {
+        color: #b9baff !important;
+        text-decoration: underline !important;
+        text-underline-offset: 2px;
+    }
+
+    /* ---- Code / inline code ---- */
     code {
-        background: rgba(255,255,255,0.04) !important;
-        color: #b9bfc8 !important;
-        padding: 0 4px !important;
-        border-radius: 2px !important;
+        background: rgba(139,140,255,0.08) !important;
+        color: #c3b9ff !important;
+        padding: 1px 5px !important;
+        border-radius: 3px !important;
+        font-size: 0.86em !important;
     }
-    /* Hide the "Made with Streamlit" footer and the deploy chip */
+    pre, [data-testid="stCodeBlock"] {
+        background: #0d0f16 !important;
+        border: 1px solid #1f2430 !important;
+        border-radius: 8px !important;
+    }
+
+    /* ---- Hide Streamlit chrome ---- */
     footer { visibility: hidden; }
-    /* Tighten metric chrome */
+    #MainMenu { visibility: hidden; }
+
+    /* ---- Metrics: serif value, the one accent number; the
+       container reads as a quiet card. ---- */
+    [data-testid="stMetric"] {
+        background: #11141b;
+        border: 1px solid #1f2430;
+        border-radius: 10px;
+        padding: 14px 16px;
+    }
     [data-testid="stMetricValue"] {
         font-family: "Cormorant Garamond", Georgia, serif;
-        font-size: 32px;
+        font-size: 34px;
         color: #f0f2f5;
+        letter-spacing: -0.01em;
     }
     [data-testid="stMetricLabel"] {
         color: #76808d;
-        font-size: 12px;
-        letter-spacing: 0.02em;
+        font-size: 11.5px;
+        letter-spacing: 0.06em;
         text-transform: uppercase;
     }
-    /* Container border refinement */
+
+    /* ---- Bordered containers — the composer card, embedded
+       panels: surface tone, fine border, soft depth. ---- */
     [data-testid="stContainer"][data-border="true"],
+    div[data-testid="stVerticalBlockBorderWrapper"],
     div[data-testid="stContainer"]:has(> div[data-testid="stContainerBorder"]) {
-        background: #11141b;
-        border: 1px solid #232834;
-        border-radius: 8px;
+        background: linear-gradient(180deg, #12151d, #0f1219);
+        border: 1px solid #20242f !important;
+        border-radius: 12px;
+        box-shadow: 0 1px 0 rgba(255,255,255,0.02) inset,
+                    0 10px 30px rgba(0,0,0,0.35);
     }
+
+    /* ---- Tabs ---- */
+    .stTabs [data-baseweb="tab-list"] {
+        border-bottom: 1px solid #20242f;
+        gap: 4px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        color: #76808d;
+        font-weight: 500;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #f0f2f5 !important;
+    }
+    .stTabs [data-baseweb="tab-highlight"] { background: #8b8cff !important; }
+
+    /* ---- Alerts — calm, fine-bordered, not loud blocks ---- */
+    [data-testid="stAlert"] {
+        border-radius: 9px;
+        border: 1px solid #20242f;
+    }
+
+    /* ---- Tables / dataframes ---- */
+    [data-testid="stTable"], .stDataFrame {
+        border: 1px solid #20242f;
+        border-radius: 9px;
+    }
+
+    /* ---- Scrollbar — thin, deep-space ---- */
+    ::-webkit-scrollbar { width: 9px; height: 9px; }
+    ::-webkit-scrollbar-track { background: #0a0c11; }
+    ::-webkit-scrollbar-thumb {
+        background: #232834;
+        border-radius: 6px;
+        border: 2px solid #0a0c11;
+    }
+    ::-webkit-scrollbar-thumb:hover { background: #2f3542; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -450,13 +757,17 @@ def render_sidebar() -> tuple[str, Any]:
 
     # ---- Brand wordmark ----
     st.sidebar.markdown(
-        f"<div style='font-family:\"Cormorant Garamond\",Georgia,serif;"
-        f"font-size:22px;font-weight:600;letter-spacing:-0.015em;"
-        f"color:#f0f2f5;margin:2px 0 2px;'>"
-        f"{_brand.BRAND_NAME_SHORT}"
+        f"<div style='display:flex;align-items:baseline;gap:8px;"
+        f"margin:2px 0 3px;'>"
+        f"<span style='font-family:\"Cormorant Garamond\",Georgia,serif;"
+        f"font-size:23px;font-weight:600;letter-spacing:-0.015em;"
+        f"color:#f0f2f5;'>"
+        f"{_brand.BRAND_NAME_SHORT}</span>"
+        f"<span style='color:#8b8cff;font-size:11px;"
+        f"text-shadow:0 0 8px rgba(139,140,255,0.7);'>✦</span>"
         f"</div>"
-        f"<div style='color:#76808d;font-size:12px;letter-spacing:0.01em;"
-        f"margin-bottom:14px;'>"
+        f"<div style='color:#6a7280;font-size:11.5px;letter-spacing:0.012em;"
+        f"line-height:1.45;margin-bottom:16px;'>"
         f"{T('brand.tagline')}"
         f"</div>",
         unsafe_allow_html=True,
@@ -481,9 +792,14 @@ def render_sidebar() -> tuple[str, Any]:
 
     # ---- History rail — user-organized tree (categories + labels) ----
     st.sidebar.markdown(
-        f"<div style='color:#76808d;font-size:11px;letter-spacing:0.08em;"
-        f"text-transform:uppercase;margin:18px 0 4px;'>"
-        f"{T('nav.history')}</div>",
+        f"<div style='display:flex;align-items:center;gap:8px;"
+        f"margin:20px 0 6px;'>"
+        f"<span style='color:#76808d;font-size:10.5px;letter-spacing:0.13em;"
+        f"text-transform:uppercase;font-weight:600;'>"
+        f"{T('nav.history')}</span>"
+        f"<span style='flex:1;height:1px;background:linear-gradient(90deg,"
+        f"#1f2430,rgba(31,36,48,0));'></span>"
+        f"</div>",
         unsafe_allow_html=True,
     )
     route = _render_history_rail(route)
@@ -558,7 +874,7 @@ def render_sidebar() -> tuple[str, Any]:
         # Streamlit Cloud worker is actually serving.
         f"<div style='color:#3a3f49;font-size:9.5px;margin-top:10px;"
         f"letter-spacing:0.15em;text-transform:uppercase;'>"
-        f"build · v4.18.0 · history rail</div>",
+        f"build · v4.19.0 · cosmic theme</div>",
         unsafe_allow_html=True,
     )
 
@@ -570,49 +886,115 @@ def render_sidebar() -> tuple[str, Any]:
 # Mode 1 — New prediction
 # ============================================================
 
-def render_new_prediction() -> None:
-    """Form input → compile → display branches + off-diagonal + evidence."""
-    # Hero — Apple-style: large serif title with restraint + generous
-    # whitespace + a single muted-color subtitle. No emoji, no badges.
-    st.markdown(
-        f"""
-        <div style='text-align:center;padding:48px 24px 32px;'>
-          <h1 style='font-family:"Cormorant Garamond",Georgia,serif;
-                     font-size:56px;line-height:1.05;font-weight:500;
-                     letter-spacing:-0.025em;margin:0 0 16px;
-                     color:#f0f2f5;'>
-            {T("new.hero.title")}
-          </h1>
-          <p style='color:#b9bfc8;font-size:16px;line-height:1.55;
-                    max-width:560px;margin:0 auto;letter-spacing:0.005em;'>
-            {T("new.hero.subtitle")}
-          </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
+def _idle_heatmap_branches() -> list[Any]:
+    """Five equal-probability placeholder branches for the idle heatmap.
+
+    The chatbox layout keeps the quantum probability heatmap visible at
+    the top of the workspace at ALL times — even before any prediction
+    exists. With no real hypotheses to draw, we feed the heatmap a flat
+    uniform distribution: five 0.20-probability branches. The heatmap's
+    own uniform→predicted interpolation then renders a calm, even cosmic
+    grid that resolves into the real distribution once a prediction is
+    run. This is honest: a uniform prior IS the pre-evidence belief.
+    """
+    from console import ConsoleHypothesis
+
+    labels = [
+        "Branch A — awaiting your decision",
+        "Branch B — awaiting your decision",
+        "Branch C — awaiting your decision",
+        "Branch D — awaiting your decision",
+        "Branch E — awaiting your decision",
+    ]
+    return [
+        ConsoleHypothesis(
+            label=lbl,
+            narrative="",
+            probability=0.20,
+            key_uncertainty_driver="",
+            depends_on_decision=None,
+            branch_type="realistic",
+        )
+        for lbl in labels
+    ]
+
+
+def _render_workspace_output() -> None:
+    """Top region of the chatbox workspace — the persistent output.
+
+    Always present. The quantum probability heatmap is the centerpiece
+    and renders on every run: an idle flat grid before a prediction, the
+    real branch distribution after. When a prediction exists in
+    ``st.session_state.current_prediction`` the full result (branches,
+    joint structure, drill-down, 玄学 lens) renders here too.
+
+    Streamlit reruns top→bottom, so this output region — placed before
+    the composer — reflects the last prediction the composer stored.
+    """
+    current = st.session_state.get("current_prediction")
+
+    if current is None:
+        # Idle state — heatmap only, calm "awaiting your decision" grid.
+        st.markdown(
+            "<div style='display:flex;align-items:center;gap:9px;"
+            "margin:6px 0 4px;'>"
+            "<span style='width:4px;height:4px;border-radius:50%;"
+            "background:#8b8cff;box-shadow:0 0 7px rgba(139,140,255,0.8);'>"
+            "</span>"
+            "<span style='color:#8b93a0;font-size:11px;letter-spacing:0.14em;"
+            "text-transform:uppercase;font-weight:600;'>"
+            "Prediction space</span>"
+            "<span style='flex:1;height:1px;background:linear-gradient(90deg,"
+            "#232834,rgba(35,40,52,0));'></span>"
+            "</div>",
+            unsafe_allow_html=True,
+        )
+        _render_probability_heatmap(_idle_heatmap_branches(), horizon_label="")
+        st.markdown(
+            "<div style='text-align:center;color:#76808d;font-size:12.5px;"
+            "line-height:1.6;margin:2px 0 8px;letter-spacing:0.01em;'>"
+            "The grid is uniform — a world with no evidence yet. "
+            "Describe a decision below and run a prediction to watch the "
+            "distribution resolve.</div>",
+            unsafe_allow_html=True,
+        )
+        return
+
+    # A prediction exists — render the full result here at the top.
+    _render_result(
+        current["result"], current["form_data"], current["scenario"],
+        current["user_id"], current["program"],
+        prediction_id=current["prediction_id"],
     )
 
-    # Tight "how it works" expander — collapsed by default, so the hero
-    # breathes. Anyone who needs the explainer is one click away.
-    with st.expander(T("new.howto.title"), expanded=False):
-        st.markdown(T("new.howto.body"))
 
+def _render_workspace_composer() -> None:
+    """Bottom region of the chatbox workspace — the input composer.
+
+    Text conditions + a "+" attach (video / files) + a live-video toggle
+    + a 玄学-lens toggle, all feeding one "Run prediction". When Generate
+    is submitted the prediction is compiled, stored in
+    ``st.session_state.current_prediction``, and ``st.rerun()`` is called
+    so the top output region picks it up. Borrows only the "one composer
+    + attach" affordance — this is NOT a turn-by-turn chatbox.
+    """
     # Auto-suggested user handle so the field never blocks submission.
     # Shares the session-stable id with the history rail, so a
     # prediction created here appears in the sidebar immediately.
     session_user_id()
 
-    # ============================================================
-    # Unified composer — one workspace, multiple input modalities.
-    # Borrows ONLY the "one composer + attach" affordance from a chat
-    # UI; this is NOT a chatbox. Text conditions + a "+" attach (video
-    # / files) + a live-video toggle + a 玄学-lens toggle, all in one
-    # place, feeding a single "Run prediction".
-    # ============================================================
     st.markdown(
-        f"<div style='color:#76808d;font-size:11px;letter-spacing:0.08em;"
-        f"text-transform:uppercase;margin:8px 0 6px;'>"
-        f"{T('composer.section')}</div>",
+        f"<div style='display:flex;align-items:center;gap:9px;"
+        f"margin:10px 0 10px;'>"
+        f"<span style='width:4px;height:4px;border-radius:50%;"
+        f"background:#8b8cff;box-shadow:0 0 7px rgba(139,140,255,0.8);'>"
+        f"</span>"
+        f"<span style='color:#8b93a0;font-size:11px;letter-spacing:0.14em;"
+        f"text-transform:uppercase;font-weight:600;'>"
+        f"{T('composer.section')}</span>"
+        f"<span style='flex:1;height:1px;background:linear-gradient(90deg,"
+        f"#232834,rgba(35,40,52,0));'></span>"
+        f"</div>",
         unsafe_allow_html=True,
     )
 
@@ -773,9 +1155,10 @@ def render_new_prediction() -> None:
             type="primary",
         )
 
-    # v4.16 P2: persist the latest prediction in st.session_state so
-    # post-submit interactions (drill-down clicks, view-mode toggles,
-    # γ sliders) don't lose context across reruns.
+    # v4.16 P2: persist the latest prediction in st.session_state so the
+    # top output region (and post-submit interactions — drill-down
+    # clicks, view-mode toggles, γ sliders) read a stable snapshot
+    # across reruns.
     if submit:
         is_valid, err = validate_input(form_data)
         if not is_valid:
@@ -822,17 +1205,68 @@ def render_new_prediction() -> None:
             "user_id": user_id,
             "program": program,
         }
+        # Chatbox layout: rerun so the TOP output region resolves the
+        # heatmap from idle uniform → the real distribution.
+        st.rerun()
 
-    # Re-render the latest prediction (whether just submitted or
-    # carried over from a previous run).
-    current = st.session_state.get("current_prediction")
-    if current is None:
-        return
-    _render_result(
-        current["result"], current["form_data"], current["scenario"],
-        current["user_id"], current["program"],
-        prediction_id=current["prediction_id"],
+
+def render_new_prediction() -> None:
+    """Chatbox workspace — output region on top, input composer below.
+
+    Streamlit reruns top→bottom. The output region reads the last
+    prediction from ``st.session_state`` (idle heatmap if none); the
+    composer below computes a prediction, stores it, and reruns so the
+    top updates. Output-then-input ordering, like a chat app — though
+    the tool is explicitly NOT a turn-by-turn chatbox.
+    """
+    # Hero — Apple-style: large serif title with restraint + generous
+    # whitespace + a single muted-color subtitle. No emoji, no badges.
+    st.markdown(
+        f"""
+        <div style='text-align:center;padding:40px 24px 18px;position:relative;'>
+          <div style='position:absolute;top:14px;left:50%;
+                      transform:translateX(-50%);width:340px;height:160px;
+                      background:radial-gradient(ellipse at center,
+                      rgba(139,140,255,0.16),rgba(139,140,255,0) 70%);
+                      pointer-events:none;'></div>
+          <h1 style='font-family:"Cormorant Garamond",Georgia,serif;
+                     font-size:52px;line-height:1.05;font-weight:500;
+                     letter-spacing:-0.025em;margin:0 0 14px;
+                     color:#f0f2f5;position:relative;'>
+            {T("new.hero.title")}
+          </h1>
+          <p style='color:#b9bfc8;font-size:15.5px;line-height:1.6;
+                    max-width:548px;margin:0 auto;letter-spacing:0.004em;
+                    position:relative;'>
+            {T("new.hero.subtitle")}
+          </p>
+          <div style='width:46px;height:1px;margin:22px auto 0;
+                      background:linear-gradient(90deg,
+                      rgba(139,140,255,0),rgba(139,140,255,0.6),
+                      rgba(139,140,255,0));'></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
+
+    # Tight "how it works" expander — collapsed by default, so the hero
+    # breathes. Anyone who needs the explainer is one click away.
+    with st.expander(T("new.howto.title"), expanded=False):
+        st.markdown(T("new.howto.body"))
+
+    # ============================================================
+    # Chatbox layout: OUTPUT region on top, INPUT composer below.
+    # The quantum probability heatmap is the permanent centerpiece of
+    # the output region — idle (flat uniform grid) before a prediction,
+    # the real distribution after. The composer sits underneath, so the
+    # flow reads output-then-input like a chat app. It borrows ONLY the
+    # "one composer + attach" affordance — NOT a turn-by-turn chatbox.
+    # ============================================================
+    _render_workspace_output()
+
+    st.divider()
+
+    _render_workspace_composer()
 
 
 # ============================================================
@@ -1758,7 +2192,24 @@ def _render_result(
     stable id to key the cache on). When prediction_id is None we
     fall back to inline-persistence (legacy path for tests that
     construct results directly)."""
-    st.success("Prediction generated.")
+    # Chatbox layout: this result renders at the TOP of the workspace
+    # on every rerun, so a one-shot green success toast would stick on
+    # permanently. A quiet resolved-state header reads better as a
+    # standing top-of-output element.
+    st.markdown(
+        "<div style='display:flex;align-items:center;gap:9px;"
+        "margin:6px 0 4px;'>"
+        "<span style='width:4px;height:4px;border-radius:50%;"
+        "background:#58c5b4;box-shadow:0 0 7px rgba(88,197,180,0.8);'>"
+        "</span>"
+        "<span style='color:#8b93a0;font-size:11px;letter-spacing:0.14em;"
+        "text-transform:uppercase;font-weight:600;'>"
+        "Resolved prediction</span>"
+        "<span style='flex:1;height:1px;background:linear-gradient(90deg,"
+        "#232834,rgba(35,40,52,0));'></span>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
     if prediction_id is None:
         rec = storage.PredictionRecord(

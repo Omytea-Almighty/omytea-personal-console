@@ -33,26 +33,29 @@ def _func(name: str) -> ast.FunctionDef:
 
 
 # --------------------------------------------------------------------
-# The composer lives inside render_new_prediction
+# The composer lives in _render_workspace_composer (the chatbox-layout
+# input region), reached via render_new_prediction. OMY-V415 / M2 /
+# Acceptance #58 split the workspace into output-top / input-bottom, so
+# the composer markup moved into its own helper.
 # --------------------------------------------------------------------
 
 def test_composer_has_attach_affordance() -> None:
     """A "+" attach popover with a video uploader sits in the composer."""
-    src = ast.unparse(_func("render_new_prediction"))
+    src = ast.unparse(_func("_render_workspace_composer"))
     assert "st.popover" in src, "composer needs a '+' attach popover"
     assert "_composer_video" in src, "attach popover needs a video uploader"
 
 
 def test_composer_has_live_video_toggle() -> None:
     """Live webcam becomes a toggle, not a separate mode page."""
-    src = ast.unparse(_func("render_new_prediction"))
+    src = ast.unparse(_func("_render_workspace_composer"))
     assert "_composer_live_toggle" in src
     assert "st.toggle" in src
 
 
 def test_composer_has_xuanxue_lens_toggle() -> None:
     """The 玄学 lens is an optional toggle inside the workspace."""
-    src = ast.unparse(_func("render_new_prediction"))
+    src = ast.unparse(_func("_render_workspace_composer"))
     assert "_composer_lens_toggle" in src
     # The toggle state must be published for _render_result to read.
     assert "_xuanxue_lens_on" in src
@@ -60,19 +63,19 @@ def test_composer_has_xuanxue_lens_toggle() -> None:
 
 def test_composer_embeds_video_pipeline() -> None:
     """An attached video runs the video pipeline inline (embedded)."""
-    src = ast.unparse(_func("render_new_prediction"))
+    src = ast.unparse(_func("_render_workspace_composer"))
     assert "render_video_query(embedded=True)" in src
 
 
 def test_composer_embeds_live_pipeline() -> None:
     """The live toggle embeds the webcam panel inline (embedded)."""
-    src = ast.unparse(_func("render_new_prediction"))
+    src = ast.unparse(_func("_render_workspace_composer"))
     assert "render_live_webcam(embedded=True)" in src
 
 
 def test_composer_still_has_run_prediction_form() -> None:
     """The text-conditions form + a single Generate button survive."""
-    src = ast.unparse(_func("render_new_prediction"))
+    src = ast.unparse(_func("_render_workspace_composer"))
     assert "st.form" in src
     assert "form_submit_button" in src
 

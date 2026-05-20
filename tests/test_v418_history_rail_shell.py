@@ -109,9 +109,11 @@ def test_measurement_update_accepts_preloaded_id() -> None:
 def test_session_user_id_helper_exists() -> None:
     """A single session-stable user id feeds both composer and rail."""
     assert "def session_user_id()" in APP_SRC
-    # render_new_prediction must use the shared helper, not re-roll its
-    # own random handle (that would desync the rail from saved records).
-    fn = _func("render_new_prediction")
+    # The composer must use the shared helper, not re-roll its own
+    # random handle (that would desync the rail from saved records).
+    # OMY-V415 / M2 / Acceptance #58 moved the composer markup into
+    # _render_workspace_composer (the chatbox input region).
+    fn = _func("_render_workspace_composer")
     assert "session_user_id()" in ast.unparse(fn)
 
 
