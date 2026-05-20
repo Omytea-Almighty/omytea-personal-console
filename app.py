@@ -16,6 +16,7 @@ import os
 from typing import Any
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 import _brand
 from _heatmap_component import (
@@ -3947,7 +3948,42 @@ def render_live_webcam(embedded: bool = False) -> None:
         )
 
 
+def _force_sidebar_open() -> None:
+    """Keep the history-rail sidebar visible on load.
+
+    Streamlit Community Cloud can paint the app with the sidebar
+    collapsed (a width race in the embedding iframe) even though
+    ``initial_sidebar_state`` is "expanded". The sidebar IS the
+    navigation — it must not start hidden. This injects a 0-height
+    helper that clicks the expand control once if the sidebar loaded
+    collapsed. Worst case (control absent / cross-origin) it no-ops.
+    """
+    components.html(
+        """
+        <script>
+        (function () {
+          function openSb() {
+            try {
+              var d = window.parent && window.parent.document;
+              if (!d) return;
+              var sb = d.querySelector('section[data-testid="stSidebar"]');
+              if (!sb || sb.getAttribute('aria-expanded') !== 'false') return;
+              var c = d.querySelector(
+                '[data-testid="stSidebarCollapsedControl"]');
+              if (c) { (c.querySelector('button') || c).click(); }
+            } catch (e) {}
+          }
+          setTimeout(openSb, 150);
+          setTimeout(openSb, 700);
+        })();
+        </script>
+        """,
+        height=0,
+    )
+
+
 def main() -> None:
+    _force_sidebar_open()
     kind, payload = render_sidebar()
 
     if kind == ROUTE_HISTORY:
