@@ -865,6 +865,108 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
             "décale la prévision en direct, sans clic d'envoi."
         ),
     },
+    # -----  Heatmap card head + likelihood legend + reading narrative  -----
+    # The {slot}s are filled in Python (render_heatmap_camera_component)
+    # from the live branch distribution — v10's one-line answer sentence.
+    "heatmap.head_title": {
+        LANG_EN: "Probability of each outcome",
+        LANG_ZH: "各结果的概率",
+        LANG_ES: "Probabilidad de cada resultado",
+        LANG_FR: "Probabilité de chaque issue",
+    },
+    "heatmap.head_hint": {
+        LANG_EN: "click a cell for detail",
+        LANG_ZH: "点击单元格查看详情",
+        LANG_ES: "haz clic en una celda para ver el detalle",
+        LANG_FR: "cliquez sur une cellule pour le détail",
+    },
+    "heatmap.legend_label": {
+        LANG_EN: "Likelihood:",
+        LANG_ZH: "可能性：",
+        LANG_ES: "Probabilidad:",
+        LANG_FR: "Vraisemblance :",
+    },
+    "heatmap.legend_rare": {
+        LANG_EN: "rare",
+        LANG_ZH: "罕见",
+        LANG_ES: "raro",
+        LANG_FR: "rare",
+    },
+    "heatmap.legend_likely": {
+        LANG_EN: "most likely",
+        LANG_ZH: "最可能",
+        LANG_ES: "más probable",
+        LANG_FR: "le plus probable",
+    },
+    "heatmap.y_axis_caption": {
+        LANG_EN: "outcome branch",
+        LANG_ZH: "结果分支",
+        LANG_ES: "rama de resultado",
+        LANG_FR: "branche d'issue",
+    },
+    "heatmap.narrative_prediction": {
+        LANG_EN: (
+            "Most likely “{branch}” — it carries about "
+            "{pct}% of the probability mass at your {horizon}, with the "
+            "distribution widening as the horizon stretches."
+        ),
+        LANG_ZH: (
+            "最可能的是“{branch}”——在你的{horizon}时点"
+            "它占据约 {pct}% 的概率质量，且分布随时限拉长而展宽。"
+        ),
+        LANG_ES: (
+            "Lo más probable es “{branch}”: concentra cerca "
+            "del {pct}% de la masa de probabilidad en tu {horizon}, y la "
+            "distribución se amplía al alejarse el horizonte."
+        ),
+        LANG_FR: (
+            "Le plus probable est « {branch} » : il "
+            "porte environ {pct} % de la masse de probabilité "
+            "à votre {horizon}, la distribution s'élargissant "
+            "à mesure que l'horizon s'étire."
+        ),
+    },
+    "heatmap.narrative_idle": {
+        LANG_EN: (
+            "No prediction yet — the distribution is uniform until "
+            "you run one. Each row would then carry its own share of the "
+            "probability mass."
+        ),
+        LANG_ZH: (
+            "尚无预测——在你运行一次之前分布是均匀的。"
+            "运行之后每一行会各自承载一份概率质量。"
+        ),
+        LANG_ES: (
+            "Aún sin predicción: la distribución es "
+            "uniforme hasta que ejecutes una. Después cada fila "
+            "tendrá su propia parte de la masa de probabilidad."
+        ),
+        LANG_FR: (
+            "Pas encore de prédiction : la distribution est uniforme "
+            "jusqu'à ce que vous en lanciez une. Chaque ligne "
+            "portera alors sa part de la masse de probabilité."
+        ),
+    },
+    "heatmap.narrative_live": {
+        LANG_EN: (
+            "The camera is driving the math — motion in the frame "
+            "shifts where the probability mass concentrates, live."
+        ),
+        LANG_ZH: (
+            "摄像头正在驱动计算——画面中的运动会实时改变"
+            "概率质量聚集的位置。"
+        ),
+        LANG_ES: (
+            "La cámara controla el cálculo: el movimiento en el "
+            "cuadro desplaza, en vivo, dónde se concentra la masa de "
+            "probabilidad."
+        ),
+        LANG_FR: (
+            "La caméra pilote le calcul : le mouvement dans l'image "
+            "déplace, en direct, là où se concentre la "
+            "masse de probabilité."
+        ),
+    },
     # -----  Mode 7: Traditional × Calibrated (Nye-clock)  -----
     "mode.traditional": {
         LANG_EN: "Traditional × Calibrated",

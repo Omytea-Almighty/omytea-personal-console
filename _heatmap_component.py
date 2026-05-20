@@ -140,6 +140,36 @@ def branches_to_payload(hypotheses: list[Any]) -> list[dict[str, Any]]:
     return payload
 
 
+def _heatmap_narrative(
+    branches: list[dict[str, Any]], horizon_label: str
+) -> str:
+    """Build the one-line plain-English reading shown below the heatmap.
+
+    Ports v10's ``ans-narrative`` answer sentence: it names the
+    most-likely branch and its calibrated share of the probability mass
+    at the horizon. An empty branch list (idle) returns the static idle
+    reading instead. The sentence is generated from the data so it
+    stays a real calibrated read, never a fixed string.
+    """
+    if not branches:
+        return T("heatmap.narrative_idle")
+    horizon = (horizon_label or "horizon").strip() or "horizon"
+    # Most-likely branch = the largest calibrated probability.
+    top = max(
+        branches,
+        key=lambda b: float(b.get("probability", 0.0) or 0.0),
+    )
+    total = sum(float(b.get("probability", 0.0) or 0.0) for b in branches)
+    raw = float(top.get("probability", 0.0) or 0.0)
+    # Normalize so the quoted share reads as a true share of the mass.
+    share = (raw / total) if total > 0 else (1.0 / max(1, len(branches)))
+    pct = max(0, min(100, round(share * 100)))
+    label = str(top.get("label", "") or "").strip() or "this branch"
+    return T("heatmap.narrative_prediction").format(
+        branch=label, pct=pct, horizon=horizon
+    )
+
+
 def _v10_srcdoc() -> str | None:
     """Read the v10 app, scope it to the see-both panel, escape for srcdoc.
 
@@ -263,13 +293,28 @@ def render_heatmap_camera_component(
         Reserved for disambiguation if two components ever co-exist.
     """
     payload_json = json.dumps(branches, ensure_ascii=True)
-    horizon_safe = _html.escape((horizon_label or "horizon").strip())
+    horizon_raw = (horizon_label or "horizon").strip()
+    horizon_safe = _html.escape(horizon_raw)
+
+    # The plain-English reading sentence below the chart (v10's
+    # ``ans-narrative``) is data-derived: it names the most-likely branch
+    # and its calibrated share. Idle / live get their own static reading.
+    reading_narrative = _heatmap_narrative(branches, horizon_raw)
 
     # i18n strings are baked into the HTML at render time (the JS side has
     # no Streamlit access). All are escaped for safe embedding.
     strings = {
         "title": _html.escape(T("result.heatmap_title")),
         "reading": _html.escape(T("result.heatmap_reading")),
+        "head_title": _html.escape(T("heatmap.head_title")),
+        "head_hint": _html.escape(T("heatmap.head_hint")),
+        "legend_label": _html.escape(T("heatmap.legend_label")),
+        "legend_rare": _html.escape(T("heatmap.legend_rare")),
+        "legend_likely": _html.escape(T("heatmap.legend_likely")),
+        "y_axis_caption": _html.escape(T("heatmap.y_axis_caption")),
+        "narrative": _html.escape(reading_narrative),
+        "narrative_idle": _html.escape(T("heatmap.narrative_idle")),
+        "narrative_live": _html.escape(T("heatmap.narrative_live")),
         "camera_btn": _html.escape(T("heatmap.camera_btn")),
         "video_btn": _html.escape(T("heatmap.video_btn")),
         "stop_btn": _html.escape(T("heatmap.stop_btn")),
@@ -300,6 +345,23 @@ def render_heatmap_camera_component(
     components.html(html_doc, height=height, scrolling=False)
 
 
+# Default fillers for the heatmap-card head / legend / narrative slots.
+# ``render_heatmap_camera_component`` always supplies these from i18n;
+# the defaults only matter for callers that pass a minimal strings map
+# (e.g. structural tests), so every {slot} stays filled regardless.
+_TEMPLATE_SLOT_DEFAULTS = {
+    "head_title": "Probability of each outcome",
+    "head_hint": "click a cell for detail",
+    "legend_label": "Likelihood:",
+    "legend_rare": "rare",
+    "legend_likely": "most likely",
+    "y_axis_caption": "outcome branch",
+    "narrative": "",
+    "narrative_idle": "",
+    "narrative_live": "",
+}
+
+
 def _build_component_html(payload_json: str, s: dict[str, str]) -> str:
     """Assemble the full single-file HTML/JS/CSS component document.
 
@@ -310,7 +372,11 @@ def _build_component_html(payload_json: str, s: dict[str, str]) -> str:
     # no model download. The motion detector is an 80×45 canvas pixel
     # diff (the v10 design the founder approved). The {curly} slots below
     # are .format()-filled from `s` + payload; all JS braces are doubled.
-    return _COMPONENT_TEMPLATE.format(payload=payload_json, **s)
+    # Any heatmap-card slot the caller omitted is back-filled so the
+    # template always formats cleanly.
+    fields = dict(_TEMPLATE_SLOT_DEFAULTS)
+    fields.update(s)
+    return _COMPONENT_TEMPLATE.format(payload=payload_json, **fields)
 
 
 # ----------------------------------------------------------------------
@@ -429,41 +495,63 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
      side-by-side layout uses the full column width. */
   .forecast {{ max-width: 680px; margin: 0 auto; }}
   .stage.live .forecast {{ max-width: none; margin: 0; }}
-  /* ---- heatmap card ---- */
+  /* ---- heatmap card (ported from v10's .heat-card) ---- */
   /* The .forecast cap above bounds the rendered grid so each cell
      stays small + precise (Acceptance #63) — an unbounded column
      stretched the SVG across the full Console width and ballooned
      every cell. */
   .heat-card {{
     background: var(--surface); border: 1px solid var(--hairline);
-    border-radius: 8px; padding: 10px 10px 6px;
+    border-radius: 8px; padding: 14px 16px 10px;
     box-shadow: 0 10px 40px rgba(0,0,0,0.35),
       0 1px 0 rgba(255,255,255,0.025) inset;
   }}
+  /* card head — title + reading hint, v10's .heat-card .head */
+  .heat-head {{
+    display: flex; align-items: baseline; gap: 12px; margin: 0 0 11px;
+  }}
+  .heat-head .heat-title {{
+    color: var(--ink-2); font-size: 11.5px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.12em;
+  }}
+  .heat-head .heat-hint {{
+    color: var(--ink-3); font-size: 11.5px; margin-left: auto;
+  }}
   .heat-card svg {{ width: 100%; display: block; }}
-  .heatmap-cell {{ cursor: pointer; transition: opacity 0.18s ease; }}
-  .heatmap-cell:hover {{ stroke: var(--ink-0); stroke-width: 1.4; }}
+  /* density-shaded cells — bright = high probability mass */
+  .heatmap-cell {{ cursor: pointer; transition: opacity 0.3s ease; }}
+  .heatmap-cell:hover {{ stroke: var(--ink-0); stroke-width: 1.5; }}
   .reading-hint {{
     color: var(--ink-3); font-size: 11px; margin: 8px 0 0;
   }}
+  /* one-line plain-English reading below the chart (v10 ans-narrative) */
+  .heat-narrative {{
+    color: var(--ink-1); font-size: 13px; line-height: 1.55;
+    margin: 11px 2px 2px;
+  }}
   .caption {{
     color: var(--ink-2); font-size: 12px; line-height: 1.5;
-    margin-top: 10px;
+    margin-top: 8px;
   }}
+  /* horizontal Likelihood gradient-bar legend (v10's .heat-legend) */
   .legend {{
-    display: flex; align-items: center; gap: 14px; margin-top: 10px;
-    color: var(--ink-2); font-size: 11.5px; flex-wrap: wrap;
+    display: flex; align-items: center; gap: 14px; margin-top: 9px;
+    color: var(--ink-2); font-size: 12px; flex-wrap: wrap;
   }}
   .legend .sw {{
     display: inline-block; width: 8px; height: 8px; border-radius: 50%;
     vertical-align: middle; margin-right: 6px;
   }}
+  .legend .like {{
+    display: inline-flex; align-items: center; gap: 7px;
+  }}
+  .legend .like .like-label {{ color: var(--ink-1); }}
   .legend .grad {{
-    display: inline-block; height: 10px; width: 92px; border-radius: 2px;
+    display: inline-block; height: 10px; width: 120px; border-radius: 2px;
     border: 1px solid var(--hairline);
     background: linear-gradient(to right,
-      rgba(139,140,255,0.06) 0%, rgba(139,140,255,0.45) 55%,
-      rgba(139,140,255,0.98) 100%);
+      rgba(139,140,255,0.05) 0%, rgba(139,140,255,0.30) 40%,
+      rgba(139,140,255,0.60) 70%, rgba(139,140,255,0.95) 100%);
   }}
   /* ---- cell popover ---- */
   .heat-wrap {{ position: relative; }}
@@ -545,12 +633,27 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
     <div class="forecast">
       <div class="heat-wrap">
         <div class="heat-card">
+          <div class="heat-head">
+            <span class="heat-title">{head_title}</span>
+            <span class="heat-hint">{head_hint}</span>
+          </div>
           <svg id="heatmap" viewBox="0 0 760 206"
                preserveAspectRatio="xMidYMid meet"
                aria-label="Probability heatmap">
             <g id="heat-axis"></g>
             <g id="heat-grid"></g>
           </svg>
+          <!-- horizontal Likelihood gradient-bar legend (v10) -->
+          <div class="legend">
+            <span class="like">
+              <span class="like-label">{legend_label}</span>
+              {legend_rare}<span class="grad"></span>{legend_likely}
+            </span>
+            <span><span class="sw" style="background:#58c5b4;"></span>
+              best plausible</span>
+            <span><span class="sw" style="background:#ff5e6e;"></span>
+              worst plausible</span>
+          </div>
         </div>
         <div class="cell-popover" id="cell-popover" role="dialog"
              aria-hidden="true">
@@ -563,18 +666,12 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
           <div class="narrative" id="pop-narr"></div>
         </div>
       </div>
+      <!-- one-line plain-English reading, swapped by mode (v10) -->
+      <p class="heat-narrative" id="heat-narrative">{narrative}</p>
       <div class="reading-hint">{cell_hint}</div>
       <div class="idle-note" id="idle-note">{idle_note}</div>
       <div class="live-note" id="live-note">{live_note}</div>
       <div class="caption">{reading}</div>
-      <div class="legend">
-        <span><span class="sw" style="background:#58c5b4;"></span>
-          best plausible</span>
-        <span><span class="sw" style="background:#ff5e6e;"></span>
-          worst plausible</span>
-        <span style="display:inline-flex;align-items:center;gap:6px;">
-          <span class="grad"></span>low &rarr; high probability mass</span>
-      </div>
     </div>
   </div>
 </div>
@@ -597,6 +694,10 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
     noMotion: "{no_motion}",
     now: "{now}",
     horizon: "{horizon}",
+    yAxisCaption: "{y_axis_caption}",
+    narrativePrediction: "{narrative}",
+    narrativeIdle: "{narrative_idle}",
+    narrativeLive: "{narrative_live}",
   }};
 
   // ===== zone model (matches v10 live_perception) =====
@@ -814,48 +915,167 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
           if (p > gmax) gmax = p;
         }}
       }}
+      // live mode labels every zone row; rowLabelAt mirrors that so the
+      // renderer can use one label-placement path for all modes.
+      var liveLabelAt = {{}};
+      for (var lz = 0; lz < rows; lz++) liveLabelAt[lz] = ZONE_NAMES[lz];
       return {{
         rows: rows, cols: cols, grid: grid, gmax: gmax || 1,
         rowLabels: ZONE_NAMES.slice(),
+        rowLabelAt: liveLabelAt,
         rowColors: ZONE_INDEX.map(function () {{ return "139,140,255"; }}),
+        centerRow: Math.floor((rows - 1) / 2),
         kind: "live",
       }};
     }}
-    // prediction / idle: branch x time, sharpening uniform -> predicted.
-    // Many fine time columns (24) — a compact, precise grid like the
-    // v10 marketing demo's 31-step heatmap, not a few oversized blocks.
-    var branches = BRANCHES.length > 0 ? BRANCHES : idleBranches();
+    // prediction / idle: a DENSITY-SHADED probability-distribution viz,
+    // ported from v10's heatmap. The branches are ordered worst ->
+    // realistic -> wishful, then placed as anchor rows on a FINE row
+    // grid (~7 rows per branch). Each time-column renders a smooth
+    // density over that fine grid: a single wide Gaussian at NOW (no
+    // information, mass diffuse) morphing into a Gaussian MIXTURE at the
+    // HORIZON whose bumps sit on the branch anchors weighted by their
+    // calibrated probabilities. The result reads as a probability cloud
+    // — bright mass concentrated + shaped, spreading outward — not a
+    // flat colored matrix. Rendered in ONE colour (v10-style); shape
+    // comes from opacity alone. Many fine columns (24) keep it compact.
+    var branches = orderedBranches(
+      BRANCHES.length > 0 ? BRANCHES : idleBranches()
+    );
     var n = branches.length;
     var ncols = 24;
-    var uniform = 1 / n;
+    // calibrated horizon distribution, renormalized to sum to 1.
+    var calib = branches.map(function (b) {{
+      return Math.max(0, b.probability || 0);
+    }});
+    var calibSum = calib.reduce(function (p, q) {{ return p + q; }}, 0);
+    calib = calib.map(function (v) {{
+      return calibSum > 0 ? v / calibSum : (1 / n);
+    }});
+    // fine row grid: each branch is an anchor band, spaced ROW_STRIDE
+    // apart, with a PAD-row margin top + bottom so the cloud can fan
+    // past the outer branches instead of being clipped at the edge.
+    // (MAX_CELL_H still keeps the rendered grid compact.)
+    var ROW_STRIDE = 7;
+    var PAD = 4;
+    var fineRows = n * ROW_STRIDE + PAD * 2;
+    // anchor row index for branch bi (centre of its band).
+    function anchorOf(bi) {{
+      return Math.round(PAD + bi * ROW_STRIDE + (ROW_STRIDE - 1) / 2);
+    }}
+    var anchors = [];
+    for (var ai = 0; ai < n; ai++) anchors.push(anchorOf(ai));
+    var center = (fineRows - 1) / 2;
+    // modal branch = the one carrying the most calibrated mass.
+    var modeBi = 0, modeP = -1;
+    for (var mi = 0; mi < n; mi++) {{
+      if (calib[mi] > modeP) {{ modeP = calib[mi]; modeBi = mi; }}
+    }}
     var g = [];
+    for (var ri = 0; ri < fineRows; ri++) g.push(new Array(ncols));
     var gm = 0;
-    for (var bi = 0; bi < n; bi++) {{
-      var rowArr = [];
-      var prob = branches[bi].probability;
-      for (var cc = 0; cc < ncols; cc++) {{
-        var tt = cc / (ncols - 1);
-        var val = uniform * (1 - tt) + prob * tt;
-        rowArr.push(val);
+    var isIdle = BRANCHES.length === 0;
+    // density at NOW: a tight Gaussian on the MODAL branch's anchor —
+    // the near-term read is effectively one point, so the bright mass
+    // starts concentrated where the prediction currently points. The
+    // idle grid (no prediction) has no mode, so its NOW peak sits at
+    // the centre and stays a soft, symmetric, calm glow.
+    var sigmaNow = isIdle ? fineRows * 0.2 : fineRows * 0.075;
+    var muNow = isIdle ? center : anchors[modeBi];
+    // density at the HORIZON: a per-branch Gaussian bump on each
+    // anchor, weighted by that branch's calibrated probability. As a
+    // multi-bump mixture spread across the grid it is naturally WIDER
+    // than the NOW peak — so the cloud fans outward toward the horizon
+    // (v10's "probability widening") while landing on the calibrated
+    // distribution.
+    var sigmaH = ROW_STRIDE * 0.6;
+    for (var cc = 0; cc < ncols; cc++) {{
+      var tt = ncols > 1 ? cc / (ncols - 1) : 1;
+      var col = new Array(fineRows);
+      var colSum = 0;
+      for (var rr = 0; rr < fineRows; rr++) {{
+        var dNow = gaussianDensity(rr, muNow, sigmaNow);
+        var dHor = 0;
+        for (var bk = 0; bk < n; bk++) {{
+          dHor += calib[bk] * gaussianDensity(rr, anchors[bk], sigmaH);
+        }}
+        // morph NOW -> HORIZON; ease so the tight core holds early and
+        // resolves into the calibrated spread over the back half.
+        var ease = Math.pow(tt, 1.8);
+        var d = dNow * (1 - ease) + dHor * ease;
+        col[rr] = d;
+        colSum += d;
+      }}
+      for (var rw = 0; rw < fineRows; rw++) {{
+        // normalize so each time-column is a real distribution (sums
+        // to 1), then a soft floor keeps low-mass cells faintly lit.
+        var val = colSum > 0 ? col[rw] / colSum : (1 / fineRows);
+        val = 0.05 * (1 / fineRows) + 0.95 * val;
+        g[rw][cc] = val;
         if (val > gm) gm = val;
       }}
-      g.push(rowArr);
     }}
-    var colors = branches.map(function (b) {{
-      if (b.branch_type === "wishful") return "88,197,180";
-      if (b.branch_type === "worst") return "255,94,110";
-      return "139,140,255";
-    }});
+    // one colour for the whole cloud (v10 renders the grid single-hue;
+    // shape reads from opacity). branch_type is surfaced by the legend
+    // dots + the tinted anchor label, not by recolouring the cells.
+    var colors = [];
+    for (var ci = 0; ci < fineRows; ci++) colors.push("139,140,255");
+    // labels live only on branch anchor rows (v10's rowLabelAt). Kept
+    // short so they clear the rotated y-axis caption in the gutter.
+    var shortLabels = [];
+    var rowLabelAt = {{}};
+    var rowLabelColor = {{}};
+    for (var li = 0; li < n; li++) {{
+      var lbl = (branches[li].label || ("Branch " + (li + 1))).trim();
+      if (lbl.length > 12) lbl = lbl.slice(0, 11) + "…";
+      shortLabels.push(lbl);
+      rowLabelAt[anchors[li]] = lbl;
+      rowLabelColor[anchors[li]] =
+        branches[li].branch_type === "wishful" ? "#58c5b4"
+        : branches[li].branch_type === "worst" ? "#ff5e6e"
+        : "#b9bfc8";
+    }}
+    // every fine row maps to its nearest branch label (popover read).
+    var fullRowLabels = [];
+    for (var fr = 0; fr < fineRows; fr++) {{
+      var nearBi = 0, nearD = Infinity;
+      for (var nb = 0; nb < n; nb++) {{
+        var dd = Math.abs(anchors[nb] - fr);
+        if (dd < nearD) {{ nearD = dd; nearBi = nb; }}
+      }}
+      fullRowLabels.push(shortLabels[nearBi]);
+    }}
     return {{
-      rows: n, cols: ncols, grid: g, gmax: gm || 1,
-      rowLabels: branches.map(function (b, ix) {{
-        var lbl = (b.label || ("Branch " + (ix + 1))).trim();
-        return lbl.length > 15 ? lbl.slice(0, 14) + "…" : lbl;
-      }}),
+      rows: fineRows, cols: ncols, grid: g, gmax: gm || 1,
       rowColors: colors,
+      rowLabels: fullRowLabels,
+      rowLabelAt: rowLabelAt,
+      rowLabelColor: rowLabelColor,
+      anchors: anchors,
       branches: branches,
+      modeRow: anchors[modeBi],
+      // dashed reference line at the MEDIAN branch's anchor — the
+      // central band the cloud's mass is read against.
+      centerRow: anchors[Math.floor((n - 1) / 2)],
       kind: BRANCHES.length > 0 ? "prediction" : "idle",
     }};
+  }}
+
+  // Order branches into a read-as-a-distribution sequence: worst at the
+  // bottom, realistic in the middle, wishful at the top — and within a
+  // band by ascending probability. This makes the rendered rows an
+  // ordered distribution (like v10's value-ordered y-axis) rather than
+  // an arbitrary list.
+  function orderedBranches(list) {{
+    var rank = {{ worst: 0, realistic: 1, wishful: 2 }};
+    return list.slice().sort(function (a, b) {{
+      var ra = rank[a.branch_type];
+      var rb = rank[b.branch_type];
+      if (ra === undefined) ra = 1;
+      if (rb === undefined) rb = 1;
+      if (ra !== rb) return ra - rb;
+      return (a.probability || 0) - (b.probability || 0);
+    }});
   }}
 
   function idleBranches() {{
@@ -871,6 +1091,35 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
 
   var GD = null;  // current grid data (cached for popover)
 
+  // x-axis tick labels — a mono-font "now … horizon" scale. The middle
+  // ticks read like v10's "day 0 … d30": a short unit derived from the
+  // horizon string, with NOW and the horizon word at the ends.
+  function xTickLabels(cols, kind) {{
+    var fracs = [0, 0.25, 0.5, 0.75, 1];
+    if (kind === "live") {{
+      // live_perception is seconds — mirror v10's "now / 8s / 15s …".
+      return fracs.map(function (f) {{
+        var s = Math.round(f * (cols - 1));
+        return s === 0 ? STR.now : s + "s";
+      }});
+    }}
+    // prediction / idle — derive a compact unit from the horizon word.
+    var hz = (STR.horizon || "").toLowerCase();
+    var unit = "";
+    if (/day|天|jour|día|dia/.test(hz)) unit = "d";
+    else if (/week|周|semaine|semana/.test(hz)) unit = "w";
+    else if (/month|月|mois|mes/.test(hz)) unit = "mo";
+    else if (/year|年|an|año/.test(hz)) unit = "y";
+    var mNum = (hz.match(/\d+/) || [])[0];
+    var span = mNum ? parseInt(mNum, 10) : (cols - 1);
+    return fracs.map(function (f, ix) {{
+      if (ix === 0) return STR.now;
+      if (ix === fracs.length - 1) return STR.horizon;
+      var v = Math.round(f * span);
+      return unit ? (unit + v) : ("t" + v);
+    }});
+  }}
+
   function renderHeatmap() {{
     GD = buildGrid();
     var rows = GD.rows, cols = GD.cols;
@@ -883,22 +1132,43 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
     var axis = "";
     var grid = "";
 
-    // row labels (left). Compact: smaller font for the narrow gutter.
+    // rotated y-axis caption (v10's .axis-label) — names what the rows
+    // are: the ordered outcome branches. Sits in the far-left gutter,
+    // clear of the (short) anchor labels.
+    var capX = 9;
+    var capY = gy0 + gridH / 2;
+    axis += '<text x="' + capX + '" y="' + capY.toFixed(1) +
+      '" transform="rotate(-90 ' + capX + ' ' + capY.toFixed(1) +
+      ')" text-anchor="middle" font-family="var(--mono)" ' +
+      'font-size="8.5" fill="#76808d" letter-spacing="0.03em">' +
+      STR.yAxisCaption + "</text>";
+
+    // row labels (left) — mono-font, only on rows in rowLabelAt (the
+    // branch anchors); each tinted by branch_type (v10's rowLabelAt).
+    var labelAt = GD.rowLabelAt || {{}};
+    var labelColor = GD.rowLabelColor || {{}};
     for (var r = 0; r < rows; r++) {{
+      if (!Object.prototype.hasOwnProperty.call(labelAt, r)) continue;
       var y = gy0 + r * cellH + cellH / 2 + 3.4;
-      var lab = GD.rowLabels[r]
+      var lab = String(labelAt[r])
         .replace(/&/g, "&amp;").replace(/</g, "&lt;");
       axis += '<text x="' + (PADX_L - 8) + '" y="' + y.toFixed(1) +
         '" text-anchor="end" font-family="var(--mono)" ' +
-        'font-size="9.5" fill="#b9bfc8">' + lab + "</text>";
+        'font-size="9.5" fill="' + (labelColor[r] || "#b9bfc8") +
+        '">' + lab + "</text>";
     }}
-    // cells — fine grid: a hairline gap, crisp corners. The gap is a
-    // fixed 0.5px so cells stay precise + tight even when small.
-    var gap = 0.5;
+    // cells — DENSITY-SHADED: opacity is a gamma-corrected ratio of the
+    // cell's mass to the grid max (v10 uses pow(p/max, 0.65)). The
+    // gamma lifts mid-mass cells so the bright probability cloud reads
+    // as a smooth concentrated shape, not a hard binary grid. On a fine
+    // grid the gap shrinks so the cloud reads as continuous density.
+    var gap = cellH < 12 ? 0.18 : 0.5;
+    var rx = cellH < 12 ? 0.4 : 1;
     for (var c = 0; c < cols; c++) {{
       for (var r2 = 0; r2 < rows; r2++) {{
         var p = GD.grid[r2][c];
-        var op = (0.05 + 0.93 * (p / GD.gmax)).toFixed(3);
+        var ratio = GD.gmax > 0 ? (p / GD.gmax) : 0;
+        var op = (0.045 + 0.94 * Math.pow(ratio, 0.65)).toFixed(3);
         var rgb = GD.rowColors[r2];
         var glow = (c === cols - 1)
           ? ' filter="url(#heat-glow)"' : "";
@@ -907,12 +1177,21 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
         grid += '<rect class="heatmap-cell" x="' + (cx + gap).toFixed(2) +
           '" y="' + (cy + gap).toFixed(2) + '" width="' +
           (cellW - 2 * gap).toFixed(2) + '" height="' +
-          (cellH - 2 * gap).toFixed(2) + '" rx="1" fill="rgba(' +
-          rgb + "," + op + ')" stroke="#0a0c11" stroke-width="0.35"' +
+          (cellH - 2 * gap).toFixed(2) + '" rx="' + rx + '" fill="rgba(' +
+          rgb + "," + op + ')" stroke="#0a0c11" stroke-width="0.3"' +
           glow + ' data-step="' + c + '" data-row="' + r2 +
           '" data-prob="' + p.toFixed(4) + '"></rect>';
       }}
     }}
+    // dashed centerline — marks the central reference band (v10's
+    // .heat-zero-line), the band the probability mass is read against.
+    var midRow = (typeof GD.centerRow === "number")
+      ? GD.centerRow : Math.floor((rows - 1) / 2);
+    var midY = gy0 + midRow * cellH + cellH / 2;
+    grid += '<line x1="' + PADX_L + '" y1="' + midY.toFixed(1) +
+      '" x2="' + (PADX_L + cols * cellW).toFixed(1) + '" y2="' +
+      midY.toFixed(1) + '" stroke="#76808d" stroke-width="1" ' +
+      'stroke-dasharray="3 3" opacity="0.65"></line>';
     // horizon column highlight
     var hlx = PADX_L + (cols - 1) * cellW;
     grid += '<rect x="' + (hlx + 0.4).toFixed(1) + '" y="' +
@@ -920,18 +1199,28 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
       '" height="' + (gridH + 5).toFixed(1) +
       '" rx="2" fill="none" stroke="rgba(139,140,255,0.55)" ' +
       'stroke-width="1.0"></rect>';
-    // bottom NOW -> HORIZON axis
+    // bottom NOW -> HORIZON axis — mono-font tick labels along the way.
     var axisY = PADY_T + GRID_H + 14;
     axis += '<line x1="' + PADX_L + '" y1="' + (axisY - 8) +
       '" x2="' + (SVG_W - PADX_R) + '" y2="' + (axisY - 8) +
       '" stroke="#232834" stroke-width="0.7"></line>';
-    axis += '<text x="' + PADX_L + '" y="' + (axisY + 4) +
-      '" font-family="var(--mono)" font-size="9" fill="#76808d" ' +
-      'letter-spacing="0.1em">' + STR.now.toUpperCase() + "</text>";
-    axis += '<text x="' + (SVG_W - PADX_R) + '" y="' + (axisY + 4) +
-      '" font-family="var(--mono)" font-size="9" fill="#8b8cff" ' +
-      'letter-spacing="0.1em" text-anchor="end">' +
-      STR.horizon.toUpperCase() + "</text>";
+    var ticks = xTickLabels(cols, GD.kind);
+    var tickFracs = [0, 0.25, 0.5, 0.75, 1];
+    for (var ti = 0; ti < ticks.length; ti++) {{
+      var f = tickFracs[ti];
+      var tx = PADX_L + f * GRID_W;
+      var anchor = ti === 0 ? "start"
+        : (ti === ticks.length - 1 ? "end" : "middle");
+      var isEnd = ti === 0 || ti === ticks.length - 1;
+      var fill = ti === ticks.length - 1 ? "#8b8cff" : "#76808d";
+      var lab2 = (ticks[ti] || "")
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;");
+      axis += '<text x="' + tx.toFixed(1) + '" y="' + (axisY + 4) +
+        '" font-family="var(--mono)" font-size="9" fill="' + fill +
+        '" letter-spacing="' + (isEnd ? "0.1em" : "0.02em") +
+        '" text-anchor="' + anchor + '">' +
+        (isEnd ? lab2.toUpperCase() : lab2) + "</text>";
+    }}
 
     $("heat-axis").innerHTML =
       '<defs><filter id="heat-glow" x="-40%" y="-40%" width="180%" ' +
@@ -947,36 +1236,70 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
   // mode-driven: idle-note only when truly idle (no prediction, no
   // camera); live-note only when a video source is driving the math;
   // a resolved prediction with no camera shows neither (the caption
-  // already explains the grid).
+  // already explains the grid). The one-line reading narrative also
+  // swaps per mode — v10's data-derived answer sentence.
   function updateModeNotes() {{
     var mode = heatmapMode();
     $("idle-note").classList.toggle("show", mode === "idle");
     $("live-note").classList.toggle("show", mode === "live");
+    var narr = $("heat-narrative");
+    if (narr) {{
+      if (mode === "live") narr.textContent = STR.narrativeLive;
+      else if (mode === "idle") narr.textContent = STR.narrativeIdle;
+      else narr.textContent = STR.narrativePrediction;
+    }}
   }}
 
   // ===== cell popover =====
+  // For the prediction / idle cloud the grid is FINE-rowed: a single
+  // cell is one slice of the probability cloud, so the popover reports
+  // the BAND mass — the total density over the branch's band at that
+  // time-column — which is the number the user actually cares about.
+  function bandMassAt(row, step) {{
+    if (!GD.anchors || GD.anchors.length === 0) {{
+      return GD.grid[row][step];
+    }}
+    // which branch band does this fine row belong to?
+    var nearBi = 0, nearD = Infinity;
+    for (var bi = 0; bi < GD.anchors.length; bi++) {{
+      var d = Math.abs(GD.anchors[bi] - row);
+      if (d < nearD) {{ nearD = d; nearBi = bi; }}
+    }}
+    // band = the rows closest to this branch's anchor; sum their mass.
+    var sum = 0;
+    for (var rr = 0; rr < GD.rows; rr++) {{
+      var owner = 0, od = Infinity;
+      for (var bk = 0; bk < GD.anchors.length; bk++) {{
+        var dd = Math.abs(GD.anchors[bk] - rr);
+        if (dd < od) {{ od = dd; owner = bk; }}
+      }}
+      if (owner === nearBi) sum += GD.grid[rr][step];
+    }}
+    return sum;
+  }}
+
   function plainReading(step, row) {{
-    var p = GD.grid[row][step];
-    var pct = (p * 100).toFixed(1);
     if (GD.kind === "live") {{
-      return "Roughly a <strong>" + pct + "%</strong> chance Person A " +
+      var pl = (GD.grid[row][step] * 100).toFixed(1);
+      return "Roughly a <strong>" + pl + "%</strong> chance Person A " +
         "is in the <strong>" + GD.rowLabels[row] + "</strong> zone, " +
         "<strong>" + step + (step === 1 ? " second" : " seconds") +
         "</strong> from now.";
     }}
+    var pct = (bandMassAt(row, step) * 100).toFixed(1);
     var horizonTxt = STR.horizon;
     var when = step === GD.cols - 1
       ? "at your " + horizonTxt
       : "at horizon slice " + step + " of " + (GD.cols - 1);
     if (GD.kind === "idle") {{
       return "<strong>" + GD.rowLabels[row] + "</strong> — the grid " +
-        "is uniform until a prediction runs. This cell would carry " +
+        "is uniform until a prediction runs. This branch would carry " +
         "<strong>" + pct + "%</strong> of the probability mass " +
         when + ".";
     }}
     return "<strong>" + GD.rowLabels[row] + "</strong> carries " +
       "<strong>" + pct + "%</strong> of the probability mass " + when +
-      ". Read across this row to see the future's likelihood evolve.";
+      ". The bright band is where the future's mass concentrates.";
   }}
 
   function showCellPopover(target) {{
@@ -984,8 +1307,11 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
     var row = parseInt(target.getAttribute("data-row"), 10);
     var cellNo = row * GD.cols + step + 1;
     $("pop-badge").textContent = "cell #" + cellNo;
-    $("pop-prob").textContent =
-      (GD.grid[row][step] * 100).toFixed(1) + "%";
+    // headline number: band mass for the prediction/idle cloud, the
+    // raw cell for the live zone grid (matches plainReading).
+    var headP = GD.kind === "live"
+      ? GD.grid[row][step] : bandMassAt(row, step);
+    $("pop-prob").textContent = (headP * 100).toFixed(1) + "%";
     $("pop-narr").innerHTML = plainReading(step, row);
 
     var pop = $("cell-popover");
