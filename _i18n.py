@@ -150,16 +150,47 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_FR: "Plus",
     },
     "nav.more.hint": {
-        LANG_EN: "Video, live camera, the 玄学 lens, and other surfaces.",
-        LANG_ZH: "视频、实时摄像头、玄学透镜及其它界面。",
-        LANG_ES: "Video, cámara en vivo, la lente 玄学 y otras superficies.",
-        LANG_FR: "Vidéo, caméra en direct, la lentille 玄学 et autres surfaces.",
+        LANG_EN: "Score past outcomes, your calibration record, and pricing.",
+        LANG_ZH: "回填结果、查看校准记录、定价方案。",
+        LANG_ES: "Evalúa resultados pasados, tu registro de calibración y precios.",
+        LANG_FR: "Évaluez les résultats passés, votre calibration et les tarifs.",
     },
     "nav.settings": {
         LANG_EN: "Settings",
         LANG_ZH: "设置",
         LANG_ES: "Ajustes",
         LANG_FR: "Paramètres",
+    },
+    "nav.back_workspace": {
+        LANG_EN: "←  Back to workspace",
+        LANG_ZH: "←  返回工作区",
+        LANG_ES: "←  Volver al espacio de trabajo",
+        LANG_FR: "←  Retour à l'espace de travail",
+    },
+    # -----  Account / sign-in (sidebar bottom-left)  -----
+    "account.login": {
+        LANG_EN: "Log in  /  Sign up",
+        LANG_ZH: "登录  /  注册",
+        LANG_ES: "Iniciar sesión  /  Registrarse",
+        LANG_FR: "Connexion  /  Inscription",
+    },
+    "account.login_hint": {
+        LANG_EN: "Log in to save your prediction history across devices.",
+        LANG_ZH: "登录后可跨设备保存你的预测历史。",
+        LANG_ES: "Inicia sesión para guardar tu historial en todos tus dispositivos.",
+        LANG_FR: "Connectez-vous pour enregistrer votre historique sur vos appareils.",
+    },
+    "account.logout": {
+        LANG_EN: "Log out",
+        LANG_ZH: "退出登录",
+        LANG_ES: "Cerrar sesión",
+        LANG_FR: "Se déconnecter",
+    },
+    "account.not_configured": {
+        LANG_EN: "Google sign-in isn't set up yet — add the OIDC secrets to enable it.",
+        LANG_ZH: "Google 登录尚未配置 —— 填入 OIDC secrets 后即可启用。",
+        LANG_ES: "El inicio de sesión con Google aún no está configurado: añade los secretos OIDC.",
+        LANG_FR: "La connexion Google n'est pas encore configurée — ajoutez les secrets OIDC.",
     },
     "settings.language": {
         LANG_EN: "Language",

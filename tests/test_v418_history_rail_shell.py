@@ -119,19 +119,27 @@ def test_session_user_id_helper_exists() -> None:
     assert "session_user_id()" in ast.unparse(fn)
 
 
-def test_all_seven_legacy_surfaces_still_reachable() -> None:
-    """No feature dropped — every legacy render_* stays wired in main()."""
+def test_no_feature_dropped_after_more_cleanup() -> None:
+    """No feature dropped by the "More" cleanup.
+
+    The redundant second entry points for the 玄学 lens / video query /
+    live webcam were removed from "More" — but those features are NOT
+    gone, they ARE the composer (lens toggle / Attach / Live-video
+    toggle). main() still reaches the workspace, the history viewer, and
+    the three genuinely-standalone surfaces; the composer-integrated
+    render_* helpers stay wired elsewhere in app.py.
+    """
     main_src = ast.unparse(_func("main"))
     for surface in (
         "render_new_prediction",
-        "render_traditional_view",
-        "render_video_query",
-        "render_live_webcam",
         "render_measurement_update",
         "render_calibration_history",
         "render_pricing_and_preorder",
     ):
-        assert surface in main_src, f"{surface} no longer reachable"
+        assert surface in main_src, f"{surface} no longer reachable from main()"
+    # the composer-integrated features still exist in the app
+    for embedded in ("render_video_query", "render_live_webcam"):
+        assert embedded in APP_SRC, f"{embedded} dropped from app.py"
 
 
 # --------------------------------------------------------------------

@@ -746,34 +746,59 @@ ROUTE_WORKSPACE = "workspace"
 ROUTE_HISTORY = "history"
 ROUTE_SECONDARY = "secondary"
 
-# Secondary surfaces still reachable while the unified composer is built
-# out across later stages. Nothing is dropped — only re-housed.
+# Secondary surfaces — genuinely standalone pages with no home in the
+# unified composer. The 玄学 lens, video query, and live webcam used to
+# live here too, but they ARE the composer now (the lens toggle / the
+# Attach control / the Live-video toggle), so routing to them as separate
+# pages was a redundant SECOND entry point — they were removed from
+# "More". What remains is what the composer has no slot for: scoring a
+# past outcome, the calibration track record, and pricing.
 SECONDARY_MODES = (
-    "Traditional × Calibrated",
-    "Video query",
-    "Live webcam",
     "Measurement update",
     "Calibration history",
     "Pricing & pre-order",
 )
 SECONDARY_MODE_I18N = {
-    "Traditional × Calibrated": "mode.traditional",
-    "Video query": "mode.video_query",
-    "Live webcam": "mode.live_webcam",
     "Measurement update": "mode.measurement_update",
     "Calibration history": "mode.calibration_history",
     "Pricing & pre-order": "mode.pricing",
 }
 
 
-def session_user_id() -> str:
-    """Stable per-session user handle.
+def _render_back_bar() -> None:
+    """A "← back to workspace" control at the top of every non-workspace
+    surface.
 
-    The history rail and every save site key off this id, so a
-    prediction created in the composer shows up in the rail without
-    the user having to retype a handle. Same value as the auto-suggested
-    form handle (`tester-XXXX`).
+    The workspace composer is the single home: every secondary page and
+    the history viewer MUST always be closeable. Without this the user
+    lands on e.g. Pricing with no way back except the differently-named
+    "New prediction" button — the "opens but won't close" trap the
+    founder flagged.
     """
+    if st.button(
+        T("nav.back_workspace"),
+        key="_back_to_workspace",
+        type="tertiary",
+    ):
+        st.session_state._route = (ROUTE_WORKSPACE, None)
+        st.rerun()
+
+
+def session_user_id() -> str:
+    """Stable user handle the history rail + every save site key off.
+
+    A signed-in account (Google OIDC via ``st.login``) owns its
+    prediction history across sessions and devices — its email is the
+    id. Signed out, a per-session anonymous handle (`tester-XXXX`) is
+    used, matching the auto-suggested composer form handle.
+    """
+    # A signed-in account takes precedence; touching st.user when no
+    # [auth] secrets exist raises, so guard it.
+    try:
+        if st.user.is_logged_in and st.user.email:
+            return str(st.user.email)
+    except Exception:
+        pass
     if "_default_user_id" not in st.session_state:
         import random
         import string
@@ -990,6 +1015,86 @@ def _esc_html(text: str) -> str:
     return _html.escape(str(text))
 
 
+def _account_state() -> tuple[str, Any]:
+    """Resolve the sidebar account area's sign-in state.
+
+    Returns one of:
+      ``("in", user)``       — signed in; ``user`` is ``st.user``
+      ``("out", None)``      — OIDC configured, signed out
+      ``("disabled", None)`` — OIDC not wired yet (no ``[auth]`` secrets)
+
+    ``st.user`` / ``st.login`` need an ``[auth]`` block in secrets;
+    reading ``st.user.is_logged_in`` raises when it is absent, so the
+    console degrades gracefully until the founder configures OIDC.
+    """
+    try:
+        if bool(st.user.is_logged_in):
+            return ("in", st.user)
+        return ("out", None)
+    except Exception:
+        return ("disabled", None)
+
+
+def _render_account_area() -> None:
+    """Claude-style account control pinned to the sidebar bottom-left.
+
+    Signed out → a "Log in / Sign up" button (Google OIDC via
+    ``st.login``). Signed in → an account chip whose popover menu
+    carries "Log out". Before the OIDC secrets are configured the
+    button explains how to enable sign-in rather than raising.
+    """
+    state, user = _account_state()
+
+    st.sidebar.markdown(
+        "<div style='margin-top:20px;padding-top:14px;"
+        "border-top:1px solid #232834;'></div>",
+        unsafe_allow_html=True,
+    )
+
+    if state == "in":
+        name = (
+            (getattr(user, "name", None) or "").strip()
+            or (getattr(user, "email", None) or "").strip()
+            or "Account"
+        )
+        email = (getattr(user, "email", None) or "").strip()
+        initial = (name[:1] or "·").upper()
+        chip = name if len(name) <= 22 else name[:21] + "…"
+        with st.sidebar.popover(chip, use_container_width=True):
+            st.markdown(
+                f"<div style='display:flex;align-items:center;gap:10px;"
+                f"margin:2px 0 8px;'>"
+                f"<div style='width:36px;height:36px;border-radius:50%;"
+                f"flex:none;background:linear-gradient(135deg,#8b8cff,"
+                f"#6b6cff);color:#fff;font-weight:700;font-size:16px;"
+                f"display:flex;align-items:center;justify-content:center;'>"
+                f"{_html.escape(initial)}</div>"
+                f"<div style='line-height:1.35;min-width:0;'>"
+                f"<div style='color:#f0f2f5;font-size:13.5px;"
+                f"font-weight:600;'>{_html.escape(name)}</div>"
+                f"<div style='color:#76808d;font-size:11.5px;'>"
+                f"{_html.escape(email)}</div></div></div>",
+                unsafe_allow_html=True,
+            )
+            if st.button(
+                T("account.logout"),
+                key="_acct_logout",
+                use_container_width=True,
+            ):
+                st.logout()
+    else:
+        st.sidebar.caption(T("account.login_hint"))
+        if st.sidebar.button(
+            T("account.login"),
+            key="_acct_login",
+            use_container_width=True,
+        ):
+            if state == "disabled":
+                st.sidebar.warning(T("account.not_configured"))
+            else:
+                st.login()
+
+
 def render_sidebar() -> tuple[str, Any]:
     """Sidebar — ChatGPT-shaped navigation: brand → New prediction →
     a date-grouped history of past predictions → a transitional "More"
@@ -1109,6 +1214,9 @@ def render_sidebar() -> tuple[str, Any]:
             ),
         )
         st.session_state.user_locale = chosen
+
+    # ---- Account — Claude-style sign-in pinned to the bottom-left ----
+    _render_account_area()
 
     # ---- Footer: thin muted disclaimer + brand links ----
     st.sidebar.markdown(
@@ -2738,6 +2846,7 @@ def render_measurement_update(
         update" secondary surface; the user types their handle and
         picks from a list.
     """
+    _render_back_bar()
     st.markdown(
         f"""
         <div style='text-align:center;padding:40px 24px 28px;'>
@@ -2918,6 +3027,7 @@ def render_measurement_update(
 
 def render_calibration_history() -> None:
     """Show aggregate calibration metrics with owner-bias breakdown."""
+    _render_back_bar()
     st.markdown(
         f"""
         <div style='text-align:center;padding:40px 24px 28px;'>
@@ -3015,6 +3125,7 @@ def render_calibration_history() -> None:
 def render_pricing_and_preorder() -> None:
     """v4.16 P6 — pricing tier comparison + pre-order interest
     capture. Pre-revenue PMF research; no payment processor wired."""
+    _render_back_bar()
     st.markdown(
         f"""
         <div style='text-align:center;padding:40px 24px 28px;'>
@@ -3992,13 +4103,9 @@ def main() -> None:
         # measurement-update viewer, pre-loaded by id.
         render_measurement_update(preloaded_prediction_id=str(payload))
     elif kind == ROUTE_SECONDARY:
-        if payload == "Traditional × Calibrated":
-            render_traditional_view()
-        elif payload == "Video query":
-            render_video_query()
-        elif payload == "Live webcam":
-            render_live_webcam()
-        elif payload == "Measurement update":
+        # The 玄学 lens / video query / live webcam are NOT routed here —
+        # they ARE the composer now. Only genuinely-standalone surfaces.
+        if payload == "Measurement update":
             render_measurement_update()
         elif payload == "Calibration history":
             render_calibration_history()
