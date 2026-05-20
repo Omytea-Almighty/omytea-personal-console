@@ -18,6 +18,10 @@ from typing import Any
 import streamlit as st
 
 import _brand
+from _heatmap_component import (
+    branches_to_payload,
+    render_heatmap_camera_component,
+)
 import _i18n
 from _i18n import T
 import currency
@@ -887,15 +891,21 @@ def render_sidebar() -> tuple[str, Any]:
 # ============================================================
 
 def _idle_heatmap_branches() -> list[Any]:
-    """Five equal-probability placeholder branches for the idle heatmap.
+    """Five equal-probability placeholder branches — canonical idle shape.
 
     The chatbox layout keeps the quantum probability heatmap visible at
     the top of the workspace at ALL times — even before any prediction
-    exists. With no real hypotheses to draw, we feed the heatmap a flat
-    uniform distribution: five 0.20-probability branches. The heatmap's
-    own uniform→predicted interpolation then renders a calm, even cosmic
-    grid that resolves into the real distribution once a prediction is
-    run. This is honest: a uniform prior IS the pre-evidence belief.
+    exists. The idle grid is a flat uniform distribution: five
+    0.20-probability branches; a uniform prior IS the honest pre-evidence
+    belief.
+
+    OMY-V415 Acceptance #59: the heatmap is now the interactive v10
+    HTML/JS component, which renders this same 5×0.20 uniform grid in JS
+    when fed an empty branch list (``_render_workspace_output`` passes
+    ``[]`` in the idle path). This Python helper is retained as the
+    single canonical definition of that idle shape — exercised by the
+    chatbox-layout test suite to pin the 5-branch / 0.20-each contract
+    the JS ``idleBranches()`` mirror must stay consistent with.
     """
     from console import ConsoleHypothesis
 
@@ -919,6 +929,81 @@ def _idle_heatmap_branches() -> list[Any]:
     ]
 
 
+# Fixed pixel heights for the two independently-scrolling workspace
+# panes (OMY-V415 / M2 / Acceptance #60 — requirement C). The output
+# pane is the larger one: the quantum heatmap is the centerpiece and
+# must stay visually stable during live video. The input composer pane
+# is smaller. Each region is its own ``st.container(height=…)`` — a
+# fixed-height scrollable box — so scrolling one never moves the other,
+# exactly like a two-pane IDE or a chatbox.
+_OUTPUT_PANE_HEIGHT = 720
+_COMPOSER_PANE_HEIGHT = 460
+
+
+def _render_xuanxue_output_view() -> None:
+    """The 玄学 output view — the Nye Clock lens, rendered in the OUTPUT
+    region (OMY-V415 / M2 / Acceptance #60 — requirement D).
+
+    Reached via the output-region view toggle when the 玄学 lens is on.
+    It expands to COVER the quantum heatmap; the toggle switches back.
+    Reuses ``_render_traditional_lens`` so the 玄学 surface stays in
+    lockstep visually with the rest of the console.
+    """
+    current = st.session_state.get("current_prediction")
+    branches = (
+        list(current["result"].hypotheses) if current is not None else None
+    )
+    prediction_id = (
+        current.get("prediction_id") if current is not None else None
+    )
+    _render_traditional_lens(
+        branches,
+        key_prefix=f"_output_xuanxue_{prediction_id or 'idle'}",
+    )
+
+
+def _xuanxue_lens_enabled() -> bool:
+    """Whether the composer's 玄学-lens toggle is on.
+
+    Streamlit reruns top→bottom and the output region renders BEFORE the
+    composer, so the derived ``_xuanxue_lens_on`` flag (set inside the
+    composer) is one rerun stale for the output region. The composer's
+    toggle WIDGET key ``_composer_lens_toggle`` is persisted by
+    Streamlit across reruns, so it is the authoritative current value —
+    fall back to the derived flag only if the widget hasn't rendered
+    yet (first run).
+    """
+    if "_composer_lens_toggle" in st.session_state:
+        return bool(st.session_state["_composer_lens_toggle"])
+    return bool(st.session_state.get("_xuanxue_lens_on", False))
+
+
+def _render_output_view_toggle() -> str:
+    """Output-region view switch — a one-click pill at the top of the
+    output region (OMY-V415 / M2 / Acceptance #60 — requirement D).
+
+    Shown ONLY when the 玄学 lens toggle is enabled. It switches the
+    output region between the **quantum heatmap** (default — the
+    scientific centerpiece) and the **玄学 Nye Clock** view. When the
+    lens is off this returns ``"quantum"`` without drawing anything, so
+    the output region is heatmap-only.
+    """
+    if not _xuanxue_lens_enabled():
+        return "quantum"
+
+    quantum_label = T("output.view.quantum")
+    xuanxue_label = T("output.view.xuanxue")
+    choice = st.segmented_control(
+        T("output.view.label"),
+        options=[quantum_label, xuanxue_label],
+        default=quantum_label,
+        key="_output_view_choice",
+        help=T("output.view.hint"),
+        label_visibility="collapsed",
+    )
+    return "xuanxue" if choice == xuanxue_label else "quantum"
+
+
 def _render_workspace_output() -> None:
     """Top region of the chatbox workspace — the persistent output.
 
@@ -928,55 +1013,92 @@ def _render_workspace_output() -> None:
     ``st.session_state.current_prediction`` the full result (branches,
     joint structure, drill-down, 玄学 lens) renders here too.
 
+    OMY-V415 / M2 / Acceptance #60:
+      • C — the whole output region is wrapped in a fixed-height
+        ``st.container`` so it scrolls independently of the composer
+        below; scrolling the composer never moves this output region.
+      • D — when the 玄学 lens is on, a one-click view toggle at the
+        top switches the region between the quantum heatmap (default)
+        and the 玄学 Nye Clock view, which covers the quantum module.
+
     Streamlit reruns top→bottom, so this output region — placed before
     the composer — reflects the last prediction the composer stored.
     """
-    current = st.session_state.get("current_prediction")
+    # Requirement C — own fixed-height scroll pane. The heatmap (the
+    # centerpiece) stays visually stable while the user works in the
+    # composer pane below.
+    with st.container(height=_OUTPUT_PANE_HEIGHT, border=False):
+        # Requirement D — view toggle (only drawn when the lens is on).
+        view = _render_output_view_toggle()
 
-    if current is None:
-        # Idle state — heatmap only, calm "awaiting your decision" grid.
-        st.markdown(
-            "<div style='display:flex;align-items:center;gap:9px;"
-            "margin:6px 0 4px;'>"
-            "<span style='width:4px;height:4px;border-radius:50%;"
-            "background:#8b8cff;box-shadow:0 0 7px rgba(139,140,255,0.8);'>"
-            "</span>"
-            "<span style='color:#8b93a0;font-size:11px;letter-spacing:0.14em;"
-            "text-transform:uppercase;font-weight:600;'>"
-            "Prediction space</span>"
-            "<span style='flex:1;height:1px;background:linear-gradient(90deg,"
-            "#232834,rgba(35,40,52,0));'></span>"
-            "</div>",
-            unsafe_allow_html=True,
-        )
-        _render_probability_heatmap(_idle_heatmap_branches(), horizon_label="")
-        st.markdown(
-            "<div style='text-align:center;color:#76808d;font-size:12.5px;"
-            "line-height:1.6;margin:2px 0 8px;letter-spacing:0.01em;'>"
-            "The grid is uniform — a world with no evidence yet. "
-            "Describe a decision below and run a prediction to watch the "
-            "distribution resolve.</div>",
-            unsafe_allow_html=True,
-        )
-        return
+        if view == "xuanxue":
+            # The 玄学 Nye Clock view covers the quantum module.
+            _render_xuanxue_output_view()
+            return
 
-    # A prediction exists — render the full result here at the top.
-    _render_result(
-        current["result"], current["form_data"], current["scenario"],
-        current["user_id"], current["program"],
-        prediction_id=current["prediction_id"],
-    )
+        current = st.session_state.get("current_prediction")
+
+        if current is None:
+            # Idle state — heatmap only, calm "awaiting your decision"
+            # grid.
+            st.markdown(
+                "<div style='display:flex;align-items:center;gap:9px;"
+                "margin:6px 0 4px;'>"
+                "<span style='width:4px;height:4px;border-radius:50%;"
+                "background:#8b8cff;"
+                "box-shadow:0 0 7px rgba(139,140,255,0.8);'>"
+                "</span>"
+                "<span style='color:#8b93a0;font-size:11px;"
+                "letter-spacing:0.14em;"
+                "text-transform:uppercase;font-weight:600;'>"
+                "Prediction space</span>"
+                "<span style='flex:1;height:1px;"
+                "background:linear-gradient(90deg,"
+                "#232834,rgba(35,40,52,0));'></span>"
+                "</div>",
+                unsafe_allow_html=True,
+            )
+            # Idle = empty branch list. The interactive component
+            # renders its own uniform grid + idle caption (i18n
+            # heatmap.idle_note), and a video dropped here will drive
+            # the heatmap live even before any prediction has run.
+            _render_probability_heatmap([], horizon_label="")
+            return
+
+        # A prediction exists — render the full result here at the top.
+        _render_result(
+            current["result"], current["form_data"], current["scenario"],
+            current["user_id"], current["program"],
+            prediction_id=current["prediction_id"],
+        )
 
 
 def _render_workspace_composer() -> None:
     """Bottom region of the chatbox workspace — the input composer.
 
-    Text conditions + a "+" attach (video / files) + a live-video toggle
-    + a 玄学-lens toggle, all feeding one "Run prediction". When Generate
-    is submitted the prediction is compiled, stored in
+    OMY-V415 / M2 / Acceptance #60 — requirement C: the composer is its
+    own fixed-height ``st.container`` scroll pane (smaller than the
+    output pane above), so scrolling the composer never moves the
+    output region and vice versa — a two-pane / chatbox layout. The
+    pane is intentionally the smaller of the two: the output heatmap is
+    the centerpiece. The composer markup itself lives in
+    ``_render_workspace_composer_body``.
+    """
+    with st.container(height=_COMPOSER_PANE_HEIGHT, border=False):
+        _render_workspace_composer_body()
+
+
+def _render_workspace_composer_body() -> None:
+    """The input composer's markup — text conditions + a "+" attach
+    (video / files) + a live-video toggle + a 玄学-lens toggle, all
+    feeding one "Run prediction".
+
+    When Generate is submitted the prediction is compiled, stored in
     ``st.session_state.current_prediction``, and ``st.rerun()`` is called
     so the top output region picks it up. Borrows only the "one composer
-    + attach" affordance — this is NOT a turn-by-turn chatbox.
+    + attach" affordance — this is NOT a turn-by-turn chatbox. Rendered
+    inside the fixed-height scroll pane opened by
+    ``_render_workspace_composer``.
     """
     # Auto-suggested user handle so the field never blocks submission.
     # Shares the session-stable id with the history rail, so a
@@ -2018,163 +2140,41 @@ def _render_probability_heatmap(
     hypotheses: list[Any],
     horizon_label: str = "",
 ) -> None:
-    """Quantum probability-mass heatmap — a 2-D branch × time grid.
+    """Quantum probability-mass heatmap — interactive v10 component.
 
-    Restores the v6 marketing-demo "PDF heatmap": the centerpiece is the
-    *probability distribution over time*, not a 1-D bar chart. Each row
-    is one future branch; each column is a slice of the scoring horizon;
-    cell intensity = probability mass at that (branch, time) cell.
+    [OMY-V415 / M2 / Acceptance #59] Ported from the v10 marketing demo
+    ``marketing/console/Omytea Console v10 — see both at once.html``.
 
-      • read ACROSS a row  → how that one future's likelihood evolves.
-      • read DOWN a column → the whole distribution at that moment.
+    This used to be a static server-rendered SVG with zero interaction.
+    It is now an **embedded HTML/JS component** (delegated to
+    ``_heatmap_component.render_heatmap_camera_component``) that:
 
-    Honest model (documented): at t=0 the distribution is near-uniform
-    (full uncertainty); it sharpens toward the model's calibrated
-    probabilities as the scoring horizon approaches — a linear
-    interpolation of two valid distributions, so every column still
-    sums to ~1. SVG-only, dark-canvas, v10 + Nye-Clock galaxy palette.
+      • renders the same probability-mass grid — each row a future
+        branch, each column a slice of the scoring horizon, cell
+        intensity = probability mass — sharpening uniform → calibrated
+        across the NOW → HORIZON axis;
+      • adds hover-highlight + click-to-open cell popovers (cell number
+        + plain-English reading);
+      • adds a **camera-drives-the-math** loop: a hidden 80×45 canvas
+        pixel-diffs video frames ~10 fps → motion centroid + intensity
+        → the heatmap updates live and continuously, no submit click,
+        with the camera preview side-by-side with the heatmap.
+
+    The function signature is unchanged so existing call sites (idle
+    output region + ``_render_result``) keep working: ``hypotheses`` is
+    the server-side prediction's branch distribution, projected to JSON
+    and fed into the component; an empty list renders the idle uniform
+    grid inside the component itself.
+
+    Camera honesty: a live ``getUserMedia`` call is blocked inside the
+    Streamlit component iframe (no ``allow="camera"``). The uploaded-
+    video pixel-diff path works in any iframe and is the always-on live
+    driver; the component surfaces an honest note if the user clicks the
+    camera button and the browser blocks it. See ``_heatmap_component``
+    module docstring for the full rationale.
     """
-    if not hypotheses:
-        return
-
-    import html as _html
-
-    n = len(hypotheses)
-    cols = 9                          # time slices across the horizon
-    uniform = 1.0 / n
-    probs = [max(0.0, float(h.probability)) for h in hypotheses]
-
-    # cell[i][t] — distribution sharpens uniform → predicted over t∈[0,1]
-    grid: list[list[float]] = []
-    for i in range(n):
-        row = []
-        for c in range(cols):
-            t = c / (cols - 1)
-            row.append(uniform * (1.0 - t) + probs[i] * t)
-        grid.append(row)
-    gmax = max((v for row in grid for v in row), default=1.0) or 1.0
-
-    vb_w = 720
-    pad_x, pad_y = 20, 16
-    label_w = 196
-    row_h, row_gap = 32, 4
-    axis_h = 26
-    grid_x = pad_x + label_w
-    grid_w = vb_w - grid_x - pad_x
-    cell_w = grid_w / cols
-    total_h = pad_y * 2 + n * row_h + (n - 1) * row_gap + axis_h
-
-    parts: list[str] = []
-    for i, h in enumerate(hypotheses):
-        y = pad_y + i * (row_h + row_gap)
-        btype = str(getattr(h, "branch_type", "realistic"))
-        if btype == "wishful":
-            dot, rgb = "#58c5b4", "88,197,180"
-        elif btype == "worst":
-            dot, rgb = "#ff5e6e", "255,94,110"
-        else:
-            dot, rgb = "rgba(255,255,255,0.10)", "139,140,255"
-        label_raw = (getattr(h, "label", "") or "").strip()
-        if len(label_raw) > 24:
-            label_raw = label_raw[:23] + "…"
-        # left: anchor dot + branch label
-        parts.append(
-            f'<circle cx="{pad_x + 5}" cy="{y + row_h / 2:.1f}" r="4" '
-            f'fill="{dot}"></circle>'
-            f'<text x="{pad_x + 16}" y="{y + row_h / 2 + 4:.1f}" '
-            f'font-family="ui-monospace,SFMono-Regular,Menlo,monospace" '
-            f'font-size="11.5" fill="#b9bfc8">{_html.escape(label_raw)}</text>'
-        )
-        # the time-grid cells
-        for c in range(cols):
-            cx = grid_x + c * cell_w
-            alpha = 0.05 + 0.93 * (grid[i][c] / gmax)
-            # the resolved column (your moment) glows — the distribution
-            # visibly "lands" as the horizon arrives.
-            glow = ' filter="url(#heat-glow)"' if c == cols - 1 else ""
-            parts.append(
-                f'<rect x="{cx + 1:.1f}" y="{y + 1:.1f}" '
-                f'width="{cell_w - 2:.1f}" height="{row_h - 2}" rx="2" '
-                f'fill="rgba({rgb},{alpha:.3f})" '
-                f'stroke="#0a0c11" stroke-width="0.5"{glow}></rect>'
-            )
-        # right-edge final probability
-        parts.append(
-            f'<text x="{vb_w - pad_x:.1f}" y="{y + row_h / 2 + 4:.1f}" '
-            f'font-family="ui-monospace,SFMono-Regular,Menlo,monospace" '
-            f'font-size="11" fill="#f0f2f5" text-anchor="end" '
-            f'font-weight="500" opacity="0">{h.probability * 100:.1f}%</text>'
-        )
-
-    # the scoring-horizon column highlight (last column = your moment)
-    hl_x = grid_x + (cols - 1) * cell_w
-    parts.append(
-        f'<rect x="{hl_x + 0.5:.1f}" y="{pad_y - 3:.1f}" '
-        f'width="{cell_w - 1:.1f}" '
-        f'height="{n * row_h + (n - 1) * row_gap + 6:.1f}" rx="3" '
-        f'fill="none" stroke="rgba(139,140,255,0.55)" '
-        f'stroke-width="1.1"></rect>'
-    )
-    # bottom time axis
-    axis_y = pad_y + n * row_h + (n - 1) * row_gap + 16
-    parts.append(
-        f'<line x1="{grid_x}" y1="{axis_y - 8:.1f}" x2="{vb_w - pad_x}" '
-        f'y2="{axis_y - 8:.1f}" stroke="#232834" stroke-width="0.7"></line>'
-        f'<text x="{grid_x}" y="{axis_y + 4:.1f}" '
-        f'font-family="ui-monospace,SFMono-Regular,Menlo,monospace" '
-        f'font-size="9" fill="#76808d" letter-spacing="0.1em">NOW</text>'
-        f'<text x="{vb_w - pad_x:.1f}" y="{axis_y + 4:.1f}" '
-        f'font-family="ui-monospace,SFMono-Regular,Menlo,monospace" '
-        f'font-size="9" fill="#8b8cff" letter-spacing="0.1em" '
-        f'text-anchor="end">{_html.escape((horizon_label or "horizon").upper())}'
-        f'</text>'
-    )
-
-    legend = (
-        '<div style="display:flex;align-items:center;gap:14px;'
-        'margin-top:10px;color:#76808d;font-size:11.5px;flex-wrap:wrap;">'
-        '<span><span style="display:inline-block;width:8px;height:8px;'
-        'border-radius:50%;background:#58c5b4;vertical-align:middle;'
-        'margin-right:6px;"></span>best plausible</span>'
-        '<span><span style="display:inline-block;width:8px;height:8px;'
-        'border-radius:50%;background:#ff5e6e;vertical-align:middle;'
-        'margin-right:6px;"></span>worst plausible</span>'
-        '<span style="display:inline-flex;align-items:center;gap:6px;">'
-        '<span style="display:inline-block;height:10px;width:96px;'
-        'background:linear-gradient(to right,'
-        'rgba(139,140,255,0.06) 0%,rgba(139,140,255,0.45) 55%,'
-        'rgba(139,140,255,0.98) 100%);border:1px solid #232834;'
-        'border-radius:2px;"></span>low → high probability mass</span>'
-        '</div>'
-    )
-
-    title_safe = _html.escape(T("result.heatmap_title"))
-    caption_safe = _html.escape(T("result.heatmap_reading"))
-
-    st.markdown(
-        f'<div style="margin:8px 0 20px;">'
-        f'<div style="color:#76808d;font-size:11.5px;text-transform:uppercase;'
-        f'letter-spacing:0.12em;font-weight:500;margin-bottom:8px;">'
-        f'{title_safe}</div>'
-        f'<div style="background:#11141b;border:1px solid #232834;'
-        f'border-radius:8px;padding:8px 4px;'
-        f'box-shadow:0 10px 40px rgba(0,0,0,0.35),'
-        f'0 1px 0 rgba(255,255,255,0.025) inset;">'
-        f'<svg viewBox="0 0 {vb_w} {total_h}" width="100%" '
-        f'preserveAspectRatio="xMidYMid meet" style="display:block;">'
-        f'<defs><filter id="heat-glow" x="-40%" y="-40%" width="180%" '
-        f'height="180%"><feGaussianBlur stdDeviation="2.4" result="b"/>'
-        f'<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/>'
-        f'</feMerge></filter></defs>'
-        f'{"".join(parts)}'
-        f'</svg>'
-        f'</div>'
-        f'<div style="color:#76808d;font-size:12px;line-height:1.5;'
-        f'margin-top:10px;letter-spacing:0.005em;">{caption_safe}</div>'
-        f'{legend}'
-        f'</div>',
-        unsafe_allow_html=True,
-    )
+    payload = branches_to_payload(hypotheses or [])
+    render_heatmap_camera_component(payload, horizon_label=horizon_label)
 
 
 def _render_result(
@@ -2277,12 +2277,14 @@ def _render_result(
     else:
         _render_story_view(wishful, realistic, worst, result.decision_options)
 
-    # v4.17 P1 — "Time-honored lens". The composer's 玄学-lens toggle
-    # controls this surface. When the toggle is on, the lens renders
-    # expanded inline (the user explicitly asked for it). When off, it
-    # stays a single subtle invite line below the result — collapsed,
-    # never imposing on visitors who don't want it. Reuses the Mode 7
-    # render helper so both surfaces stay in lockstep visually.
+    # v4.17 P1 — "Time-honored lens".
+    # OMY-V415 / M2 / Acceptance #60 — requirement D: when the 玄学 lens
+    # is ON, the 玄学 output lives in the OUTPUT REGION via the view
+    # toggle at the top — it covers the quantum module there. So this
+    # in-result surface no longer renders the full lens inline when the
+    # lens is on (that would double-render it); it points to the toggle
+    # instead. When the lens is OFF it stays a single subtle invite
+    # chip — never imposing on visitors who don't want it.
     lens_on = bool(st.session_state.get("_xuanxue_lens_on", False))
     st.markdown(
         "<div style='margin:24px 0 -8px;text-align:center;'>"
@@ -2292,11 +2294,18 @@ def _render_result(
         "</div>",
         unsafe_allow_html=True,
     )
-    with st.expander(T("trad.lens.expander_label"), expanded=lens_on):
-        _render_traditional_lens(
-            list(result.hypotheses),
-            key_prefix=f"_trad_lens_{prediction_id or 'inline'}",
-        )
+    if lens_on:
+        # The lens is on — the 玄学 Nye Clock view is reachable in the
+        # output region via the view toggle at its top. Don't render it
+        # twice.
+        st.caption(T("trad.lens.in_output_note"))
+    else:
+        # Lens off — keep the collapsed discovery expander (the "彩蛋").
+        with st.expander(T("trad.lens.expander_label"), expanded=False):
+            _render_traditional_lens(
+                list(result.hypotheses),
+                key_prefix=f"_trad_lens_{prediction_id or 'inline'}",
+            )
 
     # v4.16 P2: drill-down loop. Wrapped in an expander so it doesn't
     # dominate the page; once opened it persists across reruns via

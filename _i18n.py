@@ -633,6 +633,46 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_ES: "Masa de probabilidad entre futuros",
         LANG_FR: "Masse de probabilité entre les futurs",
     },
+    # -----  Output-region view toggle (OMY-V415 #60 D)  -----
+    "output.view.quantum": {
+        LANG_EN: "Quantum heatmap",
+        LANG_ZH: "量子热力图",
+        LANG_ES: "Mapa cuántico",
+        LANG_FR: "Carte quantique",
+    },
+    "output.view.xuanxue": {
+        LANG_EN: "玄学 Nye Clock",
+        LANG_ZH: "玄学时轮",
+        LANG_ES: "Reloj Nye 玄学",
+        LANG_FR: "Horloge Nye 玄学",
+    },
+    "output.view.label": {
+        LANG_EN: "Output view",
+        LANG_ZH: "输出视图",
+        LANG_ES: "Vista de salida",
+        LANG_FR: "Vue de sortie",
+    },
+    "output.view.hint": {
+        LANG_EN: (
+            "Switch the output region between the quantum prediction "
+            "heatmap and the 玄学 Nye Clock lens. The quantum view is "
+            "the default; 玄学 is the opt-in alternate."
+        ),
+        LANG_ZH: (
+            "在量子预测热力图与玄学时轮透镜之间切换输出区。"
+            "量子视图为默认；玄学为可选替代视图。"
+        ),
+        LANG_ES: (
+            "Cambia la región de salida entre el mapa de calor cuántico "
+            "y la lente del Reloj Nye 玄学. La vista cuántica es la "
+            "predeterminada."
+        ),
+        LANG_FR: (
+            "Basculez la région de sortie entre la carte de chaleur "
+            "quantique et la lentille de l'Horloge Nye 玄学. La vue "
+            "quantique est par défaut."
+        ),
+    },
     "result.heatmap_reading": {
         LANG_EN: (
             "Each row is one future; each column a slice of your scoring "
@@ -658,6 +698,130 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
             "votre horizon. En lisant une ligne : l'évolution d'une "
             "probabilité ; en lisant une colonne : la distribution à "
             "cet instant."
+        ),
+    },
+    # -----  Interactive heatmap + camera component (v10 port)  -----
+    "heatmap.camera_btn": {
+        LANG_EN: "Use my camera",
+        LANG_ZH: "使用摄像头",
+        LANG_ES: "Usar mi cámara",
+        LANG_FR: "Utiliser ma caméra",
+    },
+    "heatmap.video_btn": {
+        LANG_EN: "Drop a video file",
+        LANG_ZH: "拖入视频文件",
+        LANG_ES: "Soltar un archivo de vídeo",
+        LANG_FR: "Déposer une vidéo",
+    },
+    "heatmap.stop_btn": {
+        LANG_EN: "Stop",
+        LANG_ZH: "停止",
+        LANG_ES: "Detener",
+        LANG_FR: "Arrêter",
+    },
+    "heatmap.preview_title": {
+        LANG_EN: "Camera feed",
+        LANG_ZH: "摄像头画面",
+        LANG_ES: "Señal de cámara",
+        LANG_FR: "Flux caméra",
+    },
+    "heatmap.motion_watching": {
+        LANG_EN: "Watching for motion…",
+        LANG_ZH: "正在检测运动…",
+        LANG_ES: "Buscando movimiento…",
+        LANG_FR: "Détection de mouvement…",
+    },
+    "heatmap.camera_off": {
+        LANG_EN: "Camera off · scene-default forecast.",
+        LANG_ZH: "摄像头关闭 · 使用默认场景预测。",
+        LANG_ES: "Cámara apagada · pronóstico por defecto.",
+        LANG_FR: "Caméra éteinte · prévision par défaut.",
+    },
+    "heatmap.no_motion": {
+        LANG_EN: (
+            "Live · no motion detected. Try waving your hand or "
+            "stepping side to side."
+        ),
+        LANG_ZH: "实时 · 未检测到运动。试着挥手或左右移动。",
+        LANG_ES: (
+            "En vivo · sin movimiento. Mueve la mano o desplázate de "
+            "lado a lado."
+        ),
+        LANG_FR: (
+            "En direct · aucun mouvement. Agitez la main ou "
+            "déplacez-vous latéralement."
+        ),
+    },
+    "heatmap.cell_hint": {
+        LANG_EN: "Hover a cell to highlight it · click a cell for detail.",
+        LANG_ZH: "悬停高亮单元格 · 点击查看详情。",
+        LANG_ES: "Pasa el cursor para resaltar · haz clic para detalle.",
+        LANG_FR: "Survolez pour surligner · cliquez pour le détail.",
+    },
+    "heatmap.axis_now": {
+        LANG_EN: "now",
+        LANG_ZH: "现在",
+        LANG_ES: "ahora",
+        LANG_FR: "maintenant",
+    },
+    "heatmap.iframe_camera_note": {
+        LANG_EN: (
+            "The live webcam is blocked inside this embedded panel "
+            "(browser security). Drop a video file here — the motion "
+            "detector runs on it exactly the same way — or use the "
+            "Live webcam surface in the sidebar for direct capture."
+        ),
+        LANG_ZH: (
+            "出于浏览器安全限制，嵌入式面板内无法直接调用实时摄像头。"
+            "请在此拖入一个视频文件——运动检测会以完全相同的方式运行——"
+            "或使用侧栏的实时摄像头入口进行直接采集。"
+        ),
+        LANG_ES: (
+            "La webcam en vivo está bloqueada dentro de este panel "
+            "incrustado (seguridad del navegador). Suelta un archivo de "
+            "vídeo aquí — el detector de movimiento funciona igual — o "
+            "usa la sección de webcam en vivo de la barra lateral."
+        ),
+        LANG_FR: (
+            "La webcam en direct est bloquée dans ce panneau intégré "
+            "(sécurité du navigateur). Déposez une vidéo ici — le "
+            "détecteur de mouvement fonctionne pareil — ou utilisez la "
+            "webcam en direct depuis la barre latérale."
+        ),
+    },
+    "heatmap.idle_note": {
+        LANG_EN: (
+            "The grid is uniform — a world with no evidence yet. Run a "
+            "prediction below, or drop a video to drive it live."
+        ),
+        LANG_ZH: (
+            "网格是均匀的——一个还没有证据的世界。在下方运行一次预测，"
+            "或拖入视频实时驱动它。"
+        ),
+        LANG_ES: (
+            "La cuadrícula es uniforme — un mundo aún sin evidencia. "
+            "Ejecuta una predicción abajo o suelta un vídeo para "
+            "controlarla en vivo."
+        ),
+        LANG_FR: (
+            "La grille est uniforme — un monde encore sans preuve. "
+            "Lancez une prédiction ci-dessous, ou déposez une vidéo "
+            "pour la piloter en direct."
+        ),
+    },
+    "heatmap.live_note": {
+        LANG_EN: (
+            "The camera is driving the math — motion in the frame "
+            "shifts the forecast live, with no submit click."
+        ),
+        LANG_ZH: "摄像头正在驱动计算——画面中的运动会实时改变预测，无需点击提交。",
+        LANG_ES: (
+            "La cámara controla el cálculo — el movimiento en el "
+            "cuadro desplaza el pronóstico en vivo, sin pulsar enviar."
+        ),
+        LANG_FR: (
+            "La caméra pilote le calcul — le mouvement dans l'image "
+            "décale la prévision en direct, sans clic d'envoi."
         ),
     },
     # -----  Mode 7: Traditional × Calibrated (Nye-clock)  -----
@@ -1004,6 +1168,24 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_ZH: "古法视角 · 展开",
         LANG_ES: "Lente tradicional · abrir",
         LANG_FR: "Lecture traditionnelle · ouvrir",
+    },
+    "trad.lens.in_output_note": {
+        LANG_EN: (
+            "玄学 lens on — switch to the 玄学 Nye Clock view with the "
+            "toggle at the top of the output region above."
+        ),
+        LANG_ZH: (
+            "玄学透镜已开启 —— 用上方输出区顶部的切换按钮即可切到"
+            "玄学时轮视图。"
+        ),
+        LANG_ES: (
+            "Lente 玄学 activada — cambia a la vista del Reloj Nye 玄学 "
+            "con el conmutador en la parte superior de la salida."
+        ),
+        LANG_FR: (
+            "Lentille 玄学 activée — basculez vers la vue de l'Horloge "
+            "Nye 玄学 avec le commutateur en haut de la sortie."
+        ),
     },
     "trad.using_sample": {
         LANG_EN: (

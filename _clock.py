@@ -32,6 +32,8 @@ from typing import Any
 
 from _metaphysics import (
     ASTRO_ELEMENT_COLOR,
+    EARTHLY_BRANCHES,
+    HEAVENLY_STEMS,
     HEXAGRAM_NAMES,
     TAROT_POSITIONS,
     TRIGRAM_HANZI,
@@ -40,6 +42,8 @@ from _metaphysics import (
     WUXING_COLOR_DEEP,
     WUXING_HANZI,
     WUXING_KEYS,
+    WUXING_OF_BRANCH,
+    WUXING_OF_STEM,
     ZIWEI_PALACE_HANZI,
     ZIWEI_PALACES,
     ZIWEI_STARS,
@@ -1219,33 +1223,57 @@ def _render_astro(reading: LensReading,
 
 
 # ======================================================================
-# Instrument 7 — the Nye Clock solar system (八字 ⊕ 占星 on a Sun-Earth-
-# Moon orbital). A faithful static-SVG recreation of the founder's real
-# Nye Clock app (nye-clock-backdrop.html): deep-space cosmic backdrop,
-# a 20°-oblique elliptical Earth orbit, the Sun at the orbit focus, the
-# Earth riding the orbit with its own Moon. No WebGL — pure static SVG
-# so it embeds verbatim via st.markdown(unsafe_allow_html=True).
+# Instrument 7 — the Nye Clock 玄学 view.
+#
+# [OMY-V415 / M2 / Acceptance #61] REBUILT from the canonical final Nye
+# Clock — ``~/Downloads/UCSB/Adonyth/tw_.html`` (the founder's real 3-D
+# WebGL clock; the project's own sync scripts name it the sole source
+# file). The earlier renderer was built from the WRONG reference
+# (``academic-cv-site/nye-clock-backdrop.html`` — a separate, older
+# CV-site backdrop embed) and is superseded.
+#
+# What tw_.html actually looks like (recovered by screenshotting it in
+# headless Chrome with software WebGL, then reading its CSS/structure):
+#   • A deep-space backdrop — a near-black gradient (#111722 → #080c14)
+#     with a faint starfield and violet/blue nebula glow.
+#   • The EARTH globe is the heart of the 玄学 instrument — a textured
+#     blue-green sphere inside a soft blue atmospheric halo.
+#   • The 干支 ride the Earth as small CIRCULAR COIN tokens — each a
+#     thin bezel ring + the character — arranged in concentric rings
+#     around the globe, colour-coded by 五行 (the tw_.html element
+#     palette: wood #5AAA6A / fire #D4623C / earth #C09A6A /
+#     metal #C4AA5A / water #4A8ED4).
+#   • The active 八字 pillar characters glow LARGE and free-floating
+#     in space (a big element-coloured 天干 + 地支), exactly the
+#     enlarged glowing glyphs in tw_.html.
+#   • The SUN is a separate body off to one side — a white-hot core
+#     with a layered golden corona (NOT at the wheel centre).
+#   • The MOON is a small lit grey sphere near the Earth.
+#
+# This is a lightweight static SVG (no WebGL / Three.js / canvas / GPU
+# — the founder vetoed embedding the real 3-D); it embeds verbatim via
+# st.markdown(unsafe_allow_html=True).
 #
 # 玄学 data mapping (legible, not arbitrary):
-#   • Sun at centre       — the 占星 Sun sign drives its lit-sphere hue
-#                           and the engraved core readout.
-#   • Earth-orbit ring    — the 八字 sexagenary movement: a 10-segment
-#                           gold 天干 stem rail + a 12-segment blue
-#                           地支 branch rail; the active stem/branch of
-#                           the day pillar are lit.
-#   • Earth's position    — placed at the 占星 Sun-sign ecliptic angle.
-#   • Moon                — placed at the 占星 Moon-sign angle on its
-#                           own small orbit around the Earth.
-#   • Four pillar jewels  — the 年/月/日/时 pillars ride the orbit ring.
+#   • Earth at centre     — the 占星 Sun sign tints the atmospheric halo.
+#   • 干支 coin rings      — the 60-step sexagenary cycle ringed around
+#                           the Earth: an inner 地支 coin ring (12) and
+#                           an outer 天干 coin ring (10), each coin's
+#                           hue from its 五行.
+#   • Active glyphs        — the day pillar's 天干 + 地支 glow large.
+#   • Four pillar coins    — the 年/月/日/时 pillars are marked on the
+#                           rings as lit jewelled coins.
+#   • Moon                — placed at the 占星 Moon-sign angle.
+#   • Sun                  — off-axis; the 占星 Sun sign tints its rim.
 # ======================================================================
 
-# Nye Clock canvas — matches nye-clock-backdrop.html exactly.
+# Nye Clock canvas.
 _NYE_VB_W = 1000
 _NYE_VB_H = 920
 _NYE_CX = 500.0
 _NYE_CY = 455.0
 _NYE_OBLIQUE_DEG = 20.0
-# Elliptical Earth orbit + its stem/branch rails (Nye Clock radii).
+# Elliptical Earth orbit + its stem/branch rails (legacy renderer).
 _NYE_EARTH_RX = 330.0
 _NYE_EARTH_RY = 196.0
 _NYE_STEM_RX = 352.0
@@ -1259,6 +1287,30 @@ _NYE_MESH_IN_RY = 174.0
 # Moon orbit around the Earth.
 _NYE_MOON_RX = 61.0
 _NYE_MOON_RY = 37.0
+
+# --- tw_.html-canonical 玄学-view layout (Acceptance #61) ----------
+# The Earth-centred 干支-coin wheel. The Earth sits left-of-centre so
+# the Sun has room off to the right, exactly like the tw_.html scene.
+_TW_EARTH_CX = 392.0
+_TW_EARTH_CY = 482.0
+_TW_EARTH_R = 132.0          # the Earth globe radius
+# Two concentric rings of 干支 coins around the Earth.
+_TW_BRANCH_RING_R = 212.0    # inner ring — 12 地支 coins
+_TW_STEM_RING_R = 290.0      # outer ring — 10 天干 coins
+_TW_COIN_R = 26.0            # a 干支 coin token radius
+# The Sun — a separate body off to the upper-right.
+_TW_SUN_CX = 788.0
+_TW_SUN_CY = 286.0
+# The canonical Nye Clock 五行 palette, read straight from tw_.html's
+# CSS (wood / fire / earth / metal / water). Each coin is tinted by the
+# 五行 of its 天干 / 地支.
+_TW_WUXING: tuple[tuple[str, str], ...] = (
+    ("#6ac07a", "#2f5e3a"),   # 0 wood  — rim, deep
+    ("#e8705a", "#5e2a20"),   # 1 fire
+    ("#d4b86a", "#5a4a26"),   # 2 earth
+    ("#d8dce4", "#5a606c"),   # 3 metal
+    ("#5aa6e4", "#214a6a"),   # 4 water
+)
 
 
 def _nye_ell(rx: float, ry: float, deg: float) -> tuple[float, float]:
@@ -1537,6 +1589,75 @@ def _nye_moon(cx: float, cy: float) -> str:
     )
 
 
+def _tw_defs() -> str:
+    """Extra defs for the tw_.html-faithful 玄学 view (Acceptance #61) —
+    a per-五行 coin-token gradient set + an active-glyph glow filter.
+
+    Layered on top of the shared ``_nye_defs`` celestial-body gradients;
+    the cosmos / sun / earth / moon gradients come from there."""
+    coin_grads: list[str] = []
+    for i, (rim, deep) in enumerate(_TW_WUXING):
+        coin_grads.append(
+            f'<radialGradient id="tw-coin-{i}" cx="38%" cy="32%" r="74%">'
+            f'<stop offset="0%" stop-color="{rim}" stop-opacity="0.96"/>'
+            f'<stop offset="62%" stop-color="{deep}" stop-opacity="0.92"/>'
+            f'<stop offset="100%" stop-color="#05070c" stop-opacity="0.98"/>'
+            f'</radialGradient>'
+        )
+    return (
+        '<defs>'
+        + "".join(coin_grads)
+        # the aura behind a large active 干支 glyph
+        + '<filter id="tw-glyph-glow" x="-90%" y="-90%" '
+        'width="280%" height="280%">'
+        '<feGaussianBlur in="SourceGraphic" stdDeviation="6.5" '
+        'result="b"/>'
+        '<feMerge><feMergeNode in="b"/>'
+        '<feMergeNode in="SourceGraphic"/></feMerge>'
+        '</filter>'
+        '</defs>'
+    )
+
+
+def _tw_coin(cx: float, cy: float, ch: str, elem_idx: int,
+             *, active: bool = False, pillar: bool = False) -> str:
+    """One 干支 coin token — a thin bezel ring + the character, tinted
+    by 五行 — exactly the small circular 干支 coins ringing the Earth in
+    tw_.html. ``active`` lights the day-pillar coin; ``pillar`` marks a
+    coin that carries one of the four 八字 pillars with a jewel dot."""
+    rim, _deep = _TW_WUXING[elem_idx]
+    r = _TW_COIN_R * (1.16 if active else 1.0)
+    bezel_op = 0.96 if (active or pillar) else 0.62
+    bezel_w = 2.0 if active else (1.5 if pillar else 1.1)
+    glow = ' filter="url(#nye-soft-glow)"' if active else ""
+    parts = [
+        f'<g transform="translate({cx:.2f},{cy:.2f})">',
+        # coin face
+        f'<circle r="{r:.2f}" fill="url(#tw-coin-{elem_idx})" '
+        f'stroke="{rim}" stroke-opacity="{bezel_op:.2f}" '
+        f'stroke-width="{bezel_w}"{glow}></circle>',
+        # inner hairline bezel
+        f'<circle r="{r - 3.4:.2f}" fill="none" '
+        f'stroke="rgba(255,255,255,0.16)" stroke-width="0.7"></circle>',
+        # the 干支 character
+        f'<text x="0" y="0.5" font-family="{_SERIF}" '
+        f'font-size="{24.5 if active else 21:.1f}" '
+        f'fill="{"#fff7e8" if active else "#e9edf4"}" '
+        f'font-weight="600" text-anchor="middle" '
+        f'dominant-baseline="middle">{_esc(ch, 1)}</text>',
+    ]
+    if pillar:
+        # a small jewel dot at the coin's top — this coin carries a
+        # 年/月/日/时 pillar.
+        parts.append(
+            f'<circle cx="0" cy="{-r - 5.5:.1f}" r="3.0" '
+            f'fill="{_GAL_GOLD}" stroke="rgba(255,255,255,0.55)" '
+            f'stroke-width="0.7" filter="url(#nye-soft-glow)"></circle>'
+        )
+    parts.append('</g>')
+    return "".join(parts)
+
+
 def _render_nye_solar_system(
     reading_bazi: LensReading,
     reading_astro: LensReading,
@@ -1545,13 +1666,23 @@ def _render_nye_solar_system(
     bottom_label: str, bottom_value: str,
     meta: str,
 ) -> str:
-    """The Nye Clock solar-system 玄学 lens — Sun-Earth-Moon orbital.
+    """The Nye Clock 玄学 view — Earth-centred 干支-coin wheel.
 
-    Replaces the dense unified astrolabe (founder verdict on it:
-    "不知所云"). Faithfully recreates the founder's real Nye Clock app
-    as lightweight static SVG: a deep-space backdrop, a 20°-oblique
-    elliptical Earth orbit carrying the 八字 sexagenary rails, the Sun
-    at the focus, the Earth riding the orbit with its Moon.
+    [OMY-V415 / M2 / Acceptance #61] REBUILT from the canonical final
+    Nye Clock ``tw_.html`` (see the Instrument 7 header). The earlier
+    renderer used the wrong reference (``nye-clock-backdrop.html``) and
+    is superseded.
+
+    The scene, faithful to tw_.html: a deep-space backdrop; the Earth
+    globe as the heart of the instrument inside a soft atmospheric
+    halo; the 干支 ringed around it as small 五行-tinted CIRCULAR COIN
+    tokens (an inner 地支 ring of 12, an outer 天干 ring of 10); the
+    active day-pillar 干支 glowing LARGE and free-floating; the four
+    八字 pillars marked as jewelled coins; the Sun a separate body
+    off to the upper-right; the Moon a small lit sphere by the Earth.
+
+    Lightweight static SVG — no WebGL / Three.js / canvas / GPU. The
+    founder vetoed embedding the real 3-D clock.
 
     `branch_probabilities` is accepted for call-site parity.
     """
@@ -1559,133 +1690,137 @@ def _render_nye_solar_system(
     bazi = reading_bazi.bazi
     chart = reading_astro.natal
 
-    # --- 占星 angles: zodiac index (0-11) → ecliptic degrees ---
+    # --- 占星: Sun / Moon zodiac indices ---
     sun_idx = chart.sun if chart is not None else 0
     moon_idx = chart.moon if chart is not None else 6
-    # Map the zodiac wheel onto the ellipse; -90 puts index 0 at top.
-    earth_deg = -90.0 + sun_idx * 30.0
-    moon_deg = -90.0 + moon_idx * 30.0
     sun_color = (
         ASTRO_ELEMENT_COLOR[ZODIAC[sun_idx].element]
         if chart is not None else _GAL_GOLD
     )
 
-    # --- 八字: the active stem / branch of the day pillar light up ---
+    # --- 八字: the active stem / branch of the day pillar ---
     day_stem_idx = bazi.day_pillar[0] if bazi is not None else 0
     day_branch_idx = bazi.day_pillar[1] if bazi is not None else 0
+    # which 天干 / 地支 indices carry one of the four pillars
+    pillar_stems = (
+        {p[0] for p in (bazi.year_pillar, bazi.month_pillar,
+                        bazi.day_pillar, bazi.hour_pillar)}
+        if bazi is not None else set()
+    )
+    pillar_branches = (
+        {p[1] for p in (bazi.year_pillar, bazi.month_pillar,
+                        bazi.day_pillar, bazi.hour_pillar)}
+        if bazi is not None else set()
+    )
+
+    ecx, ecy = _TW_EARTH_CX, _TW_EARTH_CY
 
     body: list[str] = [
         f'<svg viewBox="0 0 {_NYE_VB_W} {_NYE_VB_H}" width="100%" '
         f'preserveAspectRatio="xMidYMid meet" style="display:block;" '
-        f'role="img" aria-label="Nye Clock solar system 玄学 lens">',
+        f'role="img" aria-label="Nye Clock 玄学 view">',
         _nye_defs(),
+        _tw_defs(),
         _nye_cosmos(),
     ]
 
-    # --- oblique frame: everything orbital tilts 20° like the Nye Clock
+    # === the Sun — a separate body off to the upper-right ===
     body.append(
-        f'<g transform="translate({_NYE_CX},{_NYE_CY}) '
-        f'rotate({_NYE_OBLIQUE_DEG})">'
+        f'<g transform="translate({_TW_SUN_CX},{_TW_SUN_CY}) '
+        f'scale(0.62)">'
+        + _nye_sun(sun_color)
+        + '</g>'
     )
 
-    # === Earth-orbit mesh — fine radial ticks between two ellipses ===
-    for k in range(60):
-        deg = -90.0 + k * 6.0
-        po = _nye_ell(_NYE_MESH_OUT_RX, _NYE_MESH_OUT_RY, deg)
-        pi = _nye_ell(_NYE_MESH_IN_RX, _NYE_MESH_IN_RY, deg)
-        is_mesh = (k % 5 == 0)
+    # === the two 干支 coin rings around the Earth ===========
+    # Faint guide circles the coins ride on.
+    for ring_r in (_TW_BRANCH_RING_R, _TW_STEM_RING_R):
         body.append(
-            f'<line x1="{pi[0]:.2f}" y1="{pi[1]:.2f}" '
-            f'x2="{po[0]:.2f}" y2="{po[1]:.2f}" '
-            f'stroke="{"rgba(255,210,155,0.26)" if is_mesh else "rgba(175,205,255,0.11)"}" '
-            f'stroke-width="{0.9 if is_mesh else 0.38}" '
-            f'stroke-linecap="round" '
-            f'opacity="{0.92 if is_mesh else 0.58}"></line>'
+            f'<circle cx="{ecx}" cy="{ecy}" r="{ring_r}" fill="none" '
+            f'stroke="rgba(150,196,255,0.16)" stroke-width="1.0"></circle>'
         )
 
-    # === 八字 天干 stem rail — 10 gold segments, active one lit ===
-    for i in range(10):
-        a0 = -90.0 + i * 36.0
-        a1 = a0 + 36.0
-        lit = (i == day_stem_idx)
-        body.append(
-            f'<path d="{_nye_ell_arc(_NYE_STEM_RX, _NYE_STEM_RY, a0 + 0.4, a1 - 0.4)}" '
-            f'fill="none" stroke="url(#nye-stem-rail)" '
-            f'stroke-width="{6.8 if lit else 5.0}" '
-            f'stroke-linecap="round" '
-            f'opacity="{0.98 if lit else 0.5}"></path>'
-        )
-
-    # === 八字 地支 branch rail — 12 blue segments, active one lit ===
+    # Inner ring — 12 地支 coins, tinted by each branch's 五行.
     for i in range(12):
-        a0 = -90.0 + i * 30.0
-        a1 = a0 + 30.0
-        lit = (i == day_branch_idx)
-        body.append(
-            f'<path d="{_nye_ell_arc(_NYE_BR_RX, _NYE_BR_RY, a0 + 0.48, a1 - 0.48)}" '
-            f'fill="none" stroke="url(#nye-branch-rail)" '
-            f'stroke-width="{5.4 if lit else 4.0}" '
-            f'stroke-linecap="round" '
-            f'opacity="{0.95 if lit else 0.42}"></path>'
-        )
+        ang = i * 30.0
+        cx, cy = _polar(ecx, ecy, _TW_BRANCH_RING_R, ang)
+        body.append(_tw_coin(
+            cx, cy, EARTHLY_BRANCHES[i], WUXING_OF_BRANCH[i],
+            active=(i == day_branch_idx),
+            pillar=(i in pillar_branches),
+        ))
 
-    # === the Earth orbit path itself (slim guide ellipse) ===
+    # Outer ring — 10 天干 coins, tinted by each stem's 五行.
+    for i in range(10):
+        ang = i * 36.0
+        cx, cy = _polar(ecx, ecy, _TW_STEM_RING_R, ang)
+        body.append(_tw_coin(
+            cx, cy, HEAVENLY_STEMS[i], WUXING_OF_STEM[i],
+            active=(i == day_stem_idx),
+            pillar=(i in pillar_stems),
+        ))
+
+    # === the Earth globe — the heart of the instrument ===
+    # A 占星-Sun-sign-tinted atmospheric halo behind it.
     body.append(
-        f'<ellipse cx="0" cy="0" rx="{_NYE_EARTH_RX:.1f}" '
-        f'ry="{_NYE_EARTH_RY:.1f}" fill="none" '
-        f'stroke="rgba(150,200,255,0.20)" stroke-width="0.8"></ellipse>'
+        f'<circle cx="{ecx}" cy="{ecy}" r="{_TW_EARTH_R + 22:.1f}" '
+        f'fill="{sun_color}" fill-opacity="0.10"></circle>'
+        f'<circle cx="{ecx}" cy="{ecy}" r="{_TW_EARTH_R + 9:.1f}" '
+        f'fill="none" stroke="rgba(120,200,255,0.30)" '
+        f'stroke-width="1.4"></circle>'
+    )
+    earth_scale = _TW_EARTH_R / 52.0  # _nye_earth() is drawn at r≈52
+    body.append(
+        f'<g transform="translate({ecx},{ecy}) scale({earth_scale:.3f})">'
+        + _nye_earth()
+        + '</g>'
     )
 
-    # === four 八字 pillar jewels riding the orbit ring ===
+    # === the Moon — a small lit sphere at the 占星 Moon-sign angle ===
+    mx, my = _polar(ecx, ecy, _TW_EARTH_R + 56.0, moon_idx * 30.0)
+    body.append(_nye_moon(mx, my))
+
+    # === the four active 八字 pillar glyphs — LARGE, glowing, free-
+    # floating in space, exactly the enlarged glyphs in tw_.html. Each
+    # is the pillar's 天干 over its 地支, tinted by the stem's 五行. ===
     if bazi is not None:
-        for pil in (bazi.year_pillar, bazi.month_pillar,
-                    bazi.day_pillar, bazi.hour_pillar):
-            jdeg = -90.0 + _sexagenary_index(pil) * 6.0
-            jx, jy = _nye_ell(_NYE_EARTH_RX, _NYE_EARTH_RY, jdeg)
+        glyph_slots = (
+            (bazi.year_pillar,  "YEAR",  (838, 470)),
+            (bazi.month_pillar, "MONTH", (838, 690)),
+            (bazi.day_pillar,   "DAY",   (150, 168)),
+            (bazi.hour_pillar,  "HOUR",  (150, 760)),
+        )
+        for pil, name, (gx, gy) in glyph_slots:
+            txt = pillar_text(pil)
+            rim, _d = _TW_WUXING[WUXING_OF_STEM[pil[0] % 10]]
+            idx = _sexagenary_index(pil)
             body.append(
-                f'<circle cx="{jx:.2f}" cy="{jy:.2f}" r="5.4" '
-                f'fill="#0c0e14" stroke="rgba(0,0,0,0.55)" '
-                f'stroke-width="1.1"></circle>'
-                f'<circle cx="{jx:.2f}" cy="{jy:.2f}" r="4.0" '
-                f'fill="{_GAL_GOLD}" stroke="rgba(255,255,255,0.5)" '
-                f'stroke-width="0.8" filter="url(#nye-soft-glow)">'
-                f'</circle>'
+                f'<g transform="translate({gx},{gy})">'
+                # soft aura disc
+                f'<circle r="46" fill="{rim}" fill-opacity="0.13" '
+                f'filter="url(#tw-glyph-glow)"></circle>'
+                f'<circle r="40" fill="rgba(8,11,20,0.55)" '
+                f'stroke="{rim}" stroke-opacity="0.55" '
+                f'stroke-width="1.4"></circle>'
+                # the big pillar character (stem over branch)
+                f'<text x="0" y="-6" font-family="{_SERIF}" '
+                f'font-size="40" fill="{rim}" font-weight="600" '
+                f'text-anchor="middle" dominant-baseline="middle" '
+                f'filter="url(#tw-glyph-glow)">'
+                f'{_esc(txt[0] if txt else "", 1)}</text>'
+                f'<text x="0" y="16" font-family="{_SERIF}" '
+                f'font-size="20" fill="#cdd4e0" font-weight="600" '
+                f'text-anchor="middle" dominant-baseline="middle">'
+                f'{_esc(txt[1] if len(txt) > 1 else "", 1)}</text>'
+                # the pillar label
+                f'<text x="0" y="56" font-family="{_MONO}" '
+                f'font-size="8" fill="{_INK3}" letter-spacing="0.16em" '
+                f'text-anchor="middle">{name} · {idx + 1:02d}/60</text>'
+                f'</g>'
             )
 
-    # === the Sun at the orbit focus (centre of the oblique frame) ===
-    body.append(_nye_sun(sun_color))
-
-    # === the Earth on its orbit, with the Moon ===
-    ex, ey = _nye_ell(_NYE_EARTH_RX, _NYE_EARTH_RY, earth_deg)
-    body.append(f'<g transform="translate({ex:.2f},{ey:.2f})">')
-    # Moon-orbit fine tick ring — radial ticks between the moon-stem
-    # and moon-branch ellipses, faithful to the Nye Clock gMoonTracks.
-    moon_stem_rx, moon_stem_ry = 68.0, 42.0
-    moon_br_rx, moon_br_ry = 54.0, 33.0
-    for k in range(60):
-        deg = -90.0 + k * 6.0
-        po = _nye_ell(moon_stem_rx + 5, moon_stem_ry + 3, deg)
-        pi = _nye_ell(moon_br_rx - 4, moon_br_ry - 2, deg)
-        bold = (k % 6 == 0)
-        body.append(
-            f'<line x1="{pi[0]:.2f}" y1="{pi[1]:.2f}" '
-            f'x2="{po[0]:.2f}" y2="{po[1]:.2f}" '
-            f'stroke="{"rgba(255,215,175,0.30)" if bold else "rgba(175,205,255,0.13)"}" '
-            f'stroke-width="{0.46 if bold else 0.22}" '
-            f'stroke-linecap="round"></line>'
-        )
-    body.append(_nye_earth())
-    mx, my = _nye_ell(_NYE_MOON_RX, _NYE_MOON_RY, moon_deg)
-    body.append(_nye_moon(mx, my))
-    body.append('</g>')  # end Earth cluster
-
-    body.append('</g>')  # end oblique frame
-
-    # === readout plate — a compact level panel at the foot of the
-    # scene, exactly like the Nye Clock's hero-solar-readout (it sits
-    # below the orbital, never eclipsing the Sun). The Sun stays the
-    # glowing centrepiece; the MODEL / 玄学-consensus numbers read off
-    # to the side / below as engraved instrument text.
+    # === readout plate — a compact instrument panel at the foot of the
+    # scene (MODEL / 玄学-consensus engraved numbers). ===
     plate_w = 360.0
     plate_h = 96.0
     plate_x = _NYE_CX - plate_w / 2.0
@@ -1726,42 +1861,12 @@ def _render_nye_solar_system(
         f'</g>'
     )
 
-    # === a slim caption above the Sun naming the lens ===
+    # === a slim caption naming the lens ===
     body.append(
         f'<text x="{_NYE_CX}" y="40" font-family="{_MONO}" '
         f'font-size="9" fill="{_INK3}" letter-spacing="0.32em" '
         f'text-anchor="middle">NYE CLOCK · 玄学 LENS</text>'
     )
-
-    # === corner legend — the four 八字 pillars in 干支, Nye-Clock style
-    if bazi is not None:
-        for pil, name, (px, py) in (
-            (bazi.year_pillar,  "YEAR",  (62, 50)),
-            (bazi.month_pillar, "MONTH", (_NYE_VB_W - 62, 50)),
-            (bazi.day_pillar,   "DAY",   (62, _NYE_VB_H - 54)),
-            (bazi.hour_pillar,  "HOUR",  (_NYE_VB_W - 62, _NYE_VB_H - 54)),
-        ):
-            txt = pillar_text(pil)
-            idx = _sexagenary_index(pil)
-            body.append(
-                f'<g transform="translate({px - 42},{py - 22})">'
-                f'<rect x="0" y="0" width="84" height="44" rx="8" '
-                f'fill="rgba(10,14,24,0.72)" '
-                f'stroke="rgba(255,255,255,0.10)" stroke-width="1">'
-                f'</rect>'
-                f'<text x="42" y="19" font-family="{_SERIF}" '
-                f'font-size="19" text-anchor="middle" '
-                f'dominant-baseline="middle" font-weight="600">'
-                f'<tspan fill="{_GAL_GOLD}">'
-                f'{_esc(txt[0] if txt else "", 1)}</tspan>'
-                f'<tspan fill="{_GAL_CYAN}">'
-                f'{_esc(txt[1] if len(txt) > 1 else "", 1)}</tspan>'
-                f'</text>'
-                f'<text x="42" y="34" font-family="{_MONO}" '
-                f'font-size="7" fill="{_INK3}" letter-spacing="0.12em" '
-                f'text-anchor="middle">{name} · {idx + 1:02d}/60</text>'
-                f'</g>'
-            )
 
     body.append('</svg>')
     return "".join(body)

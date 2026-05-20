@@ -1,14 +1,21 @@
-"""Stage 3 — Nye Clock solar-system 玄学 lens (OMY-V415 / M2 / Acceptance #54).
+"""Nye Clock 玄学 view (OMY-V415 / M2 / Acceptance #54, REBUILT for #61).
 
 The dense unified astrolabe (founder verdict "不知所云") is replaced by a
-faithful static-SVG recreation of the founder's real Nye Clock app: a
-Sun-Earth-Moon orbital, deep-space cosmic style. No WebGL / Three.js /
-GPU — pure static SVG so it embeds verbatim via
-``st.markdown(unsafe_allow_html=True)``.
+faithful static-SVG recreation of the founder's real Nye Clock.
 
-These tests pin: (1) the lens is the Nye Clock solar system, not the old
+Acceptance #61 REBUILT this view from the canonical final Nye Clock —
+``~/Downloads/UCSB/Adonyth/tw_.html`` — after the redesign Stage 3
+renderer was found to have been built from the WRONG reference
+(``academic-cv-site/nye-clock-backdrop.html``, an older CV-site
+backdrop). The tw_.html-faithful layout: the Earth globe is the heart
+of the instrument; the 干支 ride it as small 五行-tinted CIRCULAR COIN
+tokens in two concentric rings (inner 12 地支, outer 10 天干); the
+active day-pillar 干支 glow large and free-floating; the Sun is a
+separate body off-axis; the Moon a small lit sphere by the Earth.
+
+These tests pin: (1) the view is the tw_.html Nye Clock, not the old
 astrolabe; (2) it is GPU-free static SVG; (3) the 八字 / 占星 data maps
-onto the orbital legibly; (4) the geometry helpers are correct.
+onto it legibly; (4) the geometry helpers are correct.
 """
 
 from __future__ import annotations
@@ -113,28 +120,51 @@ def test_lens_has_no_animation() -> None:
 # 八字 / 占星 data maps onto the orbital legibly
 # --------------------------------------------------------------------
 
-def test_bazi_sexagenary_rails_carried_on_orbit() -> None:
-    """The 八字 movement is the Earth-orbit ring: a gold 天干 stem rail
-    and a blue 地支 branch rail."""
+def test_bazi_sexagenary_rails_are_ganzhi_coin_rings() -> None:
+    """The 八字 movement is two concentric rings of 干支 COIN tokens
+    around the Earth — the tw_.html layout (Acceptance #61).
+
+    Each coin is a 五行-tinted bezel ring + the character. There are 22
+    coins total: an inner ring of 12 地支 + an outer ring of 10 天干.
+    """
     rb, ra = _readings()
     svg = _render(rb, ra)
-    assert "url(#nye-stem-rail)" in svg
-    assert "url(#nye-branch-rail)" in svg
+    # the per-五行 coin gradients are referenced
+    assert "url(#tw-coin-" in svg
+    # all 22 coin tokens (12 地支 + 10 天干) render
+    assert svg.count("url(#tw-coin-") == 22
 
 
-def test_orbital_frame_is_obliquely_tilted() -> None:
-    """The Nye Clock orbital sits on a 20-degree oblique plane."""
+def test_ganzhi_characters_render_on_the_coins() -> None:
+    """Every 天干 and 地支 character appears on its coin."""
     rb, ra = _readings()
     svg = _render(rb, ra)
-    assert "rotate(20" in svg
+    for ch in mp.HEAVENLY_STEMS:
+        assert ch in svg, f"missing 天干 {ch}"
+    for ch in mp.EARTHLY_BRANCHES:
+        assert ch in svg, f"missing 地支 {ch}"
 
 
-def test_four_pillars_appear_as_corner_cartouches() -> None:
-    """All four 八字 pillars (year/month/day/hour) stay legible."""
+def test_view_is_earth_centred_not_oblique() -> None:
+    """The tw_.html 玄学 view is an Earth-centred 干支 wheel — NOT the
+    old superseded 20-degree oblique solar-system frame."""
+    rb, ra = _readings()
+    svg = _render(rb, ra)
+    # the old wrong-reference renderer tilted the whole scene 20°
+    assert "rotate(20" not in svg
+    # the Earth-centred coin rings are the new structure
+    assert "url(#tw-coin-" in svg
+
+
+def test_four_pillars_appear_as_large_glowing_glyphs() -> None:
+    """All four 八字 pillars (year/month/day/hour) render as large
+    free-floating glowing glyphs — the enlarged glyphs in tw_.html."""
     rb, ra = _readings()
     svg = _render(rb, ra)
     for name in ("YEAR", "MONTH", "DAY", "HOUR"):
         assert name in svg
+    # the active-glyph glow filter is applied
+    assert "url(#tw-glyph-glow)" in svg
 
 
 def test_readout_carries_model_and_consensus() -> None:
@@ -185,3 +215,100 @@ def test_nye_canvas_constants() -> None:
     assert _clock._NYE_VB_W == 1000
     assert _clock._NYE_VB_H == 920
     assert _clock._NYE_OBLIQUE_DEG == 20.0
+
+
+# --------------------------------------------------------------------
+# Acceptance #61 — rebuilt from the canonical tw_.html
+# --------------------------------------------------------------------
+
+def test_tw_wuxing_palette_is_five_elements() -> None:
+    """The tw_.html 五行 coin palette has all five elements, each with a
+    rim + a deep tone for a real radial-gradient coin."""
+    assert len(_clock._TW_WUXING) == 5
+    for rim, deep in _clock._TW_WUXING:
+        assert rim.startswith("#") and deep.startswith("#")
+
+
+def test_tw_coin_renders_bezel_ring_and_character() -> None:
+    """A 干支 coin token is a 五行-tinted bezel ring + the character."""
+    coin = _clock._tw_coin(100.0, 100.0, "甲", 0)
+    assert coin.startswith("<g ") and coin.endswith("</g>")
+    assert "甲" in coin
+    # the coin face uses a per-五行 coin gradient
+    assert "url(#tw-coin-0)" in coin
+    # a circular token
+    assert "<circle" in coin
+
+
+def test_tw_coin_active_state_lights_up() -> None:
+    """The active (day-pillar) coin is enlarged + glowing vs an idle one."""
+    idle = _clock._tw_coin(0.0, 0.0, "乙", 1, active=False)
+    active = _clock._tw_coin(0.0, 0.0, "乙", 1, active=True)
+    assert idle != active
+    # the active coin gets the soft-glow filter
+    assert "url(#nye-soft-glow)" in active
+    assert "url(#nye-soft-glow)" not in idle
+
+
+def test_tw_coin_pillar_state_marks_a_jewel() -> None:
+    """A coin carrying one of the four 八字 pillars gets a jewel dot."""
+    plain = _clock._tw_coin(0.0, 0.0, "丙", 1, pillar=False)
+    pillar = _clock._tw_coin(0.0, 0.0, "丙", 1, pillar=True)
+    assert plain != pillar
+    # the jewel dot is gold
+    assert _clock._GAL_GOLD in pillar
+
+
+def test_tw_defs_emits_a_coin_gradient_per_element() -> None:
+    """_tw_defs defines one coin gradient per 五行 + the glyph-glow."""
+    defs = _clock._tw_defs()
+    for i in range(5):
+        assert f'id="tw-coin-{i}"' in defs
+    assert 'id="tw-glyph-glow"' in defs
+
+
+def test_nye_view_is_gpu_free_static_svg() -> None:
+    """CRITICAL — the rebuilt view is still GPU-free static SVG.
+
+    The founder vetoed embedding the real 3-D Three.js clock; the 玄学
+    view must be a lightweight static SVG that embeds verbatim.
+    """
+    rb, ra = _readings()
+    svg = _render(rb, ra).lower()
+    for forbidden in (
+        "<script", "<canvas", "webgl", "three.js", "three.min",
+        "requestanimationframe", "<iframe", "<animate",
+    ):
+        assert forbidden not in svg, f"view must be GPU-free: {forbidden}"
+
+
+def test_nye_view_has_earth_sun_moon_bodies() -> None:
+    """The Earth (heart), the off-axis Sun, and the Moon all render."""
+    rb, ra = _readings()
+    svg = _render(rb, ra)
+    # Earth — ocean / land / atmosphere
+    assert "url(#nye-earth-ocean)" in svg
+    assert "url(#nye-earth-land)" in svg
+    # Sun — layered core / corona
+    assert "url(#nye-sun-core)" in svg
+    assert "url(#nye-sun-corona)" in svg
+    # Moon — surface
+    assert "url(#nye-moon-surf)" in svg
+
+
+def test_nye_view_coins_are_colour_coded_by_wuxing() -> None:
+    """Different 干支 land on different 五行 coin gradients — the wheel
+    is genuinely 五行-colour-coded, not monochrome."""
+    rb, ra = _readings()
+    svg = _render(rb, ra)
+    used = {i for i in range(5) if f"url(#tw-coin-{i})" in svg}
+    # the 60-cycle spans every element, so all five gradients appear
+    assert used == {0, 1, 2, 3, 4}
+
+
+def test_tw_layout_constants_present() -> None:
+    """The tw_.html-canonical layout constants exist and are sane."""
+    assert _clock._TW_EARTH_R > 0
+    # the coin rings sit OUTSIDE the Earth globe
+    assert _clock._TW_BRANCH_RING_R > _clock._TW_EARTH_R
+    assert _clock._TW_STEM_RING_R > _clock._TW_BRANCH_RING_R

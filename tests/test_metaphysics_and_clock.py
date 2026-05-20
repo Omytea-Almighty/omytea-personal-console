@@ -399,12 +399,14 @@ def test_aggregate_readings_is_bounded_equal_weight_mean() -> None:
 
 
 def test_render_celestial_svg_is_nye_solar_system() -> None:
-    """v4.18 Stage 3 — the 玄学 lens is the Nye Clock solar system.
+    """The 玄学 view is the Nye Clock — rebuilt from tw_.html (#61).
 
-    The dense unified astrolabe (founder verdict "不知所云") was
-    replaced by a faithful static-SVG recreation of the founder's real
-    Nye Clock app: a Sun-Earth-Moon orbital. This test pins the new
-    visual contract.
+    The dense unified astrolabe (founder verdict "不知所云") was replaced
+    by a faithful static-SVG recreation of the founder's real Nye Clock.
+    Acceptance #61 rebuilt it from the canonical final clock
+    ``tw_.html``: an Earth-centred 干支-coin wheel — the Earth globe at
+    the heart, two concentric rings of 五行-tinted 干支 coin tokens, the
+    Sun a separate off-axis body. This test pins the new contract.
     """
     bd = mp.BirthData(1988, 2, 29, 9)
     rb = mp.compute_reading("bazi", birth=bd, seed="s",
@@ -420,21 +422,21 @@ def test_render_celestial_svg_is_nye_solar_system() -> None:
     assert svg.startswith("<svg ") and svg.endswith("</svg>")
     # The Nye Clock canvas — NOT the old 480x480 astrolabe.
     assert 'viewBox="0 0 1000 920"' in svg
-    # Sun-Earth-Moon orbital: the three bodies' gradient defs.
+    # The Earth + Sun + Moon bodies' gradient defs.
     assert "url(#nye-sun-core)" in svg
     assert "url(#nye-earth-ocean)" in svg
     assert "url(#nye-moon-surf)" in svg
     # the deep-space cosmic backdrop
     assert "url(#nye-cosmos-bg)" in svg
     assert "url(#nye-vignette)" in svg
-    # 八字 sexagenary rails carried on the Earth orbit
-    assert "url(#nye-stem-rail)" in svg
-    assert "url(#nye-branch-rail)" in svg
-    # the 20-degree oblique frame
-    assert "rotate(20" in svg
-    # the four 八字 pillars appear as corner cartouches
+    # the 干支 ride the Earth as 五行-tinted coin tokens (22 of them)
+    assert svg.count("url(#tw-coin-") == 22
+    # the new Earth-centred wheel — NOT the old 20-degree oblique frame
+    assert "rotate(20" not in svg
+    # the four 八字 pillars appear as large glowing glyphs
     assert "YEAR" in svg and "MONTH" in svg
     assert "DAY" in svg and "HOUR" in svg
+    assert "url(#tw-glyph-glow)" in svg
     # the dual readout still carries the model + combined values
     assert "34.2%" in svg and "48.0%" in svg
     assert "玄学" in svg

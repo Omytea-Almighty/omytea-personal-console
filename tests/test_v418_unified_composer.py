@@ -32,6 +32,22 @@ def _func(name: str) -> ast.FunctionDef:
     raise AssertionError(f"function {name} not found in app.py")
 
 
+def _composer_src() -> str:
+    """Combined source of the composer wrapper + its body.
+
+    OMY-V415 / M2 / Acceptance #60 (requirement C) made
+    ``_render_workspace_composer`` a thin wrapper that opens a
+    fixed-height scroll pane and delegates the markup to
+    ``_render_workspace_composer_body``. The composer-content contract
+    is therefore checked against both functions' source.
+    """
+    return (
+        ast.unparse(_func("_render_workspace_composer"))
+        + "\n"
+        + ast.unparse(_func("_render_workspace_composer_body"))
+    )
+
+
 # --------------------------------------------------------------------
 # The composer lives in _render_workspace_composer (the chatbox-layout
 # input region), reached via render_new_prediction. OMY-V415 / M2 /
@@ -41,21 +57,21 @@ def _func(name: str) -> ast.FunctionDef:
 
 def test_composer_has_attach_affordance() -> None:
     """A "+" attach popover with a video uploader sits in the composer."""
-    src = ast.unparse(_func("_render_workspace_composer"))
+    src = _composer_src()
     assert "st.popover" in src, "composer needs a '+' attach popover"
     assert "_composer_video" in src, "attach popover needs a video uploader"
 
 
 def test_composer_has_live_video_toggle() -> None:
     """Live webcam becomes a toggle, not a separate mode page."""
-    src = ast.unparse(_func("_render_workspace_composer"))
+    src = _composer_src()
     assert "_composer_live_toggle" in src
     assert "st.toggle" in src
 
 
 def test_composer_has_xuanxue_lens_toggle() -> None:
     """The 玄学 lens is an optional toggle inside the workspace."""
-    src = ast.unparse(_func("_render_workspace_composer"))
+    src = _composer_src()
     assert "_composer_lens_toggle" in src
     # The toggle state must be published for _render_result to read.
     assert "_xuanxue_lens_on" in src
@@ -63,19 +79,19 @@ def test_composer_has_xuanxue_lens_toggle() -> None:
 
 def test_composer_embeds_video_pipeline() -> None:
     """An attached video runs the video pipeline inline (embedded)."""
-    src = ast.unparse(_func("_render_workspace_composer"))
+    src = _composer_src()
     assert "render_video_query(embedded=True)" in src
 
 
 def test_composer_embeds_live_pipeline() -> None:
     """The live toggle embeds the webcam panel inline (embedded)."""
-    src = ast.unparse(_func("_render_workspace_composer"))
+    src = _composer_src()
     assert "render_live_webcam(embedded=True)" in src
 
 
 def test_composer_still_has_run_prediction_form() -> None:
     """The text-conditions form + a single Generate button survive."""
-    src = ast.unparse(_func("_render_workspace_composer"))
+    src = _composer_src()
     assert "st.form" in src
     assert "form_submit_button" in src
 
@@ -137,10 +153,21 @@ def test_embedded_suppresses_webcam_hero() -> None:
 # --------------------------------------------------------------------
 
 def test_render_result_reads_lens_toggle() -> None:
-    """The lens expander opens expanded only when the toggle is on."""
+    """_render_result branches on the composer's 玄学-lens toggle.
+
+    OMY-V415 / M2 / Acceptance #60 (requirement D): when the lens is on,
+    the 玄学 Nye Clock view lives in the OUTPUT region via the view
+    toggle at its top — so _render_result no longer renders the lens
+    inline (that would double-render it). It still reads the toggle
+    state and, when on, points to the output-region toggle instead of
+    opening its own inline expander.
+    """
     src = ast.unparse(_func("_render_result"))
     assert "_xuanxue_lens_on" in src
-    assert "expanded=lens_on" in src
+    # When the lens is on, _render_result must NOT also expand the lens
+    # inline — the output-region toggle owns the 玄学 view.
+    assert "expanded=lens_on" not in src
+    assert "trad.lens.in_output_note" in src
 
 
 # --------------------------------------------------------------------

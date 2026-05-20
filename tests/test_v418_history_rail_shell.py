@@ -111,9 +111,11 @@ def test_session_user_id_helper_exists() -> None:
     assert "def session_user_id()" in APP_SRC
     # The composer must use the shared helper, not re-roll its own
     # random handle (that would desync the rail from saved records).
-    # OMY-V415 / M2 / Acceptance #58 moved the composer markup into
-    # _render_workspace_composer (the chatbox input region).
-    fn = _func("_render_workspace_composer")
+    # OMY-V415 / M2 / Acceptance #58 moved the composer markup into the
+    # chatbox input region; Acceptance #60 (requirement C) further split
+    # it into a fixed-height-pane wrapper + the markup body
+    # (_render_workspace_composer_body), which holds the helper call.
+    fn = _func("_render_workspace_composer_body")
     assert "session_user_id()" in ast.unparse(fn)
 
 
@@ -164,7 +166,14 @@ def test_date_bucket_today() -> None:
 
 def test_date_bucket_yesterday() -> None:
     bucket = _load_helper("_date_bucket")
-    assert bucket(time.time() - 26 * 3600) == "Yesterday"
+    # Yesterday at local noon — unambiguously "Yesterday" no matter what
+    # time of day the test runs. A fixed 26h offset is flaky: run before
+    # ~02:00 it lands two calendar days back, not one.
+    lt = time.localtime()
+    yesterday_noon = time.mktime(
+        (lt.tm_year, lt.tm_mon, lt.tm_mday - 1, 12, 0, 0, 0, 0, -1)
+    )
+    assert bucket(yesterday_noon) == "Yesterday"
 
 
 def test_date_bucket_prev_7_and_30() -> None:

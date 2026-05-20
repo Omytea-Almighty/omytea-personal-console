@@ -97,10 +97,18 @@ def test_output_region_always_renders_heatmap() -> None:
 
 
 def test_idle_state_feeds_heatmap_placeholder_branches() -> None:
-    """With no prediction, the heatmap is fed idle placeholder branches."""
+    """With no prediction, the heatmap renders its own idle grid.
+
+    OMY-V415 Acceptance #59: the heatmap is now an interactive HTML/JS
+    component. The idle path passes an empty branch list; the component
+    renders the uniform placeholder grid (and its idle caption) itself —
+    a video dropped on it drives the heatmap live even before any
+    prediction has run. The branch-as-empty-list signal is the contract.
+    """
     src = ast.unparse(_func("_render_workspace_output"))
-    # The idle path: no current_prediction -> placeholder branches.
-    assert "_idle_heatmap_branches()" in src
+    # The idle path: no current_prediction -> heatmap fed an empty list,
+    # which the component renders as the calm uniform idle grid.
+    assert "_render_probability_heatmap([]" in src
     assert "current_prediction" in src
 
 
@@ -108,20 +116,11 @@ def test_idle_branches_are_five_equal_probability() -> None:
     """Idle placeholders: ~5 branches, all equal probability.
 
     Equal probability => the heatmap renders a calm flat uniform grid,
-    an honest pre-evidence prior. This is checked by actually building
-    the branches (the helper only imports ConsoleHypothesis, which is
-    import-safe without the Streamlit stack)."""
-    import importlib.util
-
-    spec = importlib.util.spec_from_file_location(
-        "console", APP_PATH.parent / "console.py"
-    )
-    assert spec and spec.loader
-    console = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(console)
-
-    # Re-implement the helper's body shape from source, then sanity
-    # check the contract: 5 branches, each probability 0.20.
+    an honest pre-evidence prior. Checked at the AST/source level —
+    ``app.py`` cannot be imported under the test runner (module-level
+    ``st.set_page_config``), same technique the other tests here use.
+    """
+    # Sanity check the idle-branch contract: 5 branches, each at 0.20.
     src = ast.unparse(_func("_idle_heatmap_branches"))
     assert "0.2" in src, "idle branches must be equal-probability (0.20)"
     assert src.count("ConsoleHypothesis(") >= 1
@@ -150,8 +149,13 @@ def test_composer_stores_prediction_and_reruns() -> None:
 
     The chatbox loop: composer computes -> session_state -> rerun ->
     the top output region resolves the heatmap idle->real.
+
+    OMY-V415 / M2 / Acceptance #60 (requirement C) split the composer
+    into a fixed-height-pane wrapper (``_render_workspace_composer``)
+    plus the markup body (``_render_workspace_composer_body``); the
+    Generate/persist/rerun logic lives in the body.
     """
-    src = ast.unparse(_func("_render_workspace_composer"))
+    src = ast.unparse(_func("_render_workspace_composer_body"))
     assert "current_prediction" in src, (
         "composer must persist the prediction for the output region"
     )
