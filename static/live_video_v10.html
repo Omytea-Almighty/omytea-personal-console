@@ -1,0 +1,2367 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Omytea</title>
+<!--
+  Omytea Console v10 — "See both at once" — 2026-05-16.
+
+  Founder critique on v9:
+    "当我滑动界面到下面的分布函数图的时候，也就是上面的镜头框被滑下去了，
+     这个时候相机可能就停止运行了，然后下面的响应也就停止了，非常不方便。
+     而且其实下面的响应和上面的相机里的动作之间确实是有明显延迟的。"
+
+  Two real problems in v9:
+    (P1) Camera preview lives ABOVE the heatmap in a vertical stack, so
+         scrolling down to see the forecast pushes the camera out of view.
+         The math is still running but the user can't visually correlate
+         motion → heatmap shift, so it FEELS like nothing's happening.
+    (P2) 200 ms tick + α=0.35 EMA = ~600 ms perceptible lag.
+
+  v10 = SEE BOTH AT ONCE + FASTER LOOP.
+
+  Layout change:
+    When camera/file is active and world is live_perception, <main>
+    becomes a CSS grid:
+      ┌─────────────┬────────────────────────┐
+      │  3 input cards row (spans both)      │
+      ├─────────────┼────────────────────────┤
+      │  preview    │  banner + hero +       │
+      │  card       │  HEATMAP + answer +    │
+      │  (sticky)   │  counterfactuals       │
+      └─────────────┴────────────────────────┘
+    Preview is `position: sticky; top: 76px` so it pins as the user
+    scrolls the right pane. <main> widens to 1320 px to fit side-by-side;
+    on narrow viewports (< 1100 px) the grid collapses back to the v9
+    vertical stack. body.camera-active toggles the layout.
+
+  Motion loop tuning:
+    - Interval 200 ms → 100 ms (10 fps).
+    - EMA α 0.35 → 0.55.
+    - Lazy re-render: skip heatmap rebuild if |Δcentroid| < 0.06 and
+      |Δintensity| < 0.04 since last paint. Marker/status still update
+      every tick so camera-side feedback stays smooth.
+
+  Preserved from v9: pixel-diff pipeline, scenario-adaptive WORLD_CONFIG,
+  custom-ask matchers, cell popover, drawers, window.__omyteaTest hook,
+  FOUNDING_VISION confidentiality, v8-hotfix bugs still fixed.
+
+  Legacy v9 doc-comment for change-history continuity:
+
+  Omytea Console v9 — "Camera drives the math" — 2026-05-15.
+
+  Founder critique on v8:
+    "你自己作为用户，检验你做的，能得到用处吗，你检查好再交付啊"
+  + agreed on v9 motion-detection plan after self-test exposed that v8's
+  camera/file buttons were structurally coherent (auto-switch to
+  live_perception) but functionally hollow — the heatmap was identical
+  regardless of what the camera saw, or whether it was on at all.
+
+  v9 = THE CAMERA ACTUALLY DRIVES THE MATH.
+
+  Motion-detection pipeline (vanilla browser, zero model download):
+    1. Hidden 80x45 canvas grabs a frame from <video> every 200 ms (~5 fps).
+    2. Pixel-wise diff vs previous frame, summed per column, with a
+       noise floor (per-channel |Δ| > 24) to ignore camera jitter.
+    3. Column-wise motion mass → weighted centroid X (0..W).
+    4. Centroid normalized to zone index ∈ [−3, +3] (the live_perception
+       row coordinate).
+    5. Intensity = total motion mass / scale factor, clamped [0, 1].
+    6. Centroid + intensity feed:
+         - live_perception.distFn (the heatmap starting zone is the
+           centroid, not 0; person walks/stops/turns FROM where they are)
+         - Motion overlay marker on the <video> (a small ring at the
+           detected x position with intensity-scaled glow)
+         - Status badge under preview: "Motion detected · Person A in
+           [zone name] · intensity 0.42" / "No motion detected — try
+           waving your hand"
+    7. When intensity decays below threshold, intensity fades 0.85× per
+       tick (motion smoothly trails off rather than cutting to zero).
+    8. On stopMedia(), the motion loop stops, prevFrame is cleared,
+       centroid resets to 0 (scene mode default).
+
+  Counterfactual math vs v8 (live_perception):
+    - baseline ("Walking forward"): drift 0, σ widens. mu(t) = centroid.
+    - stop ("Stopping"):              drift 0, σ stays small. mu(t) = centroid.
+    - turn ("Turning back"):          drift toward 0 from centroid.
+                                       mu(t) = centroid·(1 − t/30).
+    So if Person A is detected at +2 (right side), turning back returns
+    them to 0 by second 30; stopping pins them at +2; walking widens
+    around +2 but doesn't migrate. Cell narratives + popover use the
+    plain-English zone name of the centroid ("Person A is currently in
+    the mid-right zone").
+
+  v9 changes vs v8:
+    1. NEW: pixel-diff motion detector with intensity-decayed centroid.
+    2. NEW: motion overlay marker on the live <video>.
+    3. NEW: motion status badge under the preview.
+    4. NEW: live_perception cf math anchored at motion.centroid.
+    5. NEW: hero / banner / cell-narrative / answer / reasoning-drawer
+       all read live_perception's "starting zone" from motion.centroid
+       (with a "(scene mode)" fallback when no camera/file is active).
+    6. NEW: handleFile() also starts the motion loop after the uploaded
+       video begins playing — pixel-diff works on file-playback frames
+       too. Static images: a one-shot frame is captured, no motion;
+       intensity stays at 0 and the heatmap stays scene-default.
+
+  Preserved from v8:
+    - Scenario-adaptive WORLD_CONFIG registry (stock_market + live + 4 preview).
+    - Now-forecasting banner.
+    - Cell popover, column inset histogram, two drawers, Esc close.
+    - Preview-only frosted overlay + "Back to Stock market" button.
+    - English UI, FOUNDING_VISION confidentiality (no Yhwach name on surface).
+    - v8 hotfix bugs 015/016/017 still fixed (preview-only crash, overlay
+      innerHTML clobber, custom-ask matcher reorder).
+-->
+<style>
+  :root {
+    color-scheme: dark;
+    --canvas:    #0a0c11;
+    --surface:   #11141b;
+    --surface-2: #181c25;
+    --surface-3: #1f2530;
+    --hairline:  #232834;
+    --ink-0:     #f0f2f5;
+    --ink-1:     #b9bfc8;
+    --ink-2:     #76808d;
+    --ink-3:     #4b525d;
+    --accent:    #8b8cff;
+    --accent-soft: rgba(139, 140, 255, 0.15);
+    --teal:      #58c5b4;
+    --teal-soft: rgba(88, 197, 180, 0.15);
+    --red:       #ff5e6e;
+    --amber:     #d8a657;
+    --sans: -apple-system, "Inter", system-ui, sans-serif;
+    --serif: "Cormorant Garamond", "Iowan Old Style", "Georgia", serif;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--canvas); }
+  body {
+    color: var(--ink-0);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.005em;
+    overflow-x: hidden;
+  }
+  button { font: inherit; cursor: pointer; background: transparent; border: 0; color: inherit; }
+  a { color: var(--accent); text-decoration: none; }
+  code { font-family: var(--mono); font-size: 0.9em; color: var(--ink-1); background: rgba(255,255,255,0.04); padding: 0 4px; border-radius: 2px; }
+  .mono { font-family: var(--mono); }
+  .dim { color: var(--ink-2); }
+  strong { font-weight: 600; }
+
+  /* ===== topbar ===== */
+  .topbar {
+    display: flex; align-items: center; gap: 16px;
+    padding: 14px 28px;
+    position: sticky; top: 0; z-index: 30;
+    background: linear-gradient(180deg, rgba(10, 12, 17, 0.95), rgba(10, 12, 17, 0.78));
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .brand {
+    display: flex; align-items: baseline; gap: 9px;
+    font-weight: 600; font-size: 17px; letter-spacing: -0.015em;
+  }
+  .brand .mark { display: inline-block; width: 10px; height: 10px; background: var(--accent); }
+  .topbar .right { margin-left: auto; display: flex; gap: 4px; align-items: center; }
+  .topbar .menu-btn {
+    padding: 6px 12px; border-radius: 4px;
+    color: var(--ink-1); font-size: 13px;
+    border: 1px solid transparent;
+  }
+  .topbar .menu-btn:hover { background: var(--surface-2); color: var(--ink-0); border-color: var(--hairline); }
+  .topbar .lang {
+    padding: 5px 10px; border-radius: 3px;
+    color: var(--ink-2); font-size: 12.5px;
+    border: 1px solid var(--hairline);
+    margin-right: 6px;
+  }
+
+  /* ===== main ===== */
+  main {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 28px 28px 80px;
+    transition: max-width 0.25s ease;
+  }
+
+  /* Side-by-side layout when camera/file is active and live_perception is selected.
+     Activated by body.camera-active. Falls back to single column on narrow viewports. */
+  body.camera-active main {
+    max-width: 1320px;
+  }
+  @media (min-width: 1100px) {
+    body.camera-active main {
+      display: grid;
+      grid-template-columns: minmax(360px, 38%) 1fr;
+      column-gap: 26px;
+      align-items: start;
+    }
+    body.camera-active .input-row { grid-column: 1 / -1; }
+    body.camera-active #preview-card {
+      grid-column: 1;
+      position: sticky;
+      top: 76px;
+      margin-bottom: 0;
+    }
+    body.camera-active .forecast-pane {
+      grid-column: 2;
+      min-width: 0; /* allow grid item to shrink for heatmap responsiveness */
+    }
+    body.camera-active #scenario-card { display: none; }
+    /* Heatmap is the centerpiece in side-by-side; keep its aspect ratio reasonable. */
+    body.camera-active .heatmap-svg-wrap { aspect-ratio: 16 / 8.5; }
+    /* Now-banner becomes more compact in side-by-side */
+    body.camera-active .now-banner { padding: 14px 18px; margin: 0 0 18px; }
+    body.camera-active .hero-head { margin: 14px 0 16px; }
+    body.camera-active .hero-head h1 { font-size: 24px; }
+  }
+
+  /* ===== INPUT — three big cards ===== */
+  .input-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+  @media (max-width: 800px) { .input-row { grid-template-columns: 1fr; } }
+  .input-card {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    padding: 18px 18px 16px;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, transform 0.15s;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .input-card:hover {
+    border-color: var(--accent);
+    background: var(--surface-2);
+    transform: translateY(-1px);
+  }
+  .input-card.active {
+    border-color: var(--accent);
+    background: var(--surface-2);
+    box-shadow: 0 0 0 1px var(--accent-soft) inset;
+  }
+  .input-card .icon { font-size: 22px; color: var(--accent); margin-bottom: 4px; }
+  .input-card .title { font-size: 15px; font-weight: 600; color: var(--ink-0); }
+  .input-card .desc { color: var(--ink-2); font-size: 12.5px; line-height: 1.5; }
+  .input-card.active .desc { color: var(--ink-1); }
+
+  /* preview panel */
+  .preview-card {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    padding: 16px 18px 14px;
+    margin-bottom: 22px;
+    display: none;
+  }
+  .preview-card.show { display: block; }
+  .preview-card .label {
+    color: var(--ink-2);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-weight: 500;
+    margin-bottom: 10px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .preview-card .label .live-dot {
+    display: inline-block; width: 8px; height: 8px;
+    background: var(--teal); border-radius: 50%;
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .preview-card .label .close-x {
+    margin-left: auto; cursor: pointer; color: var(--ink-2);
+    padding: 2px 8px; font-size: 13px;
+  }
+  .preview-card .label .close-x:hover { color: var(--ink-0); }
+  .preview-card .video-wrap {
+    position: relative;
+    width: 100%;
+  }
+  .preview-card video, .preview-card img {
+    width: 100%; max-height: 360px; object-fit: contain;
+    background: var(--canvas);
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    display: block;
+  }
+  /* motion marker — a soft ring at the detected centroid */
+  .motion-marker {
+    position: absolute;
+    top: 50%;
+    width: 36px; height: 36px;
+    margin-top: -18px; margin-left: -18px;
+    border: 2px solid var(--teal);
+    border-radius: 50%;
+    box-shadow: 0 0 18px var(--teal-soft), inset 0 0 12px var(--teal-soft);
+    pointer-events: none;
+    opacity: 0;
+    transition: left 0.2s ease, opacity 0.3s ease;
+    z-index: 2;
+  }
+  .motion-marker.show { opacity: 1; }
+  .motion-marker .lbl {
+    position: absolute;
+    top: -22px; left: 50%; transform: translateX(-50%);
+    font-family: var(--mono); font-size: 10.5px; color: var(--teal);
+    white-space: nowrap;
+    text-shadow: 0 0 6px var(--canvas);
+  }
+  .motion-status {
+    margin-top: 8px;
+    color: var(--ink-2); font-size: 12px;
+    font-family: var(--mono);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .motion-status.active { color: var(--teal); }
+  .motion-status .bar-track {
+    display: inline-block;
+    width: 80px; height: 4px;
+    background: var(--hairline);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .motion-status .bar-fill {
+    display: block; height: 100%;
+    background: var(--teal);
+    transition: width 0.2s ease;
+  }
+  .preview-card .file-info { margin-top: 8px; color: var(--ink-2); font-size: 12px; font-family: var(--mono); }
+  .preview-card .honesty-note {
+    margin-top: 10px;
+    color: var(--ink-2); font-size: 12px;
+    border-left: 2px solid var(--teal);
+    padding: 6px 12px;
+    background: var(--canvas);
+    border-radius: 0 3px 3px 0;
+  }
+  .preview-card .honesty-note strong { color: var(--ink-1); }
+
+  /* scenario picker */
+  .scenario-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  @media (max-width: 700px) { .scenario-grid { grid-template-columns: 1fr; } }
+  .scenario-btn {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--hairline);
+    border-radius: 6px;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .scenario-btn:hover { background: var(--surface-3); border-color: var(--ink-3); }
+  .scenario-btn.current {
+    background: var(--surface-3);
+    border-color: var(--accent);
+  }
+  .scenario-btn .name { font-size: 14px; font-weight: 500; color: var(--ink-0); display: block; }
+  .scenario-btn .name strong { color: var(--ink-0); }
+  .scenario-btn .ready { color: var(--ink-2); font-size: 11.5px; }
+  .scenario-btn.current .ready { color: var(--accent); }
+  .scenario-btn .tag {
+    margin-left: auto;
+    color: var(--ink-3);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border: 1px solid var(--hairline);
+    padding: 2px 7px;
+    border-radius: 3px;
+  }
+  .scenario-btn.ready .tag { color: var(--teal); border-color: var(--teal-soft); }
+  .scenario-btn.preview .tag { color: var(--amber); border-color: rgba(216, 166, 87, 0.3); }
+
+  /* ===== Now forecasting banner ===== */
+  .now-banner {
+    background: linear-gradient(180deg, var(--surface-2), var(--surface));
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin: 22px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .now-banner .lbl {
+    color: var(--ink-2); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.12em; font-weight: 500;
+  }
+  .now-banner .sentence {
+    color: var(--ink-1);
+    font-size: 16.5px;
+    line-height: 1.55;
+  }
+  .now-banner .sentence strong {
+    color: var(--ink-0);
+    font-weight: 600;
+  }
+  .now-banner .sentence .variable { color: var(--accent); }
+  .now-banner .sentence .input-src { color: var(--teal); }
+  .now-banner .note {
+    color: var(--ink-2); font-size: 12.5px;
+    margin-top: 4px;
+  }
+  .now-banner .note strong { color: var(--ink-1); }
+
+  /* ===== hero head ===== */
+  .hero-head { text-align: center; margin: 20px 0 22px; }
+  .hero-head h1 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 28px;
+    letter-spacing: -0.005em;
+    line-height: 1.18;
+    margin: 0 0 6px;
+    color: var(--ink-0);
+  }
+  .hero-head .sub {
+    color: var(--ink-1);
+    font-size: 14px;
+    max-width: 540px;
+    margin: 0 auto;
+  }
+  .hero-head .anchor {
+    margin-top: 12px;
+    color: var(--ink-2);
+    font-size: 12.5px;
+  }
+  .hero-head .anchor strong { color: var(--ink-0); }
+
+  /* ===== the heatmap card ===== */
+  .heat-card {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    padding: 18px 22px 14px;
+    margin-bottom: 16px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.35), 0 1px 0 rgba(255,255,255,0.025) inset;
+    position: relative;
+  }
+  .heat-card .head {
+    display: flex; align-items: baseline; gap: 12px;
+    margin-bottom: 12px;
+  }
+  .heat-card .head .title {
+    color: var(--ink-2);
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-weight: 500;
+  }
+  .heat-card .head .reading-hint {
+    color: var(--ink-2); font-size: 12px;
+    margin-left: auto;
+  }
+  .heatmap-svg-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+  }
+  .heatmap-svg-wrap svg { width: 100%; height: 100%; display: block; }
+  .heat-axis line { stroke: var(--ink-3); stroke-width: 1; }
+  .heat-axis text { fill: var(--ink-1); font-family: var(--mono); font-size: 11px; }
+  .heat-axis .axis-label { fill: var(--ink-2); font-size: 10.5px; }
+  .heatmap-cell {
+    stroke: var(--canvas);
+    stroke-width: 0.5;
+    transition: opacity 0.3s ease;
+    cursor: pointer;
+  }
+  .heatmap-cell.hover { stroke: var(--ink-0); stroke-width: 1.5; }
+  .heatmap-cell.cf { fill: var(--teal); }
+  .heatmap-col-overlay {
+    fill: rgba(255, 255, 255, 0.05);
+    stroke: var(--accent);
+    stroke-width: 1.2;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+  }
+  .heatmap-col-overlay.show { opacity: 1; }
+  .heat-zero-line { stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 3 3; }
+
+  .heat-legend {
+    display: flex; align-items: center; gap: 14px;
+    margin-top: 10px;
+    color: var(--ink-2); font-size: 12px;
+  }
+  .heat-legend .grad {
+    display: inline-block;
+    height: 10px; width: 120px;
+    background: linear-gradient(to right,
+                rgba(139, 140, 255, 0.05) 0%,
+                rgba(139, 140, 255, 0.30) 40%,
+                rgba(139, 140, 255, 0.60) 70%,
+                rgba(139, 140, 255, 0.95) 100%);
+    border: 1px solid var(--hairline);
+    border-radius: 2px;
+    vertical-align: middle;
+    margin: 0 6px;
+  }
+  .heat-legend .label { color: var(--ink-1); }
+  .heat-legend .cf-tag { color: var(--teal); }
+
+  /* cell-detail popover */
+  .cell-popover {
+    position: absolute;
+    width: 280px;
+    background: var(--surface-3);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 12px 14px 10px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
+    z-index: 12;
+    color: var(--ink-1);
+    font-size: 13px;
+    line-height: 1.5;
+    pointer-events: auto;
+    opacity: 0;
+    transform: translateY(2px);
+    transition: opacity 0.15s, transform 0.15s;
+  }
+  .cell-popover.show { opacity: 1; transform: translateY(0); }
+  .cell-popover .hd {
+    display: flex; align-items: baseline; gap: 10px;
+    margin-bottom: 8px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink-0);
+  }
+  .cell-popover .hd .badge {
+    background: var(--accent); color: var(--canvas);
+    padding: 1px 7px; border-radius: 3px;
+    font-size: 11px; font-weight: 600;
+  }
+  .cell-popover .hd .close-x {
+    margin-left: auto;
+    cursor: pointer; color: var(--ink-2);
+    padding: 0 4px;
+  }
+  .cell-popover .hd .close-x:hover { color: var(--ink-0); }
+  .cell-popover .num {
+    font-size: 20px; font-weight: 600; color: var(--accent);
+    margin: 4px 0 8px;
+    font-family: var(--mono);
+  }
+  .cell-popover .narrative {
+    color: var(--ink-1); font-size: 12.5px;
+    line-height: 1.5;
+  }
+  .cell-popover .compare {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dotted var(--hairline);
+    color: var(--ink-2); font-size: 12px;
+  }
+  .cell-popover .compare .delta { color: var(--teal); font-weight: 500; font-family: var(--mono); }
+  .cell-popover .compare .delta.neg { color: var(--amber); }
+
+  /* day inset histogram */
+  .day-inset {
+    background: var(--surface-2);
+    border-top: 1px solid var(--hairline);
+    margin: 14px -22px -14px;
+    padding: 12px 22px;
+    display: none;
+  }
+  .day-inset.show { display: block; }
+  .day-inset .ihead {
+    display: flex; align-items: baseline; gap: 12px;
+    margin-bottom: 10px;
+    color: var(--ink-1); font-size: 13px;
+  }
+  .day-inset .ihead strong { color: var(--ink-0); }
+  .day-inset .ihead .close-x { margin-left: auto; color: var(--ink-2); cursor: pointer; padding: 2px 8px; }
+  .day-inset .ihead .close-x:hover { color: var(--ink-0); }
+  .day-inset .hist {
+    display: flex; align-items: flex-end; gap: 4px;
+    height: 80px;
+    padding: 0 4px;
+  }
+  .day-inset .hist .bar {
+    flex: 1;
+    background: var(--accent);
+    border-radius: 2px 2px 0 0;
+    position: relative;
+    min-height: 1px;
+    transition: height 0.3s ease;
+  }
+  .day-inset .hist .bar.cf { background: var(--teal); }
+  .day-inset .hist .bar .bar-label {
+    position: absolute;
+    bottom: -16px; left: 50%; transform: translateX(-50%);
+    color: var(--ink-2); font-family: var(--mono); font-size: 10px;
+    white-space: nowrap;
+  }
+  .day-inset .hist .bar .bar-pct {
+    position: absolute;
+    top: -16px; left: 50%; transform: translateX(-50%);
+    color: var(--ink-1); font-family: var(--mono); font-size: 10px;
+    white-space: nowrap;
+  }
+  .day-inset .iaxes {
+    margin-top: 24px; color: var(--ink-2); font-size: 11px;
+    display: flex; justify-content: space-between;
+  }
+
+  /* ===== plain answer ===== */
+  .answer-text {
+    text-align: center;
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--ink-0);
+    margin: 18px auto 24px;
+    max-width: 620px;
+  }
+  .answer-text .accent { color: var(--accent); font-weight: 600; }
+  .answer-text .teal { color: var(--teal); font-weight: 600; }
+  .answer-text .caveat {
+    display: block;
+    color: var(--ink-2);
+    font-size: 13px;
+    margin-top: 10px;
+    max-width: 540px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* ===== counterfactual + custom-ask ===== */
+  .cf-card {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin-bottom: 18px;
+  }
+  .cf-card .label {
+    color: var(--ink-2);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-weight: 500;
+    margin-bottom: 10px;
+  }
+  .cf-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+  @media (max-width: 700px) { .cf-list { grid-template-columns: 1fr; } }
+  .cf-option {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 13px;
+    background: var(--surface-2);
+    border: 1px solid var(--hairline);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    font-size: 14px;
+    color: var(--ink-1);
+    text-align: left;
+  }
+  .cf-option:hover { background: var(--surface-3); border-color: var(--ink-3); }
+  .cf-option.selected {
+    background: var(--surface-3);
+    border-color: var(--accent);
+    color: var(--ink-0);
+  }
+  .cf-option .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    border: 1.5px solid var(--ink-2);
+    flex-shrink: 0;
+  }
+  .cf-option.selected .dot { border-color: var(--accent); background: var(--accent); }
+  .cf-option .desc { color: var(--ink-2); font-size: 12px; margin-top: 2px; display: block; }
+
+  .custom-ask {
+    margin-top: 12px;
+    display: flex; gap: 10px;
+    border: 1px solid var(--hairline);
+    background: var(--surface-2);
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  .custom-ask input {
+    flex: 1;
+    background: transparent; color: var(--ink-0);
+    border: 0; outline: none;
+    font-family: var(--sans); font-size: 14.5px;
+    padding: 4px 0;
+  }
+  .custom-ask input::placeholder { color: var(--ink-3); }
+  .custom-ask .ask-btn {
+    background: var(--accent); color: var(--canvas);
+    font-weight: 600; font-size: 13px;
+    padding: 6px 14px;
+    border-radius: 4px;
+  }
+  .custom-ask .ask-btn:hover { filter: brightness(1.08); }
+  .ask-feedback {
+    margin-top: 8px;
+    color: var(--amber);
+    font-size: 12.5px;
+    min-height: 16px;
+  }
+
+  /* preview-only overlay over the heat card */
+  .preview-only-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 12, 17, 0.86);
+    backdrop-filter: blur(2px);
+    z-index: 5;
+    border-radius: 8px;
+    align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .preview-only-overlay.show { display: flex; }
+  .preview-only-overlay .inner {
+    text-align: center;
+    max-width: 440px;
+    color: var(--ink-1);
+  }
+  .preview-only-overlay .inner h3 {
+    margin: 0 0 10px;
+    font-size: 18px; font-weight: 500;
+    color: var(--ink-0); font-family: var(--serif);
+  }
+  .preview-only-overlay .inner p {
+    margin: 0 0 14px;
+    font-size: 13.5px; line-height: 1.6;
+    color: var(--ink-1);
+  }
+  .preview-only-overlay .inner code { font-size: 11.5px; }
+  .preview-only-overlay .inner .back {
+    color: var(--accent);
+    padding: 6px 14px;
+    border: 1px solid var(--accent-soft);
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  .preview-only-overlay .inner .back:hover {
+    background: var(--accent-soft);
+  }
+
+  /* the bottom more-row links */
+  .more-row {
+    text-align: center;
+    margin: 0 auto;
+    color: var(--ink-2); font-size: 13px;
+  }
+  .more-row button {
+    color: var(--ink-1); padding: 6px 10px; border-radius: 3px;
+    text-decoration: underline; text-decoration-color: var(--hairline);
+    text-underline-offset: 3px;
+  }
+  .more-row button:hover { color: var(--ink-0); text-decoration-color: var(--ink-2); }
+  .more-row button + button { margin-left: 12px; }
+
+  /* ===== drawers ===== */
+  .drawer-scrim {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 40;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.22s ease;
+  }
+  .drawer-scrim.open { opacity: 1; pointer-events: auto; }
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: min(540px, 92vw);
+    background: var(--canvas);
+    border-left: 1px solid var(--hairline);
+    box-shadow: -20px 0 80px rgba(0,0,0,0.5);
+    z-index: 41;
+    transform: translateX(100%);
+    transition: transform 0.28s cubic-bezier(0.3, 0, 0.2, 1);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .drawer.open { transform: translateX(0); }
+  .drawer-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 22px;
+    border-bottom: 1px solid var(--hairline);
+    background: var(--surface);
+  }
+  .drawer-head h2 { margin: 0; font-size: 14px; font-weight: 600; }
+  .drawer-head .close { margin-left: auto; color: var(--ink-2); font-size: 18px; padding: 2px 8px; }
+  .drawer-head .close:hover { color: var(--ink-0); }
+  .drawer-body { padding: 22px; overflow-y: auto; flex: 1; }
+  .drawer-body p { color: var(--ink-1); font-size: 14px; margin: 8px 0; line-height: 1.55; }
+  .drawer-body code { font-size: 12px; }
+  .chain-step {
+    display: grid; grid-template-columns: 24px 1fr; gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px dotted var(--hairline);
+    align-items: baseline;
+  }
+  .chain-step:last-child { border: 0; }
+  .chain-step .n { color: var(--ink-2); font-family: var(--mono); font-size: 11.5px; }
+  .chain-step .verb { font-weight: 600; color: var(--ink-0); font-size: 14px; }
+  .chain-step .body { color: var(--ink-1); font-size: 13.5px; margin-top: 4px; line-height: 1.55; }
+  .chain-step .body .accent { color: var(--accent); font-weight: 500; }
+  .chain-step .body .teal { color: var(--teal); font-weight: 500; }
+  .chain-step .meta { color: var(--ink-2); font-family: var(--mono); font-size: 11px; margin-top: 4px; }
+  .tech-block { margin-top: 16px; }
+  .tech-block h4 {
+    margin: 0 0 4px;
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--ink-2); font-weight: 600;
+  }
+  .tech-block pre {
+    margin: 4px 0 14px;
+    padding: 10px 12px;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 3px;
+    color: var(--ink-1); font-family: var(--mono); font-size: 11px;
+    overflow-x: auto; line-height: 1.55;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .tech-block pre .k { color: var(--ink-2); }
+  .tech-block pre .s { color: var(--accent); }
+  .tech-block pre .n { color: var(--ink-0); }
+  .honest {
+    background: var(--surface);
+    border-left: 2px solid var(--teal);
+    padding: 10px 14px;
+    margin: 12px 0;
+    color: var(--ink-1);
+    font-size: 12.5px;
+    line-height: 1.55;
+  }
+  .honest strong { color: var(--ink-0); }
+
+  /* ===== footer ===== */
+  .footer {
+    padding: 20px 28px;
+    border-top: 1px solid var(--hairline);
+    color: var(--ink-2);
+    font-size: 12px;
+    background: var(--surface);
+    text-align: center;
+    line-height: 1.55;
+  }
+  .footer a { color: var(--ink-1); }
+
+  @media (max-width: 700px) {
+    main { padding: 22px 16px 60px; }
+    .topbar { padding: 11px 16px; }
+    .hero-head h1 { font-size: 22px; }
+    .now-banner .sentence { font-size: 14.5px; }
+    .heat-card { padding: 14px 12px 10px; }
+    .day-inset { margin: 12px -12px -10px; padding: 10px 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ topbar ============ -->
+<header class="topbar">
+  <span class="brand"><span class="mark"></span>Omytea</span>
+  <span class="right">
+    <button class="lang" aria-label="Language">EN ▾</button>
+    <button class="menu-btn" id="open-reasoning">⋮ How I came to this</button>
+    <button class="menu-btn" id="open-tech">⋮ Technical details</button>
+  </span>
+</header>
+
+<main>
+
+  <!-- ============ INPUT — three big cards ============ -->
+  <section class="input-row" aria-label="Bring your data">
+    <button class="input-card" id="input-camera" data-input="camera">
+      <span class="icon">📷</span>
+      <span class="title">Use my camera</span>
+      <span class="desc">Open your webcam — Omytea will switch to live-perception mode (rows = spatial zones).</span>
+    </button>
+    <button class="input-card" id="input-file" data-input="file">
+      <span class="icon">📁</span>
+      <span class="title">Upload a file</span>
+      <span class="desc">Pick a video or image — Omytea will switch to live-perception mode for spatial forecasting.</span>
+    </button>
+    <button class="input-card active" id="input-scenario" data-input="scenario">
+      <span class="icon">🌐</span>
+      <span class="title">Try a scenario</span>
+      <span class="desc">Pick a pre-built world (markets, courts, exams, policy) with its own variable + axis.</span>
+    </button>
+  </section>
+
+  <input type="file" id="hidden-file-input" accept="video/*,image/*" style="display:none;"/>
+
+  <!-- preview panel — appears when camera/file is engaged -->
+  <section class="preview-card" id="preview-card" aria-label="Live preview">
+    <div class="label">
+      <span class="live-dot"></span>
+      <span id="preview-title">Live camera feed</span>
+      <span class="close-x" id="preview-close">✕ stop</span>
+    </div>
+    <div class="video-wrap">
+      <video id="preview-video" autoplay muted playsinline></video>
+      <img id="preview-image" alt="" style="display:none;"/>
+      <div class="motion-marker" id="motion-marker"><span class="lbl" id="motion-marker-label">Person A</span></div>
+    </div>
+    <div class="motion-status" id="motion-status">
+      <span id="motion-status-text">Watching for motion…</span>
+      <span class="bar-track"><span class="bar-fill" id="motion-bar"></span></span>
+    </div>
+    <div class="file-info" id="preview-info"></div>
+    <div class="honesty-note">
+      <strong>The camera is driving the math.</strong>
+      A small pixel-diff motion detector runs on each frame (locally, no upload) and finds the
+      moving region in the scene. That horizontal position becomes the starting zone for the
+      heatmap below — so when you move left or right in front of the camera, the forecast
+      <em>actually shifts</em>. Counterfactuals (Walking forward / Stopping / Turning back)
+      then evolve <em>from where Person A is right now</em>. Production replaces this naive
+      pixel-diff with the full perception layer (DINOv2 / V-JEPA 2 + <code>live_scenario.py</code>);
+      shape of the answer is the same, accuracy is much higher.
+    </div>
+  </section>
+
+  <!-- hidden canvas used by the motion-detection loop -->
+  <canvas id="motion-canvas" width="80" height="45" style="display:none;"></canvas>
+
+  <!-- scenario picker — default visible -->
+  <section class="preview-card show" id="scenario-card" aria-label="Pick a scenario">
+    <div class="label">
+      <span class="live-dot" style="background: var(--accent);"></span>
+      <span>Active world: <strong id="scenario-title-tag">Stock market — Fed decisions</strong></span>
+    </div>
+    <div class="scenario-grid">
+      <button class="scenario-btn current ready" data-world="stock_market">
+        <span>
+          <span class="name"><strong>Stock market</strong> — Fed decisions</span>
+          <span class="ready">PATTERNS · rate_cut / rate_hike</span>
+        </span>
+        <span class="tag">Wired</span>
+      </button>
+      <button class="scenario-btn ready" data-world="live_perception">
+        <span>
+          <span class="name"><strong>Live perception</strong> — where will a person move?</span>
+          <span class="ready">backend · live_scenario.py</span>
+        </span>
+        <span class="tag">Wired</span>
+      </button>
+      <button class="scenario-btn preview" data-world="legal">
+        <span>
+          <span class="name"><strong>Court case</strong> — Will the plaintiff win?</span>
+          <span class="ready">PATTERNS limited · court_outcome</span>
+        </span>
+        <span class="tag">Preview</span>
+      </button>
+      <button class="scenario-btn preview" data-world="gaokao">
+        <span>
+          <span class="name"><strong>Student exam</strong> — Will I score above X?</span>
+          <span class="ready">PATTERNS limited · score_above</span>
+        </span>
+        <span class="tag">Preview</span>
+      </button>
+      <button class="scenario-btn preview" data-world="policy">
+        <span>
+          <span class="name"><strong>Public policy</strong> — Will this policy pass?</span>
+          <span class="ready">PATTERNS limited · policy_event</span>
+        </span>
+        <span class="tag">Preview</span>
+      </button>
+      <button class="scenario-btn preview" data-world="destiny">
+        <span>
+          <span class="name"><strong>Life choices</strong> — Career / marriage</span>
+          <span class="ready">PATTERNS limited · destiny_career</span>
+        </span>
+        <span class="tag">Preview</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ============ forecast-pane wraps everything below the input/preview so the
+       side-by-side layout can put it in the right grid column when camera-active. ============ -->
+  <div class="forecast-pane">
+
+  <!-- ============ NOW FORECASTING banner — the answer to "what does this mean?" ============ -->
+  <section class="now-banner" id="now-banner">
+    <span class="lbl">Now forecasting</span>
+    <span class="sentence" id="now-sentence">
+      <span class="variable" id="now-variable">stock-market % change</span>
+      over the <strong id="now-time">next 30 trading days</strong>,
+      given <span class="input-src" id="now-input">the Stock market scenario</span>.
+    </span>
+    <span class="note" id="now-note">
+      <strong>What the rows mean:</strong> <span id="now-rows-mean">each row is a band of % change in the index relative to today. Top row = +25%, middle = flat, bottom = −25%.</span>
+    </span>
+  </section>
+
+  <!-- ============ hero head ============ -->
+  <header class="hero-head">
+    <h1 id="hero-title">If the Fed cuts rates, where does the index go?</h1>
+    <p class="sub" id="hero-sub">
+      Every cell is one possible future. The darker the cell, the more likely.
+      Click any cell for the exact probability + a plain-English read of that specific outcome.
+    </p>
+    <p class="anchor" id="hero-anchor">
+      Today's index: <strong>3,200</strong>. Rows = <strong>% change from today</strong>.
+    </p>
+  </header>
+
+  <!-- ============ heatmap card ============ -->
+  <section class="heat-card">
+    <div class="head">
+      <span class="title">Probability of each outcome</span>
+      <span class="reading-hint">click a cell for detail · click a column for that time-slice's full distribution</span>
+    </div>
+
+    <div class="heatmap-svg-wrap">
+      <svg id="heatmap" viewBox="0 0 760 380" preserveAspectRatio="none" aria-label="Probability heatmap">
+        <g id="heat-grid"></g>
+        <g class="heat-axis" id="heat-axis"></g>
+        <line class="heat-zero-line" id="zero-line" style="display:none"/>
+        <rect class="heatmap-col-overlay" id="col-overlay" x="0" y="0" width="0" height="0"/>
+      </svg>
+
+      <!-- cell-detail popover -->
+      <div class="cell-popover" id="cell-popover" role="dialog" aria-hidden="true">
+        <div class="hd">
+          <span class="badge" id="pop-day">Day 15</span>
+          <span id="pop-bucket">~+5%</span>
+          <span class="close-x" id="pop-close">✕</span>
+        </div>
+        <div class="num"><span id="pop-prob">4.2%</span></div>
+        <div class="narrative" id="pop-narr">
+          Roughly a 4.2% chance the index moves ~+5% from today by day 15.
+        </div>
+        <div class="compare" id="pop-compare">
+          Pick a counterfactual below to see how this cell shifts.
+        </div>
+      </div>
+
+      <!-- preview-only overlay for non-wired scenarios -->
+      <div class="preview-only-overlay" id="preview-overlay">
+        <div class="inner">
+          <h3 id="preview-overlay-title">Preview scenario</h3>
+          <p id="preview-overlay-body">
+            Preview only — switch back to <strong>Stock market</strong> or <strong>Live perception</strong> to see a real forecast.
+          </p>
+          <button class="back" id="preview-overlay-back">← Back to Stock market</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="heat-legend">
+      <span class="label">Likelihood:</span>
+      rare <span class="grad"></span> most likely
+      <span style="margin-left: 16px;" class="cf-tag" id="cf-tag" hidden>· teal = counterfactual</span>
+    </div>
+
+    <!-- day inset histogram -->
+    <div class="day-inset" id="day-inset">
+      <div class="ihead">
+        <strong><span id="inset-time-unit">Day</span> <span id="inset-day">15</span></strong>
+        — distribution across <span id="inset-axis-name">all outcomes</span> at this time.
+        <span class="close-x" id="inset-close">✕</span>
+      </div>
+      <div class="hist" id="inset-hist"></div>
+      <div class="iaxes"><span id="inset-axis-min">worst</span><span id="inset-axis-mid">0%</span><span id="inset-axis-max">best</span></div>
+    </div>
+  </section>
+
+  <!-- ============ plain answer ============ -->
+  <p class="answer-text" id="answer-text">
+    <span id="ans-narrative">
+      Most likely the index drifts close to <span class="accent">flat</span> over the next 30 days,
+      with probability widening as the horizon stretches.
+    </span>
+    <span class="caveat" id="ans-caveat">
+      Single-scenario projection from the <code>stock_market</code> engine fixture (day-1 anchor: 3,200).
+      Not a live calibration — this scenario hasn't accumulated historical validations yet. Don't trade on this.
+    </span>
+  </p>
+
+  <!-- ============ counterfactual + custom ask ============ -->
+  <section class="cf-card">
+    <div class="label" id="cf-label">What would change this picture?</div>
+    <div class="cf-list" id="cf-list" role="radiogroup">
+      <!-- populated from WORLD_CONFIG.cfs -->
+    </div>
+
+    <div class="custom-ask">
+      <input id="custom-input" type="text" placeholder="Or ask in your own words — e.g. 'What if the Fed cuts rates next week?'"/>
+      <button class="ask-btn" id="custom-ask-btn">Ask</button>
+    </div>
+    <div class="ask-feedback" id="ask-feedback"></div>
+  </section>
+
+  <p class="more-row">
+    <button id="open-reasoning-2">How I came to this answer</button>
+    <button id="open-tech-2">Technical details</button>
+  </p>
+
+  </div><!-- /.forecast-pane -->
+
+</main>
+
+<!-- ============ drawers ============ -->
+<div class="drawer-scrim" id="drawer-scrim"></div>
+
+<aside class="drawer" id="reasoning-drawer" aria-hidden="true">
+  <header class="drawer-head">
+    <h2>How I came to this answer</h2>
+    <button class="close" data-close-drawer>✕</button>
+  </header>
+  <div class="drawer-body">
+    <p class="dim">Six steps from your inputs to a real answer — the master plan §7 spine.</p>
+    <div class="chain-step">
+      <span class="n">1</span>
+      <div>
+        <span class="verb">Read what you brought in.</span>
+        <div class="body" id="r-step1">Input: <span class="accent" id="r-step1-input">Stock market scenario</span> · counterfactual: <span class="accent" id="r-step1-cf">No Fed action</span>.</div>
+      </div>
+    </div>
+    <div class="chain-step">
+      <span class="n">2</span>
+      <div>
+        <span class="verb">Figure out what you're asking.</span>
+        <div class="body" id="r-step2">Forecast the distribution of <span class="accent" id="r-step2-target">the index's % change</span> over the next <span class="accent" id="r-step2-horizon">30 days</span>, conditional on the selected counterfactual.
+          <div class="meta" id="r-step2-meta">scenario: stock_market · target: distribution over market.index_value</div>
+        </div>
+      </div>
+    </div>
+    <div class="chain-step">
+      <span class="n">3</span>
+      <div>
+        <span class="verb">Pick the rules of this world.</span>
+        <div class="body" id="r-step3">One operator: <span class="accent" id="r-step3-op">market kinematics</span> at full weight.
+          <div class="meta" id="r-step3-meta">operator_graph: [ kinematic w=1.0 order=0 ]</div>
+        </div>
+      </div>
+    </div>
+    <div class="chain-step">
+      <span class="n">4</span>
+      <div>
+        <span class="verb">Run the simulation.</span>
+        <div class="body">Project step-by-step; each step's distribution becomes the prior for the next.
+          <div class="meta">engine: QueryEngine · world_line: 8c4d2147…</div>
+        </div>
+      </div>
+    </div>
+    <div class="chain-step">
+      <span class="n">5</span>
+      <div>
+        <span class="verb">How sure am I?</span>
+        <div class="body" id="r-step5">The heatmap intensity at each cell is a deterministic Gaussian density given the step's mean and uncertainty. Sigma grows like √t. The scenario hasn't accumulated calibration data yet — these are shape-of-the-answer bands, not calibrated probabilities.
+          <div class="meta">calibrated: null · reason: cold-start, no validations</div>
+        </div>
+      </div>
+    </div>
+    <div class="chain-step">
+      <span class="n">6</span>
+      <div>
+        <span class="verb">Plain answer.</span>
+        <div class="body" id="r-step6-body">Under no Fed action, the most-likely outcome stays close to flat over 30 days.</div>
+      </div>
+    </div>
+    <div class="honest">
+      <strong>Why this lives in a drawer:</strong> transparency matters, but the answer should come first. ChatGPT shows you the answer; Omytea shows you the answer <em>and</em>, on demand, every step.
+    </div>
+  </div>
+</aside>
+
+<aside class="drawer" id="tech-drawer" aria-hidden="true">
+  <header class="drawer-head">
+    <h2>Technical details</h2>
+    <button class="close" data-close-drawer>✕</button>
+  </header>
+  <div class="drawer-body">
+    <p class="dim">Raw payload from a real warmed demo session.</p>
+
+    <div class="tech-block">
+      <h4>0. Input</h4>
+      <pre id="tech-input"><span class="k">source</span>: <span class="s">"scenario:stock_market"</span></pre>
+    </div>
+
+    <div class="tech-block">
+      <h4>1. NL → parser</h4>
+      <pre id="tech-nl">"如果美联储降息"   <span class="k">// canonical Chinese phrasing the regex parser matched</span>
+<span class="k">matched_pattern</span>: <span class="s">"rate_cut"</span> · <span class="k">parser_confidence</span>: <span class="n">0.85</span></pre>
+      <div class="honest">
+        <strong>Honest disclosure.</strong> Today's hand-rolled <code>nl_parser</code> matches a small Chinese pattern set; the English UI translates to the canonical trigger. The v4.1 M5 <code>OmyteaCompiler-LLM</code> slot is the designed path to an English-native compiler (no model downloaded in v4.1).
+      </div>
+    </div>
+
+    <div class="tech-block">
+      <h4>2. BeliefProgram (intent IR)</h4>
+      <pre id="tech-bp"><span class="k">intent_kind</span>: <span class="s">"rate_cut"</span>
+<span class="k">scenario_id</span>: <span class="s">"stock_market"</span>
+<span class="k">target_kind</span>: <span class="s">"distribution"</span>
+<span class="k">distribution_variables</span>: [<span class="s">"market.index_value"</span>]</pre>
+    </div>
+
+    <div class="tech-block">
+      <h4>3. OperatorGraph</h4>
+      <pre id="tech-og"><span class="k">entries</span>: [<span class="s">"kinematic"</span> w=<span class="n">1.0</span> order=<span class="n">0</span>]
+<span class="k">graph_id</span>: <span class="s">"scenario:stock_market"</span></pre>
+    </div>
+
+    <div class="tech-block">
+      <h4>4-6. dsl.Query · engine_result · calibrated</h4>
+      <pre id="tech-eng"><span class="k">engine_result.value</span>: {<span class="s">"market.index_value"</span>: [(<span class="n">3200.0</span>, <span class="n">1.0</span>)]}
+<span class="k">world_line_id</span>: <span class="s">"8c4d2147-9fc5-4e69-af2c-effa18ace1d1"</span>
+<span class="k">calibrated</span>: null   <span class="k">// cold-start, no validations</span></pre>
+      <div class="honest">
+        Engine returns a single-point distribution today. The heatmap expands it into a deterministic Gaussian over the row variable with sigma growing as √t — a shape placeholder, not a live forecast. When the transition operator returns a multi-point distribution per tick, this view shows that real data instead.
+      </div>
+    </div>
+
+    <div class="honest">
+      <strong>Backing routes:</strong> <code>POST /api/query</code> · <code>GET /api/snapshot</code> · <code>GET /api/analytics/calibration</code>.
+      <strong>Camera / file inputs:</strong> <code>POST /api/live/start</code> + <code>POST /api/stream/frame</code> (live_scenario.py) — wired in backend, this static demo only shows the live preview locally.
+      <strong>Cycle plan:</strong> <code>WORK_PLAN_V41.md</code>.
+    </div>
+  </div>
+</aside>
+
+<footer class="footer">
+  Omytea is advisory — <strong>not</strong> financial, legal, or medical counsel.
+  Off-pattern questions return an honest "I don't recognize that one." <a href="#">Seven prohibited surfaces</a>.
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  // ===================================================================
+  // WORLD_CONFIG — every scenario carries its own axis, math, narrative.
+  // This is the v8 change: state.world actually drives the view.
+  // ===================================================================
+
+  // -- shared geometry --
+  const SVG_W = 760, SVG_H = 380;
+  const PADX_L = 84, PADX_R = 16, PADY_T = 16, PADY_B = 30;
+  const GRID_W = SVG_W - PADX_L - PADX_R;
+  const GRID_H = SVG_H - PADY_T - PADY_B;
+
+  function gaussianDensity(x, mu, sigma) {
+    const z = (x - mu) / sigma;
+    return Math.exp(-0.5 * z * z) / (sigma * Math.sqrt(2 * Math.PI));
+  }
+
+  // ---- stock_market ---------------------------------------------------
+  // Rows = % change vs today. 14 buckets between −25%..+25%.
+  const STOCK_BUCKETS = [-25, -15, -10, -7, -5, -3, -1.5, 0, 1.5, 3, 5, 7, 10, 15, 25];
+  const STOCK_CENTERS = [];
+  for (let i = 0; i < STOCK_BUCKETS.length - 1; i++) {
+    STOCK_CENTERS.push((STOCK_BUCKETS[i] + STOCK_BUCKETS[i + 1]) / 2);
+  }
+  const STOCK_LABEL_AT = { 25: '+25%', 10: '+10%', 5: '+5%', 0: 'flat', '-5': '−5%', '-10': '−10%', '-25': '−25%' };
+
+  // ---- live_perception ------------------------------------------------
+  // Rows = 7 spatial zones, indexed −3..+3 (far-left .. far-right).
+  // Person A starts at zone 0 (center) at t=0.
+  // Each second, position spreads with σ growing in time.
+  const ZONE_INDEX = [-3, -2, -1, 0, 1, 2, 3];
+  const ZONE_NAMES = ['far left', 'mid left', 'near left', 'center', 'near right', 'mid right', 'far right'];
+  const ZONE_LABEL_AT = { 3: 'FR', 2: 'MR', 1: 'NR', 0: 'center', '-1': 'NL', '-2': 'ML', '-3': 'FL' };
+
+  // ---- the registry ---------------------------------------------------
+  const WORLD_CONFIG = {
+
+    stock_market: {
+      titleTag:      'Stock market — Fed decisions',
+      shortName:     'stock-market',
+      heroTitle:     'If the Fed cuts rates, where does the index go?',
+      heroSub:       'Every cell is one possible future. The darker the cell, the more likely. Click any cell for the exact probability + a plain-English read.',
+      heroAnchor:    'Today\'s index: <strong>3,200</strong>. Rows = <strong>% change from today</strong>.',
+      nowVariable:   'stock-market % change',
+      nowTime:       'next 30 trading days',
+      nowRowsMean:   'each row is a band of % change in the index relative to today. Top row = +25%, middle = flat, bottom = −25%.',
+      yAxisLabel:    '% change vs today',
+      rowCenters:    STOCK_CENTERS,
+      rowLabelAt:    STOCK_LABEL_AT,
+      rowFmt:        c => (c > 0 ? '+' : (c < 0 ? '−' : '')) + Math.abs(c).toFixed(1) + '%',
+      rowName:       c => 'roughly ' + ((c > 0 ? '+' : (c < 0 ? '−' : '')) + Math.abs(c).toFixed(1) + '%') + ' from today',
+      showZeroLine:  true,
+      zeroRowValue:  0,
+      nSteps:        31,
+      stepUnitShort: 'd',
+      stepUnitLong:  'day',
+      stepDisplay:   [0, 5, 10, 15, 20, 25, 30],
+      stepFmt:       d => (d === 0 ? 'day 0' : 'd' + d),
+      insetUnitName: 'Day',
+      insetAxisName: 'all percentage-change buckets',
+      insetMin:      '−25%',
+      insetMid:      '0%',
+      insetMax:      '+25%',
+      cfs: [
+        { id: 'baseline', label: 'No Fed action',   desc: 'leave rates unchanged',  drift30:  0.0, sigma30: 4.2 },
+        { id: 'cut',      label: 'Fed cuts rates',  desc: '−25 bp at next meeting', drift30:  3.5, sigma30: 5.0 },
+        { id: 'hike',     label: 'Fed hikes rates', desc: '+25 bp at next meeting', drift30: -3.0, sigma30: 5.0 },
+      ],
+      distFn: function (cf, step) {
+        const t = step / 30;
+        const mu = cf.drift30 * t;
+        const sigma = Math.max(0.4, cf.sigma30 * Math.sqrt(t));
+        const dens = STOCK_CENTERS.map(c => gaussianDensity(c, mu, sigma));
+        const total = dens.reduce((a, b) => a + b, 0);
+        return dens.map(d => d / total);
+      },
+      cellNarrative: (step, rowCenter, prob) =>
+        `Roughly a <strong>${(prob * 100).toFixed(1)}%</strong> chance the index moves <strong>${(rowCenter > 0 ? '+' : (rowCenter < 0 ? '−' : '')) + Math.abs(rowCenter).toFixed(1) + '%'}</strong> from today by <strong>day ${step}</strong>.`,
+      compareNarrative: (delta, cfLabel, deltaStr) =>
+        `Vs <strong>No Fed action</strong>: <span class="delta ${delta < 0 ? 'neg' : ''}">${deltaStr}</span> ${delta > 0 ? 'more' : 'less'} likely under <strong>${cfLabel}</strong>.`,
+      answerNarrative: function (cf, dist30) {
+        let tail = 0;
+        for (let r = 0; r < this.rowCenters.length; r++) if (Math.abs(this.rowCenters[r]) > 5) tail += dist30[r];
+        const pct = Math.round(tail * 100);
+        if (cf.id === 'baseline')
+          return `Most likely the index drifts close to <span class="accent">flat</span> over 30 days, with probability widening as the horizon stretches. Roughly <span class="accent">~${pct}%</span> chance of a move bigger than ±5%.`;
+        if (cf.id === 'cut')
+          return `If the Fed cuts rates, the most-likely outcome drifts <span class="teal">upward</span>, settling near +3–4% with a <span class="teal">~${pct}%</span> chance of a >5% move.`;
+        return `If the Fed hikes rates, the most-likely outcome drifts <span class="teal">downward</span>, settling near −3% with a <span class="teal">~${pct}%</span> chance of a >5% move.`;
+      },
+      caveat: 'Single-scenario projection from the <code>stock_market</code> engine fixture (day-1 anchor: 3,200). Not a live calibration — this scenario hasn\'t accumulated historical validations yet. Don\'t trade on this.',
+      reasoning: {
+        target:  'the index\'s % change',
+        horizon: '30 trading days',
+        meta:    'scenario: stock_market · target: distribution over market.index_value',
+        opName:  'market kinematics',
+        opMeta:  'operator_graph: [ kinematic w=1.0 order=0 ]',
+      },
+      askMatchers: [
+        // "no X" / "hold" patterns FIRST so they don't get swallowed by cut/hike below.
+        { re: /\b(no (fed )?(action|cut|hike|move|change)|hold|stand pat|stays?( the same)?|unchanged|nothing|leave (rates )?alone)\b/i, target: 'baseline' },
+        { re: /\b(cut|cuts|lower|loosen|dovish|lowered|rate cut|drop|reduce|reduces|reduction|decrease|decreased|easing|easier|down(ward)?)\b/i, target: 'cut' },
+        { re: /\b(hike|hikes|raise|raised|raises|tighten|tightens|hawk|hawkish|rate hike|increase|increases|increased|up(ward)?|higher|go up|going up|move up)\b/i, target: 'hike' },
+      ],
+      askPlaceholder: "Or ask in your own words — e.g. \"What if the Fed cuts rates next week?\"",
+      askUnknownHint: "I don't recognize that one yet — I won't fabricate. Try 'what if the Fed cuts rates' / 'what if rates go up' / 'no Fed action'.",
+      techNL:  '"如果美联储降息"   <span class="k">// canonical Chinese phrasing the regex parser matched</span>\n<span class="k">matched_pattern</span>: <span class="s">"rate_cut"</span> · <span class="k">parser_confidence</span>: <span class="n">0.85</span>',
+      techBP:  '<span class="k">intent_kind</span>: <span class="s">"rate_cut"</span>\n<span class="k">scenario_id</span>: <span class="s">"stock_market"</span>\n<span class="k">target_kind</span>: <span class="s">"distribution"</span>\n<span class="k">distribution_variables</span>: [<span class="s">"market.index_value"</span>]',
+      techOG:  '<span class="k">entries</span>: [<span class="s">"kinematic"</span> w=<span class="n">1.0</span> order=<span class="n">0</span>]\n<span class="k">graph_id</span>: <span class="s">"scenario:stock_market"</span>',
+      techEng: '<span class="k">engine_result.value</span>: {<span class="s">"market.index_value"</span>: [(<span class="n">3200.0</span>, <span class="n">1.0</span>)]}\n<span class="k">world_line_id</span>: <span class="s">"8c4d2147-9fc5-4e69-af2c-effa18ace1d1"</span>\n<span class="k">calibrated</span>: null   <span class="k">// cold-start, no validations</span>',
+    },
+
+    live_perception: {
+      titleTag:      'Live perception — where will a person move?',
+      shortName:     'live-perception',
+      heroTitle:     'Where will Person A be in the next 30 seconds?',
+      heroSub:       'Every cell is one possible future. The darker the cell, the more likely. Click any cell for the exact probability + a plain-English read.',
+      heroAnchorFn:  () => motionEffective()
+                       ? ('Person A right now (detected): <strong>' + zoneNameOf(motion.centroid) + ' zone</strong>. Rows = <strong>future zone in the scene</strong>.')
+                       : ('Person A right now: <strong>center zone</strong> (scene-default, no motion detected). Rows = <strong>future zone in the scene</strong>.'),
+      nowVariable:   'the future zone of Person A',
+      nowTime:       'next 30 seconds',
+      nowRowsMean:   'each row is a spatial zone in the scene — top of the grid = far right, middle = center, bottom = far left. When the camera is on, the forecast starts from where motion is detected; when no camera is active, it starts from the center zone.',
+      yAxisLabel:    'scene zone',
+      rowCenters:    ZONE_INDEX,
+      rowLabelAt:    ZONE_LABEL_AT,
+      rowFmt:        c => ZONE_NAMES[c + 3],
+      rowName:       c => 'the <strong>' + ZONE_NAMES[c + 3] + '</strong> zone',
+      showZeroLine:  true,
+      zeroRowValue:  0,
+      nSteps:        31,
+      stepUnitShort: 's',
+      stepUnitLong:  'second',
+      stepDisplay:   [0, 5, 10, 15, 20, 25, 30],
+      stepFmt:       s => (s === 0 ? 'now' : s + 's'),
+      insetUnitName: 'Second',
+      insetAxisName: 'all spatial zones',
+      insetMin:      'far left',
+      insetMid:      'center',
+      insetMax:      'far right',
+      cfs: [
+        { id: 'baseline', label: 'Walking forward',   desc: 'continue current trajectory',  driftKind: 'none',    sigma30: 1.6 },
+        { id: 'stop',     label: 'Stopping',          desc: 'velocity → 0',                  driftKind: 'none',    sigma30: 0.4 },
+        { id: 'turn',     label: 'Turning back',      desc: 'reverse toward center',         driftKind: 'recenter', sigma30: 1.5 },
+      ],
+      distFn: function (cf, step) {
+        const t = step / 30;
+        const startZone = motionStartZone();
+        let mu;
+        if (cf.driftKind === 'recenter') mu = startZone * (1 - t);      // return to 0 by t=1
+        else                              mu = startZone;                // stay anchored at start
+        const sigma = Math.max(0.18, cf.sigma30 * Math.sqrt(t));
+        const dens = ZONE_INDEX.map(z => gaussianDensity(z, mu, sigma));
+        const total = dens.reduce((a, b) => a + b, 0);
+        return dens.map(d => d / total);
+      },
+      cellNarrative: (step, rowCenter, prob) =>
+        `Roughly a <strong>${(prob * 100).toFixed(1)}%</strong> chance Person A is in the <strong>${ZONE_NAMES[rowCenter + 3]}</strong> zone, <strong>${step} ${step === 1 ? 'second' : 'seconds'}</strong> from now` +
+        (motionEffective() ? ` — starting from the <strong>${zoneNameOf(motion.centroid)}</strong> zone where the camera sees motion.` : '.'),
+      compareNarrative: (delta, cfLabel, deltaStr) =>
+        `Vs <strong>Walking forward</strong>: <span class="delta ${delta < 0 ? 'neg' : ''}">${deltaStr}</span> ${delta > 0 ? 'more' : 'less'} likely under <strong>${cfLabel}</strong>.`,
+      answerNarrative: function (cf, distFinal) {
+        let modeIdx = 0, modeP = 0;
+        for (let r = 0; r < this.rowCenters.length; r++) if (distFinal[r] > modeP) { modeP = distFinal[r]; modeIdx = r; }
+        const modeZone = ZONE_NAMES[this.rowCenters[modeIdx] + 3];
+        let center3 = 0;
+        for (let r = 0; r < this.rowCenters.length; r++) if (Math.abs(this.rowCenters[r]) <= 1) center3 += distFinal[r];
+        const pct = Math.round(center3 * 100);
+        const fromClause = motionEffective()
+          ? ` Starting from the <span class="accent">${zoneNameOf(motion.centroid)}</span> zone the camera detected.`
+          : '';
+        if (cf.id === 'baseline')
+          return `Walking forward, Person A is most likely in the <span class="accent">${modeZone}</span> zone in 30 seconds.${fromClause} About <span class="accent">~${pct}%</span> chance of staying within one zone of center.`;
+        if (cf.id === 'stop')
+          return `Stopping, Person A is highly likely to stay in the <span class="teal">${modeZone}</span> zone.${fromClause} About <span class="teal">~${pct}%</span> chance of staying within one zone of center.`;
+        return `Turning back, Person A drifts toward <span class="teal">${modeZone}</span>.${fromClause} About <span class="teal">~${pct}%</span> chance of being within one zone of center in 30 seconds.`;
+      },
+      caveat: 'Spatial-diffusion forecast anchored at the motion centroid the camera detected (or at the center zone in scene-default mode). The pixel-diff detector is a naive 80×45 frame difference — production replaces it with <code>live_scenario.py</code> + DINOv2 / V-JEPA 2 for entity-tracked perception.',
+      reasoning: {
+        target:  'which zone Person A occupies',
+        horizon: '30 seconds',
+        meta:    'scenario: live_perception · target: distribution over track.zone_id',
+        opName:  'pedestrian kinematics',
+        opMeta:  'operator_graph: [ pedestrian_kinematic w=1.0 order=0 ]',
+      },
+      askMatchers: [
+        // Check stop / reverse before walk so "stops walking" matches stop, not baseline.
+        { re: /\b(stop|stops|stopped|stopping|stand still|halt|halts|halted|stays? put|stays? still|still|standing)\b/i, target: 'stop' },
+        { re: /\b(turn|turns|turning|turn back|turns? around|reverse|reverses|reversed|go back|going back|back away|other direction|away)\b/i, target: 'turn' },
+        { re: /\b(walk|walks|walking|walked|forward|continu|keeps? going|keeps? walking|same direction|onward|ahead)\b/i, target: 'baseline' },
+      ],
+      askPlaceholder: "Or ask in your own words — e.g. \"What if the person stops walking?\"",
+      askUnknownHint: "I don't recognize that one yet — I won't fabricate. Try 'what if they keep walking' / 'what if they stop' / 'what if they turn back'.",
+      techNL:  '"the person keeps walking"   <span class="k">// English UI captured directly (no Chinese regex needed for spatial)</span>\n<span class="k">matched_pattern</span>: <span class="s">"trajectory_continue"</span> · <span class="k">parser_confidence</span>: <span class="n">0.78</span>',
+      techBP:  '<span class="k">intent_kind</span>: <span class="s">"trajectory_continue"</span>\n<span class="k">scenario_id</span>: <span class="s">"live_perception"</span>\n<span class="k">target_kind</span>: <span class="s">"distribution"</span>\n<span class="k">distribution_variables</span>: [<span class="s">"track.zone_id"</span>]\n<span class="k">entity_ids</span>: [<span class="s">"track-0"</span>]',
+      techOG:  '<span class="k">entries</span>: [<span class="s">"pedestrian_kinematic"</span> w=<span class="n">1.0</span> order=<span class="n">0</span>]\n<span class="k">graph_id</span>: <span class="s">"scenario:live_perception"</span>',
+      techEng: '<span class="k">engine_result.value</span>: {<span class="s">"track-0.zone_id"</span>: [(<span class="n">0</span>, <span class="n">1.0</span>)]}\n<span class="k">world_line_id</span>: <span class="s">"a51c…live"</span>\n<span class="k">calibrated</span>: null   <span class="k">// cold-start, no validations</span>\n<span class="k">browser_motion_centroid</span>: <span class="n">computed_per_frame</span>   <span class="k">// pixel-diff, 80x45, 5fps</span>',
+    },
+
+    // ---- preview-only scenarios (no math wired) ----
+    legal: {
+      preview: true,
+      titleTag:    'Court case — Will the plaintiff win?',
+      shortName:   'court-case',
+      previewBody: 'The court-outcome backend (categorical: <code>plaintiff_wins</code> / <code>settlement</code> / <code>defendant_wins</code> / <code>dismissed</code>) is sketched in <code>scenario_courts.py</code> but the distribution math isn\'t wired into this demo yet.',
+    },
+    gaokao: {
+      preview: true,
+      titleTag:    'Student exam — Will I score above X?',
+      shortName:   'student-exam',
+      previewBody: 'The score-trajectory backend (Gaussian on score-delta from today to the test date) is sketched in <code>scenario_student.py</code> but isn\'t wired into this demo yet.',
+    },
+    policy: {
+      preview: true,
+      titleTag:    'Public policy — Will this policy pass?',
+      shortName:   'public-policy',
+      previewBody: 'The policy-event backend is sketched but the demo doesn\'t yet expose its distribution.',
+    },
+    destiny: {
+      preview: true,
+      titleTag:    'Life choices — Career / marriage',
+      shortName:   'life-choices',
+      previewBody: 'The destiny scenarios (<code>destiny_career</code> / <code>destiny_marriage</code>) are pattern stubs for the broader research surface; their distribution math is reserved for a later cycle.',
+    },
+  };
+
+  // ===================================================================
+  // State.
+  // ===================================================================
+  const state = {
+    world:     'stock_market',
+    cf:        'baseline',
+    insetStep: null,
+    inputMode: 'scenario',
+    mediaStream: null,
+  };
+
+  // ===================================================================
+  // Motion-detection module (v9 — pixel-diff in browser).
+  //
+  // Reads frames from the active <video> at ~5 fps, computes per-column
+  // motion mass via |Δrgb| > noise floor, derives the moving region's
+  // weighted centroid X, and maps it to a live_perception zone index
+  // (−3..+3). The heatmap distFn anchors mu(t=0) at this centroid, so
+  // the forecast actually responds to what the camera sees.
+  // ===================================================================
+  const motion = {
+    centroid:    0,    // zone index, −3..+3, smoothed
+    intensity:   0,    // 0..1, motion mass / scale, smoothed
+    rawCentroid: 0,    // per-frame raw centroid (before smoothing)
+    timer:       null, // setInterval id
+    canvas:      null, // hidden 80x45 canvas
+    ctx:         null,
+    prevFrame:   null, // ImageData
+    active:      false,
+  };
+  const MOTION_W = 80, MOTION_H = 45;        // canvas resolution
+  const MOTION_NOISE = 24;                   // per-channel |Δ| threshold
+  const MOTION_MIN_MASS = 600;               // total mass below this = "no motion"
+  const MOTION_SCALE = 12000;                // mass / scale = intensity (clamped to 1)
+  const MOTION_SMOOTH = 0.55;                // EMA α — bumped from 0.35 (v9) for snappier response
+  const MOTION_DECAY = 0.78;                 // faster decay at 10 fps so motion drops off cleanly
+  const MOTION_TICK_MS = 100;                // 10 fps (v9: 200 ms / 5 fps)
+  const MOTION_RERENDER_C_THRESH = 0.06;     // skip heatmap rebuild if |Δcentroid| < this
+  const MOTION_RERENDER_I_THRESH = 0.04;     // ...and |Δintensity| < this
+  // Track last-painted state for lazy re-render
+  let motionLastPaintedCentroid = 0;
+  let motionLastPaintedIntensity = 0;
+  let motionLastPaintedActive = false;
+
+  function initMotion() {
+    if (motion.canvas) return;
+    motion.canvas = $('motion-canvas');
+    motion.ctx = motion.canvas.getContext('2d', { willReadFrequently: true });
+  }
+
+  function startMotionLoop() {
+    initMotion();
+    stopMotionLoop();
+    motion.active = true;
+    motion.prevFrame = null;
+    motionLastPaintedActive = false;
+    motion.timer = setInterval(processMotionFrame, MOTION_TICK_MS);
+  }
+
+  function stopMotionLoop() {
+    if (motion.timer) { clearInterval(motion.timer); motion.timer = null; }
+    motion.active = false;
+    motion.prevFrame = null;
+    motion.centroid = 0;
+    motion.intensity = 0;
+    motion.rawCentroid = 0;
+    $('motion-marker').classList.remove('show');
+    $('motion-status-text').textContent = 'Camera off · scene-default forecast.';
+    $('motion-status').classList.remove('active');
+    $('motion-bar').style.width = '0%';
+  }
+
+  function processMotionFrame() {
+    const v = $('preview-video');
+    const img = $('preview-image');
+    // For a static image upload, draw the image once instead of video.
+    let src = null;
+    let srcW = 0, srcH = 0;
+    if (v.srcObject || (v.src && !v.paused && !v.ended && v.readyState >= 2)) {
+      src = v;
+      srcW = v.videoWidth;
+      srcH = v.videoHeight;
+    } else if (img.src && img.style.display !== 'none' && img.complete && img.naturalWidth > 0) {
+      src = img;
+      srcW = img.naturalWidth;
+      srcH = img.naturalHeight;
+    }
+    if (!src || srcW === 0 || srcH === 0) {
+      // Source not ready yet.
+      return;
+    }
+    try {
+      motion.ctx.drawImage(src, 0, 0, MOTION_W, MOTION_H);
+    } catch (e) {
+      // Cross-origin or other draw error — bail this tick.
+      return;
+    }
+    const curr = motion.ctx.getImageData(0, 0, MOTION_W, MOTION_H);
+
+    if (motion.prevFrame) {
+      const colMass = new Array(MOTION_W).fill(0);
+      let totalMass = 0;
+      const a = curr.data, b = motion.prevFrame.data;
+      for (let y = 0; y < MOTION_H; y++) {
+        const rowOff = y * MOTION_W * 4;
+        for (let x = 0; x < MOTION_W; x++) {
+          const i = rowOff + x * 4;
+          const dr = Math.abs(a[i]   - b[i]);
+          const dg = Math.abs(a[i+1] - b[i+1]);
+          const db = Math.abs(a[i+2] - b[i+2]);
+          if (dr > MOTION_NOISE || dg > MOTION_NOISE || db > MOTION_NOISE) {
+            const d = (dr + dg + db) / 3;
+            colMass[x] += d;
+            totalMass += d;
+          }
+        }
+      }
+      if (totalMass > MOTION_MIN_MASS) {
+        let cx = 0;
+        for (let x = 0; x < MOTION_W; x++) cx += x * colMass[x];
+        cx /= totalMass;
+        // Map [0, MOTION_W] → [−3, +3] (zone index range).
+        motion.rawCentroid = (cx / MOTION_W - 0.5) * 6;
+        const rawI = Math.min(1, totalMass / MOTION_SCALE);
+        // EMA smooth both
+        motion.centroid  = MOTION_SMOOTH * motion.rawCentroid + (1 - MOTION_SMOOTH) * motion.centroid;
+        motion.intensity = MOTION_SMOOTH * rawI + (1 - MOTION_SMOOTH) * motion.intensity;
+      } else {
+        // No significant motion this tick — let intensity decay.
+        motion.intensity *= MOTION_DECAY;
+        if (motion.intensity < 0.02) { motion.intensity = 0; }
+      }
+    }
+    motion.prevFrame = curr;
+
+    // Update marker + status every tick (cheap, smooth visual feedback).
+    updateMotionMarker();
+    updateMotionStatus();
+
+    // Lazy re-render the live_perception forecast surface only when the
+    // motion state has meaningfully changed since the last paint. This
+    // keeps responsive ticks fast and avoids redundant SVG rebuilds when
+    // the user is holding still.
+    if (state.world === 'live_perception') {
+      const dC = Math.abs(motion.centroid - motionLastPaintedCentroid);
+      const dI = Math.abs(motion.intensity - motionLastPaintedIntensity);
+      const activeChanged = motionEffective() !== motionLastPaintedActive;
+      if (activeChanged || dC > MOTION_RERENDER_C_THRESH || dI > MOTION_RERENDER_I_THRESH) {
+        renderHeatmap();
+        renderAnswerText();
+        renderInset();
+        renderReasoningDrawer();
+        renderHero();
+        motionLastPaintedCentroid = motion.centroid;
+        motionLastPaintedIntensity = motion.intensity;
+        motionLastPaintedActive = motionEffective();
+      }
+    }
+  }
+
+  function updateMotionMarker() {
+    const marker = $('motion-marker');
+    if (!motion.active || motion.intensity < 0.05) {
+      marker.classList.remove('show');
+      return;
+    }
+    marker.classList.add('show');
+    // Position: centroid (-3..+3) → percent across the video (0..100%).
+    const pct = ((motion.centroid + 3) / 6) * 100;
+    marker.style.left = pct.toFixed(1) + '%';
+    // Scale opacity / glow with intensity.
+    marker.style.opacity = (0.45 + 0.55 * motion.intensity).toFixed(2);
+    $('motion-marker-label').textContent = 'Person A · ' + zoneNameOf(motion.centroid);
+  }
+
+  function updateMotionStatus() {
+    const txt = $('motion-status-text');
+    const bar = $('motion-bar');
+    const wrap = $('motion-status');
+    if (!motion.active) {
+      txt.textContent = 'Camera off · scene-default forecast.';
+      wrap.classList.remove('active');
+      bar.style.width = '0%';
+      return;
+    }
+    if (motion.intensity < 0.05) {
+      txt.textContent = 'Camera live · no motion detected. Try waving your hand or stepping side-to-side.';
+      wrap.classList.remove('active');
+      bar.style.width = (motion.intensity * 100).toFixed(0) + '%';
+      return;
+    }
+    txt.textContent =
+      'Motion detected · Person A in the ' + zoneNameOf(motion.centroid) +
+      ' zone · intensity ' + motion.intensity.toFixed(2) + '.';
+    wrap.classList.add('active');
+    bar.style.width = (motion.intensity * 100).toFixed(0) + '%';
+  }
+
+  // Toggle side-by-side layout. Active iff (camera/file mode) AND (live_perception world).
+  function updateLayoutMode() {
+    const sideBySide = (state.inputMode === 'camera' || state.inputMode === 'file')
+                       && state.world === 'live_perception';
+    document.body.classList.toggle('camera-active', sideBySide);
+  }
+
+  function zoneNameOf(centroid) {
+    // Map continuous centroid (-3..+3) to nearest ZONE_NAMES bucket.
+    const idx = Math.max(0, Math.min(6, Math.round(centroid + 3)));
+    return ZONE_NAMES[idx];
+  }
+
+  // motion's contribution to the live_perception starting zone.
+  // When inputMode === 'scenario' (no camera/file), starting zone is 0.
+  // When motion is active but intensity is essentially zero, fall back to 0 with a soft note.
+  function motionStartZone() {
+    if (!motion.active) return 0;
+    if (motion.intensity < 0.05) return 0;
+    // Clamp to grid extent.
+    return Math.max(-3, Math.min(3, motion.centroid));
+  }
+  function motionEffective() {
+    return motion.active && motion.intensity >= 0.05;
+  }
+
+  // ===================================================================
+  // Element refs.
+  // ===================================================================
+  const $ = id => document.getElementById(id);
+  const svg       = $('heatmap');
+  const gridG     = $('heat-grid');
+  const axisG     = $('heat-axis');
+  const zeroLine  = $('zero-line');
+  const colOverlay = $('col-overlay');
+  const popover   = $('cell-popover');
+  const previewOverlay = $('preview-overlay');
+
+  // ===================================================================
+  // Geometry helpers (depend on row count).
+  // ===================================================================
+  function currentWorld() { return WORLD_CONFIG[state.world]; }
+  function nRows()        { return currentWorld().rowCenters.length; }
+  function nSteps()       { return currentWorld().nSteps; }
+  function cellW()        { return GRID_W / nSteps(); }
+  function cellH()        { return GRID_H / nRows(); }
+
+  function xFor(step)     { return PADX_L + step * cellW(); }
+  function yForRow(r)     { return PADY_T + (nRows() - 1 - r) * cellH(); }
+
+  function currentCfs()   { return currentWorld().cfs; }
+  function currentCf()    { return currentCfs().find(c => c.id === state.cf) || currentCfs()[0]; }
+
+  // ===================================================================
+  // Axes.
+  // ===================================================================
+  function buildAxes() {
+    const w = currentWorld();
+    if (w.preview) { axisG.innerHTML = ''; zeroLine.style.display = 'none'; return; }
+    const rows = w.rowCenters;
+    let s = '';
+
+    // Y axis: pick labelled rows by .rowLabelAt keys (closest center).
+    const labelKeys = Object.keys(w.rowLabelAt).map(Number);
+    const labelledRows = new Set();
+    for (const k of labelKeys) {
+      let bestR = -1, bestD = Infinity;
+      for (let r = 0; r < rows.length; r++) {
+        const d = Math.abs(rows[r] - k);
+        if (d < bestD) { bestD = d; bestR = r; }
+      }
+      if (bestR >= 0) labelledRows.add(bestR);
+    }
+    for (let r = 0; r < rows.length; r++) {
+      if (!labelledRows.has(r)) continue;
+      const c = rows[r];
+      // Match the closest key.
+      let bestKey = null, bestD = Infinity;
+      for (const k of labelKeys) {
+        const d = Math.abs(c - k);
+        if (d < bestD) { bestD = d; bestKey = k; }
+      }
+      const lbl = w.rowLabelAt[bestKey];
+      const y = yForRow(r) + cellH() / 2 + 3;
+      s += `<text x="${PADX_L - 8}" y="${y}" text-anchor="end">${lbl}</text>`;
+    }
+
+    // X axis ticks
+    for (const d of w.stepDisplay) {
+      s += `<text x="${xFor(d)}" y="${PADY_T + GRID_H + 16}" text-anchor="middle">${w.stepFmt(d)}</text>`;
+    }
+
+    // rotated y-axis label
+    const labelX = 18;
+    const labelY = PADY_T + GRID_H / 2;
+    s += `<text class="axis-label" x="${labelX}" y="${labelY}" transform="rotate(-90 ${labelX} ${labelY})" text-anchor="middle">${w.yAxisLabel}</text>`;
+    axisG.innerHTML = s;
+
+    // zero line at row whose value is closest to zeroRowValue
+    if (w.showZeroLine) {
+      let zeroRow = 0, best = Infinity;
+      for (let r = 0; r < rows.length; r++) {
+        const d = Math.abs(rows[r] - w.zeroRowValue);
+        if (d < best) { best = d; zeroRow = r; }
+      }
+      const zy = yForRow(zeroRow) + cellH() / 2;
+      zeroLine.setAttribute('x1', PADX_L);
+      zeroLine.setAttribute('x2', PADX_L + GRID_W);
+      zeroLine.setAttribute('y1', zy);
+      zeroLine.setAttribute('y2', zy);
+      zeroLine.style.display = '';
+    } else {
+      zeroLine.style.display = 'none';
+    }
+  }
+
+  // ===================================================================
+  // Heatmap.
+  // ===================================================================
+  function renderHeatmap() {
+    const w = currentWorld();
+    if (w.preview) {
+      gridG.innerHTML = '';
+      return;
+    }
+    const cf = currentCf();
+    const daily = [];
+    let maxDens = 0;
+    for (let d = 0; d < nSteps(); d++) {
+      const dist = w.distFn(cf, d);
+      daily.push(dist);
+      for (const p of dist) if (p > maxDens) maxDens = p;
+    }
+    const color = cf.id === 'baseline' ? 'var(--accent)' : 'var(--teal)';
+    const cw = cellW().toFixed(2);
+    const ch = cellH().toFixed(2);
+    const cells = [];
+    for (let d = 0; d < nSteps(); d++) {
+      for (let r = 0; r < nRows(); r++) {
+        const p = daily[d][r];
+        const op = Math.pow(p / maxDens, 0.65);
+        cells.push(
+          `<rect class="heatmap-cell" x="${xFor(d).toFixed(1)}" y="${yForRow(r).toFixed(1)}" ` +
+          `width="${cw}" height="${ch}" ` +
+          `fill="${color}" opacity="${op.toFixed(3)}" data-step="${d}" data-row="${r}" data-prob="${p.toFixed(4)}"/>`
+        );
+      }
+    }
+    gridG.innerHTML = cells.join('');
+    $('cf-tag').hidden = cf.id === 'baseline';
+  }
+
+  function renderAnswerText() {
+    const w = currentWorld();
+    if (w.preview) {
+      $('ans-narrative').innerHTML = `This world is a <strong>preview</strong> — no live distribution yet.`;
+      $('ans-caveat').innerHTML    = w.previewBody;
+      return;
+    }
+    const cf = currentCf();
+    const distFinal = w.distFn(cf, nSteps() - 1);
+    $('ans-narrative').innerHTML = w.answerNarrative.call(w, cf, distFinal);
+    $('ans-caveat').innerHTML    = w.caveat;
+  }
+
+  function renderNowBanner() {
+    const w = currentWorld();
+    if (w.preview) {
+      $('now-variable').textContent = w.shortName || w.titleTag.split(' — ')[0].toLowerCase();
+      $('now-time').textContent     = '(math not wired in this demo)';
+      $('now-rows-mean').innerHTML  = w.previewBody;
+    } else {
+      $('now-variable').textContent = w.nowVariable;
+      $('now-time').textContent     = w.nowTime;
+      $('now-rows-mean').innerHTML  = w.nowRowsMean;
+    }
+    // input-src wording follows inputMode + world
+    let inputSrc;
+    if (state.inputMode === 'camera') inputSrc = 'your live camera feed';
+    else if (state.inputMode === 'file') inputSrc = 'the file you uploaded';
+    else inputSrc = 'the ' + (w.shortName || w.titleTag.split(' — ')[0].toLowerCase()) + ' scenario';
+    $('now-input').textContent = inputSrc;
+  }
+
+  function renderHero() {
+    const w = currentWorld();
+    if (w.preview) {
+      $('hero-title').textContent = w.titleTag;
+      $('hero-sub').textContent   = 'This world is in preview — the backend is sketched but the distribution math isn\'t wired into this demo yet.';
+      $('hero-anchor').innerHTML  = '';
+    } else {
+      $('hero-title').textContent = w.heroTitle;
+      $('hero-sub').textContent   = w.heroSub;
+      $('hero-anchor').innerHTML  = w.heroAnchorFn ? w.heroAnchorFn() : w.heroAnchor;
+    }
+  }
+
+  function renderCfList() {
+    const w = currentWorld();
+    const list = $('cf-list');
+    if (w.preview) {
+      list.innerHTML = '';
+      $('cf-label').textContent = 'Counterfactuals are scenario-specific — switch to a wired scenario to interact.';
+      $('custom-input').placeholder = 'Switch scenario to ask questions.';
+      $('custom-input').disabled = true;
+      return;
+    }
+    $('cf-label').textContent = 'What would change this picture?';
+    $('custom-input').disabled = false;
+    $('custom-input').placeholder = w.askPlaceholder;
+    $('custom-input').value = '';
+    $('ask-feedback').textContent = '';
+    const cfs = w.cfs;
+    let html = '';
+    for (let i = 0; i < cfs.length; i++) {
+      const c = cfs[i];
+      const sel = c.id === state.cf;
+      html += `<button class="cf-option ${sel ? 'selected' : ''}" data-cf="${c.id}" role="radio" aria-checked="${sel}">` +
+              `<span class="dot"></span>` +
+              `<span><strong>${c.label}</strong><span class="desc">${c.desc}</span></span>` +
+              `</button>`;
+    }
+    list.innerHTML = html;
+    // wire newly-rendered cfs
+    list.querySelectorAll('.cf-option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.cf = btn.dataset.cf;
+        list.querySelectorAll('.cf-option').forEach(b => {
+          b.classList.toggle('selected', b === btn);
+          b.setAttribute('aria-checked', b === btn ? 'true' : 'false');
+        });
+        renderHeatmap();
+        renderAnswerText();
+        renderReasoningDrawer();
+        renderInset();
+        hideCellPopover();
+        $('ask-feedback').textContent = '';
+      });
+    });
+  }
+
+  function renderReasoningDrawer() {
+    const w = currentWorld();
+    if (w.preview) {
+      $('r-step1-input').textContent = w.titleTag;
+      $('r-step1-cf').textContent    = '— (preview)';
+      $('r-step2-target').textContent = '— (preview)';
+      $('r-step2-horizon').textContent = '— (preview)';
+      $('r-step2-meta').textContent = 'scenario: ' + state.world + ' · preview only';
+      $('r-step3-op').textContent = '— (preview)';
+      $('r-step3-meta').textContent = '— (preview)';
+      $('r-step6-body').innerHTML = w.previewBody;
+      return;
+    }
+    const cf = currentCf();
+    const inputLabel = state.inputMode === 'camera' ? 'Your camera feed' :
+                       state.inputMode === 'file'   ? 'Your uploaded file' :
+                       w.titleTag;
+    $('r-step1-input').textContent = inputLabel;
+    $('r-step1-cf').textContent    = cf.label;
+    $('r-step2-target').textContent  = w.reasoning.target;
+    $('r-step2-horizon').textContent = w.reasoning.horizon;
+    $('r-step2-meta').textContent    = w.reasoning.meta;
+    $('r-step3-op').textContent      = w.reasoning.opName;
+    $('r-step3-meta').textContent    = w.reasoning.opMeta;
+
+    // synthesize a plain answer for step 6
+    const distFinal = w.distFn(cf, nSteps() - 1);
+    $('r-step6-body').innerHTML = w.answerNarrative.call(w, cf, distFinal);
+  }
+
+  function renderTechDrawer() {
+    const w = currentWorld();
+    const sourceMap = {
+      scenario: '"scenario:' + state.world + '"',
+      camera:   '"camera:webcam_browser_getUserMedia"',
+      file:     '"file:user_uploaded_local"',
+    };
+    $('tech-input').innerHTML = '<span class="k">source</span>: <span class="s">' + sourceMap[state.inputMode] + '</span>';
+    if (w.preview) {
+      $('tech-nl').innerHTML  = '<span class="k">// preview scenario — parser path not exercised in this demo</span>';
+      $('tech-bp').innerHTML  = '<span class="k">scenario_id</span>: <span class="s">"' + state.world + '"</span>\n<span class="k">status</span>: <span class="s">"preview-only"</span>';
+      $('tech-og').innerHTML  = '<span class="k">// operator graph reserved for production wiring</span>';
+      $('tech-eng').innerHTML = '<span class="k">// no live engine call in preview mode</span>';
+    } else {
+      $('tech-nl').innerHTML  = w.techNL;
+      $('tech-bp').innerHTML  = w.techBP;
+      $('tech-og').innerHTML  = w.techOG;
+      $('tech-eng').innerHTML = w.techEng;
+    }
+  }
+
+  function renderInsetMeta() {
+    const w = currentWorld();
+    if (w.preview) return;
+    $('inset-time-unit').textContent = w.insetUnitName;
+    $('inset-axis-name').textContent = w.insetAxisName;
+    $('inset-axis-min').textContent  = w.insetMin;
+    $('inset-axis-mid').textContent  = w.insetMid;
+    $('inset-axis-max').textContent  = w.insetMax;
+  }
+
+  function renderPreviewOverlay() {
+    const w = currentWorld();
+    if (w.preview) {
+      $('preview-overlay-title').textContent = w.titleTag;
+      $('preview-overlay-body').innerHTML    = w.previewBody +
+        ' <em style="display:block;margin-top:8px;color:var(--ink-2);font-size:12px;">scenario_id: <code>' + state.world + '</code></em>';
+      previewOverlay.classList.add('show');
+    } else {
+      previewOverlay.classList.remove('show');
+    }
+  }
+
+  function renderAll() {
+    buildAxes();
+    renderHeatmap();
+    renderNowBanner();
+    renderHero();
+    renderCfList();
+    renderAnswerText();
+    renderReasoningDrawer();
+    renderTechDrawer();
+    renderInsetMeta();
+    renderInset();
+    renderPreviewOverlay();
+    hideCellPopover();
+  }
+
+  // ===================================================================
+  // Cell popover.
+  // ===================================================================
+  function showCellPopover(target) {
+    const w = currentWorld();
+    if (w.preview) return;
+    const step = parseInt(target.dataset.step, 10);
+    const row  = parseInt(target.dataset.row, 10);
+    const prob = parseFloat(target.dataset.prob);
+    const cf   = currentCf();
+    const baselineCf = w.cfs.find(c => c.id === 'baseline');
+    const baselineProb = w.distFn(baselineCf, step)[row];
+    const delta = (prob - baselineProb) * 100;
+    const deltaStr = (delta > 0 ? '+' : '') + delta.toFixed(1) + ' pts';
+
+    const rowCenter = w.rowCenters[row];
+
+    $('pop-day').textContent    = (w.stepUnitLong[0].toUpperCase() + w.stepUnitLong.slice(1)) + ' ' + step;
+    $('pop-bucket').textContent = w.rowFmt(rowCenter);
+    $('pop-prob').textContent   = (prob * 100).toFixed(1) + '%';
+    $('pop-narr').innerHTML     = w.cellNarrative(step, rowCenter, prob);
+
+    if (cf.id !== 'baseline') {
+      $('pop-compare').innerHTML = w.compareNarrative(delta, cf.label, deltaStr);
+    } else {
+      $('pop-compare').innerHTML = 'Pick a counterfactual below to see how this cell shifts.';
+    }
+    $('pop-compare').style.display = '';
+
+    // Position the popover near the cell.
+    const cellRect = target.getBoundingClientRect();
+    const wrapRect = svg.parentElement.getBoundingClientRect();
+    const popW = 280;
+    const popH = 130;
+    let x = cellRect.left - wrapRect.left + cellRect.width / 2 - popW / 2;
+    let y = cellRect.top  - wrapRect.top  - popH - 8;
+    x = Math.max(8, Math.min(wrapRect.width - popW - 8, x));
+    if (y < 8) y = cellRect.bottom - wrapRect.top + 8;
+    popover.style.left = x + 'px';
+    popover.style.top  = y + 'px';
+    popover.classList.add('show');
+    popover.setAttribute('aria-hidden', 'false');
+  }
+  function hideCellPopover() {
+    popover.classList.remove('show');
+    popover.setAttribute('aria-hidden', 'true');
+  }
+
+  // ===================================================================
+  // Day inset.
+  // ===================================================================
+  function renderInset() {
+    const w = currentWorld();
+    const inset = $('day-inset');
+    if (state.insetStep === null || w.preview) {
+      inset.classList.remove('show');
+      colOverlay.classList.remove('show');
+      return;
+    }
+    inset.classList.add('show');
+    colOverlay.classList.add('show');
+    colOverlay.setAttribute('x', xFor(state.insetStep));
+    colOverlay.setAttribute('y', PADY_T);
+    colOverlay.setAttribute('width', cellW());
+    colOverlay.setAttribute('height', GRID_H);
+
+    $('inset-day').textContent = state.insetStep;
+    const cf = currentCf();
+    const dist = w.distFn(cf, state.insetStep);
+    const max = Math.max(...dist);
+    const isCf = cf.id !== 'baseline';
+    const rows = w.rowCenters;
+    const labelEvery = rows.length > 9 ? 2 : 1;
+    const bars = [];
+    for (let r = 0; r < rows.length; r++) {
+      const h = max === 0 ? 0 : (dist[r] / max) * 70;
+      const labelStr = (function () {
+        const c = rows[r];
+        if (state.world === 'live_perception') return ZONE_LABEL_AT[c] || '';
+        return (c > 0 ? '+' : (c < 0 ? '−' : '')) + Math.abs(c).toFixed(1) + (state.world === 'stock_market' ? '%' : '');
+      })();
+      const probStr = (dist[r] * 100).toFixed(0) + '%';
+      const showLabel = r % labelEvery === 0;
+      bars.push(
+        `<div class="bar ${isCf ? 'cf' : ''}" style="height: ${h.toFixed(1)}px">` +
+        (showLabel ? `<span class="bar-label">${labelStr}</span><span class="bar-pct">${probStr}</span>` : '') +
+        `</div>`
+      );
+    }
+    $('inset-hist').innerHTML = bars.join('');
+  }
+
+  // ===================================================================
+  // INPUT — camera, file, scenario.
+  // ===================================================================
+  async function startCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      state.mediaStream = stream;
+      const v = $('preview-video');
+      v.srcObject = stream;
+      v.style.display = '';
+      $('preview-image').style.display = 'none';
+      $('preview-title').textContent = 'Live camera feed';
+      $('preview-info').textContent = 'getUserMedia · video track active · running locally in your browser';
+      $('preview-card').classList.add('show');
+      $('scenario-card').classList.remove('show');
+      state.inputMode = 'camera';
+      activateInputCard('camera');
+      // Start the pixel-diff motion loop after the video has a frame.
+      v.addEventListener('loadeddata', () => startMotionLoop(), { once: true });
+      // If the video is already past loadeddata, start now.
+      if (v.readyState >= 2) startMotionLoop();
+      // Auto-switch the world: a video input belongs in live_perception.
+      switchWorld('live_perception');
+      updateLayoutMode();
+    } catch (err) {
+      // Show error inline near the camera button (preview-card area) — not buried at page bottom.
+      $('preview-video').style.display = 'none';
+      $('preview-image').style.display = 'none';
+      $('preview-title').textContent = 'Camera unavailable';
+      $('preview-info').innerHTML = '<span style="color: var(--amber);">' +
+        'Camera access failed (' + (err.name || 'error') + '). ' +
+        'If you denied the prompt, reload and click "Allow" — or try a scenario instead.</span>';
+      $('preview-card').classList.add('show');
+      $('scenario-card').classList.remove('show');
+      // Don't switch world if camera didn't actually start.
+      activateInputCard('camera');
+    }
+  }
+  function stopMedia() {
+    stopMotionLoop();
+    if (state.mediaStream) {
+      state.mediaStream.getTracks().forEach(t => t.stop());
+      state.mediaStream = null;
+    }
+    const v = $('preview-video');
+    v.srcObject = null;
+    v.removeAttribute('src');
+    $('preview-image').removeAttribute('src');
+    $('preview-card').classList.remove('show');
+    $('scenario-card').classList.add('show');
+    state.inputMode = 'scenario';
+    activateInputCard('scenario');
+    updateLayoutMode();
+    // After motion stops, re-render to clear motion-driven anchor + narratives.
+    renderAll();
+  }
+  function handleFile(file) {
+    if (!file) return;
+    stopMedia();
+    const url = URL.createObjectURL(file);
+    const isVideo = file.type.startsWith('video/');
+    const v = $('preview-video');
+    const img = $('preview-image');
+    if (isVideo) {
+      v.src = url;
+      v.style.display = '';
+      img.style.display = 'none';
+      v.play().catch(() => {});
+      v.addEventListener('loadeddata', () => startMotionLoop(), { once: true });
+      v.addEventListener('play', () => startMotionLoop(), { once: true });
+    } else {
+      img.src = url;
+      img.style.display = '';
+      v.style.display = 'none';
+      // For a static image, start the motion loop too — frame-diff will see
+      // a single frame and intensity stays at 0 (no motion). The loop also
+      // captures the image's content for any subsequent media swap.
+      img.addEventListener('load', () => startMotionLoop(), { once: true });
+      if (img.complete && img.naturalWidth > 0) startMotionLoop();
+    }
+    $('preview-title').textContent = 'Uploaded ' + (isVideo ? 'video' : 'image');
+    $('preview-info').textContent = file.name + ' · ' + (file.size / 1024).toFixed(1) + ' KB · ' + file.type;
+    $('preview-card').classList.add('show');
+    $('scenario-card').classList.remove('show');
+    state.inputMode = 'file';
+    activateInputCard('file');
+    switchWorld('live_perception');
+    updateLayoutMode();
+  }
+  function showScenarioPicker() {
+    stopMedia();
+    $('scenario-card').classList.add('show');
+    $('preview-card').classList.remove('show');
+    state.inputMode = 'scenario';
+    activateInputCard('scenario');
+    renderNowBanner();
+    renderReasoningDrawer();
+    renderTechDrawer();
+  }
+
+  function activateInputCard(which) {
+    document.querySelectorAll('.input-card').forEach(c => {
+      c.classList.toggle('active', c.dataset.input === which);
+    });
+  }
+
+  function switchWorld(worldId) {
+    if (!WORLD_CONFIG[worldId]) return;
+    state.world = worldId;
+    // reset cf to the new world's baseline
+    const cfs = WORLD_CONFIG[worldId].cfs;
+    state.cf = cfs ? cfs[0].id : 'baseline';
+    state.insetStep = null;
+    // update scenario picker active class + title tag
+    document.querySelectorAll('.scenario-btn').forEach(b => b.classList.toggle('current', b.dataset.world === worldId));
+    $('scenario-title-tag').textContent = WORLD_CONFIG[worldId].titleTag;
+    updateLayoutMode();
+    renderAll();
+  }
+
+  // Wire input cards.
+  $('input-camera').addEventListener('click', startCamera);
+  $('input-file').addEventListener('click', () => $('hidden-file-input').click());
+  $('hidden-file-input').addEventListener('change', e => handleFile(e.target.files[0]));
+  $('input-scenario').addEventListener('click', showScenarioPicker);
+  $('preview-close').addEventListener('click', stopMedia);
+
+  // Scenario picker buttons.
+  document.querySelectorAll('.scenario-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchWorld(btn.dataset.world));
+  });
+
+  // Preview-overlay back button → return to stock_market.
+  $('preview-overlay-back').addEventListener('click', () => switchWorld('stock_market'));
+
+  // ===================================================================
+  // Cell click + column click.
+  // ===================================================================
+  let lastHoverCell = null;
+  svg.addEventListener('click', e => {
+    if (currentWorld().preview) return;
+    const target = e.target;
+    if (target.classList && target.classList.contains('heatmap-cell')) {
+      if (lastHoverCell) lastHoverCell.classList.remove('hover');
+      target.classList.add('hover');
+      lastHoverCell = target;
+      showCellPopover(target);
+    } else {
+      const rect = svg.getBoundingClientRect();
+      const xRel = (e.clientX - rect.left) / rect.width * SVG_W;
+      if (xRel < PADX_L || xRel > PADX_L + GRID_W) return;
+      const step = Math.max(0, Math.min(nSteps() - 1, Math.floor((xRel - PADX_L) / cellW())));
+      state.insetStep = step;
+      renderInset();
+      hideCellPopover();
+    }
+  });
+  svg.addEventListener('contextmenu', e => {
+    const target = e.target;
+    if (target.classList && target.classList.contains('heatmap-cell')) {
+      e.preventDefault();
+      state.insetStep = parseInt(target.dataset.step, 10);
+      renderInset();
+      hideCellPopover();
+    }
+  });
+  $('inset-close').addEventListener('click', () => {
+    state.insetStep = null;
+    renderInset();
+  });
+  $('pop-close').addEventListener('click', () => {
+    hideCellPopover();
+    if (lastHoverCell) { lastHoverCell.classList.remove('hover'); lastHoverCell = null; }
+  });
+  document.addEventListener('click', e => {
+    if (!popover.contains(e.target) &&
+        !(e.target.classList && e.target.classList.contains('heatmap-cell'))) {
+      hideCellPopover();
+      if (lastHoverCell) { lastHoverCell.classList.remove('hover'); lastHoverCell = null; }
+    }
+  }, true);
+
+  // ===================================================================
+  // Custom ask.
+  // ===================================================================
+  $('custom-ask-btn').addEventListener('click', handleCustomAsk);
+  $('custom-input').addEventListener('keydown', e => { if (e.key === 'Enter') handleCustomAsk(); });
+  function handleCustomAsk() {
+    const w = currentWorld();
+    if (w.preview) return;
+    const v = $('custom-input').value.trim();
+    const fb = $('ask-feedback');
+    if (!v) { fb.textContent = 'Type a question, or pick a radio above.'; return; }
+    for (const m of w.askMatchers) {
+      if (m.re.test(v)) {
+        state.cf = m.target;
+        renderCfList();
+        renderHeatmap();
+        renderAnswerText();
+        renderReasoningDrawer();
+        renderInset();
+        hideCellPopover();
+        fb.textContent = '';
+        return;
+      }
+    }
+    fb.textContent = w.askUnknownHint;
+  }
+
+  // ===================================================================
+  // Drawers.
+  // ===================================================================
+  function openDrawer(id) {
+    $('drawer-scrim').classList.add('open');
+    $(id).classList.add('open');
+    $(id).setAttribute('aria-hidden', 'false');
+  }
+  function closeDrawers() {
+    $('drawer-scrim').classList.remove('open');
+    document.querySelectorAll('.drawer').forEach(d => {
+      d.classList.remove('open');
+      d.setAttribute('aria-hidden', 'true');
+    });
+  }
+  $('open-reasoning').addEventListener('click', () => openDrawer('reasoning-drawer'));
+  $('open-reasoning-2').addEventListener('click', () => openDrawer('reasoning-drawer'));
+  $('open-tech').addEventListener('click', () => openDrawer('tech-drawer'));
+  $('open-tech-2').addEventListener('click', () => openDrawer('tech-drawer'));
+  document.querySelectorAll('[data-close-drawer]').forEach(b => b.addEventListener('click', closeDrawers));
+  $('drawer-scrim').addEventListener('click', closeDrawers);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeDrawers(); hideCellPopover(); } });
+
+  // ===================================================================
+  // Initial paint.
+  // ===================================================================
+  renderAll();
+
+  // ===================================================================
+  // Test hook — exposes the motion module + a small fake-motion injector
+  // so headless preview can verify camera→heatmap coupling without a real
+  // getUserMedia stream. Light footprint, no side effects when unused.
+  // Production should ignore window.__omyteaTest; it's not a real API.
+  // ===================================================================
+  window.__omyteaTest = {
+    motion: motion,
+    motionStartZone: motionStartZone,
+    motionEffective: motionEffective,
+    setFakeMotion: (centroid, intensity) => {
+      motion.active = true;
+      motion.centroid = centroid;
+      motion.intensity = intensity;
+      updateMotionMarker();
+      updateMotionStatus();
+      if (state.world === 'live_perception') {
+        renderHeatmap(); renderAnswerText(); renderInset(); renderReasoningDrawer(); renderHero();
+      }
+    },
+    clearFakeMotion: () => {
+      stopMotionLoop();
+      if (state.world === 'live_perception') {
+        renderHeatmap(); renderAnswerText(); renderInset(); renderReasoningDrawer(); renderHero();
+      }
+    },
+    distFnFor: (worldId) => WORLD_CONFIG[worldId].distFn,
+  };
+})();
+</script>
+
+</body>
+</html>

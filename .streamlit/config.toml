@@ -6,6 +6,12 @@
 headless = true
 # Disable file watching on Cloud (we don't hot-reload)
 fileWatcherType = "none"
+# Serve omytea-personal-console/static/ at /app/static/<file>. This
+# hosts the v10 live-video app (static/live_video_v10.html) as a real
+# same-origin URL so it can be embedded in a top-document iframe (which
+# CAN hold camera permission) instead of a permission-stripped
+# components.html sandbox. See _heatmap_component.render_live_video_v10.
+enableStaticServing = true
 # Bind on whatever port Streamlit Cloud injects
 # (Streamlit Cloud sets STREAMLIT_SERVER_PORT env var; default 8501 locally)
 

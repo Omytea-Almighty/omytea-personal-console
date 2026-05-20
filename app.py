@@ -21,6 +21,7 @@ import _brand
 from _heatmap_component import (
     branches_to_payload,
     render_heatmap_camera_component,
+    render_live_video_v10,
 )
 import _i18n
 from _i18n import T
@@ -978,6 +979,19 @@ def _xuanxue_lens_enabled() -> bool:
     return bool(st.session_state.get("_xuanxue_lens_on", False))
 
 
+def _live_video_enabled() -> bool:
+    """Whether the composer's "Live video" toggle is on.
+
+    Same top→bottom rerun ordering as :func:`_xuanxue_lens_enabled`: the
+    output region renders BEFORE the composer, so it reads the composer
+    toggle's persisted WIDGET key ``_composer_live_toggle`` directly —
+    that key is the authoritative current value across reruns. When the
+    toggle is on, the output surface becomes the embedded v10
+    live-video app (OMY-V415 / M2 / Acceptance #65).
+    """
+    return bool(st.session_state.get("_composer_live_toggle", False))
+
+
 def _render_output_view_toggle() -> str:
     """Output-region view switch — a one-click pill at the top of the
     output region (OMY-V415 / M2 / Acceptance #60 — requirement D).
@@ -1021,6 +1035,14 @@ def _render_workspace_output() -> None:
         top switches the region between the quantum heatmap (default)
         and the 玄学 Nye Clock view, which covers the quantum module.
 
+    OMY-V415 / M2 / Acceptance #65:
+      • When the composer's "Live video" toggle is on, the output
+        surface BECOMES the v10 live-video app embedded whole
+        (``render_live_video_v10`` — camera + motion loop + live
+        heatmap + see-both-at-once, one integrated unit). The idle /
+        prediction quantum heatmap is the non-video default; live video
+        replaces it only while the toggle is on.
+
     Streamlit reruns top→bottom, so this output region — placed before
     the composer — reflects the last prediction the composer stored.
     """
@@ -1028,6 +1050,30 @@ def _render_workspace_output() -> None:
     # centerpiece) stays visually stable while the user works in the
     # composer pane below.
     with st.container(height=_OUTPUT_PANE_HEIGHT, border=False):
+        # Acceptance #65 — live video on: the output surface becomes the
+        # v10 app embedded whole. Checked before the 玄学 view toggle and
+        # before the prediction/idle heatmap: an active live-video
+        # session owns the output region.
+        if _live_video_enabled():
+            st.markdown(
+                "<div style='display:flex;align-items:center;gap:9px;"
+                "margin:6px 0 8px;'>"
+                "<span style='width:4px;height:4px;border-radius:50%;"
+                "background:#58c5b4;"
+                "box-shadow:0 0 7px rgba(88,197,180,0.8);'>"
+                "</span>"
+                "<span style='color:#8b93a0;font-size:11px;"
+                "letter-spacing:0.14em;text-transform:uppercase;"
+                "font-weight:600;'>Live video</span>"
+                "<span style='flex:1;height:1px;"
+                "background:linear-gradient(90deg,"
+                "#232834,rgba(35,40,52,0));'></span>"
+                "</div>",
+                unsafe_allow_html=True,
+            )
+            render_live_video_v10()
+            return
+
         # Requirement D — view toggle (only drawn when the lens is on).
         view = _render_output_view_toggle()
 
@@ -1162,12 +1208,14 @@ def _render_workspace_composer_body() -> None:
 
     attached_video = st.session_state.get("_composer_video")
 
-    # ---- Live-video modality: embed the webcam panel inline ----
+    # ---- Live-video modality (OMY-V415 / M2 / Acceptance #65) ----
+    # When the toggle is on, the v10 live-video app runs as the OUTPUT
+    # surface above (see _render_workspace_output → render_live_video_v10
+    # — the v10 demo embedded WHOLE: camera + motion loop + live heatmap
+    # + see-both-at-once, one integrated unit). The composer only
+    # confirms it; it does not re-embed a recreated panel here.
     if live_on:
-        with st.container(border=True):
-            st.markdown(f"**{T('composer.live.panel')}**")
-            render_live_webcam(embedded=True)
-        st.divider()
+        st.info(T("composer.live.active_note"), icon="🎥")
 
     # ---- Attached-video modality: embed the video pipeline inline ----
     if attached_video is not None:

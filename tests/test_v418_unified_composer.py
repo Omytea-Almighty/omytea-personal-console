@@ -83,10 +83,25 @@ def test_composer_embeds_video_pipeline() -> None:
     assert "render_video_query(embedded=True)" in src
 
 
-def test_composer_embeds_live_pipeline() -> None:
-    """The live toggle embeds the webcam panel inline (embedded)."""
+def test_composer_live_toggle_routes_to_v10_output_surface() -> None:
+    """The live toggle drives the v10 output surface, not a recreated panel.
+
+    OMY-V415 / M2 / Acceptance #65 changed the approach: previous builds
+    RECREATED the v10 live-video piece by piece (a webcam panel embedded
+    inline in the composer). That degraded below the v10 demo. Now the
+    composer's live toggle activates the v10 app embedded WHOLE in the
+    OUTPUT region (``_render_workspace_output`` → ``render_live_video_v10``);
+    the composer only confirms the toggle is on and must NOT re-embed the
+    old recreated ``render_live_webcam`` panel.
+    """
     src = _composer_src()
-    assert "render_live_webcam(embedded=True)" in src
+    assert "render_live_webcam" not in src, (
+        "composer must not recreate a webcam panel — the v10 app is the "
+        "live-video surface in the output region"
+    )
+    # The toggle still exists and still gates an on-state branch.
+    assert "_composer_live_toggle" in src
+    assert "live_on" in src
 
 
 def test_composer_still_has_run_prediction_form() -> None:

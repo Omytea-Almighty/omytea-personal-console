@@ -63,7 +63,30 @@ import streamlit.components.v1 as components
 
 from _i18n import T
 
-__all__ = ["branches_to_payload", "render_heatmap_camera_component"]
+__all__ = [
+    "branches_to_payload",
+    "render_heatmap_camera_component",
+    "render_live_video_v10",
+    "LIVE_VIDEO_V10_URL",
+    "LIVE_VIDEO_V10_FILE",
+]
+
+# The v10 marketing demo — a single, complete, working HTML/JS app:
+# camera + pixel-diff motion loop + live heatmap + see-both-at-once
+# layout, all integrated. It is copied verbatim into ``static/`` and
+# served by Streamlit's static file server (``enableStaticServing``),
+# so the console's live-video surface IS this file, embedded whole —
+# never recreated piece by piece.
+LIVE_VIDEO_V10_FILE = "live_video_v10.html"
+# Streamlit serves ``omytea-personal-console/static/`` at ``app/static``
+# (relative to the app root). A relative src keeps it same-origin under
+# any deployment host (localhost, Streamlit Cloud, custom domain).
+LIVE_VIDEO_V10_URL = f"app/static/{LIVE_VIDEO_V10_FILE}"
+
+# Embedded-iframe pixel height for the v10 live-video app. The v10
+# layout (scenario row + see-both-at-once camera|heatmap grid) needs a
+# tall viewport; this matches the v10 demo's own comfortable height.
+_LIVE_VIDEO_HEIGHT = 860
 
 
 def branches_to_payload(hypotheses: list[Any]) -> list[dict[str, Any]]:
@@ -89,6 +112,71 @@ def branches_to_payload(hypotheses: list[Any]) -> list[dict[str, Any]]:
             {"label": label, "probability": prob, "branch_type": btype}
         )
     return payload
+
+
+def render_live_video_v10(*, height: int = _LIVE_VIDEO_HEIGHT) -> None:
+    """Embed the v10 live-video app WHOLE as the live-video surface.
+
+    [OMY-V415 / M2 / Acceptance #65]
+
+    The console's live-video output surface IS the v10 marketing demo
+    (``static/live_video_v10.html``) — a single complete, working
+    HTML/JS app: camera, pixel-diff motion loop, live heatmap and the
+    see-both-at-once layout, all integrated. It is embedded WHOLE, not
+    recreated piece by piece.
+
+    Camera permission — the one hard part, solved honestly
+    ------------------------------------------------------
+    v10's camera is a plain ``getUserMedia`` call.
+    ``st.components.v1.html`` renders inside a sandboxed iframe with no
+    ``allow="camera"`` attribute and no API to add one, so getUserMedia
+    is blocked there. This function instead writes a **top-document
+    iframe** through ``st.markdown(unsafe_allow_html=True)``:
+
+    * the iframe carries ``allow="camera; microphone; fullscreen"``;
+    * it sits in the TOP Streamlit document (``app/static/...`` is
+      same-origin), which CAN hold a camera permission grant — NOT
+      inside a components.html sandbox;
+    * the user grants the camera once for the page and the embedded v10
+      app gets it.
+
+    A clear, prominent **"▸ Open live video"** button is rendered
+    alongside the embed as a guaranteed-working path: it opens the v10
+    static URL in a NEW browser tab, where the page IS v10 with full
+    camera permission. So the live-video control is never dead — if the
+    embedded camera is blocked in some browser, the new-tab path works
+    100 %.
+
+    Parameters
+    ----------
+    height:
+        Embedded-iframe pixel height.
+    """
+    # The guaranteed-working path first: a prominent button that opens
+    # v10 in its own tab (full camera permission, it IS v10). This is
+    # never a dead button — ``st.link_button`` to a real served URL.
+    st.link_button(
+        T("live_video.open_btn"),
+        LIVE_VIDEO_V10_URL,
+        use_container_width=True,
+        type="primary",
+        help=T("live_video.fallback_note"),
+    )
+
+    # The embedded path: a top-document iframe (NOT components.html) so
+    # it can carry allow="camera" and inherit the top document's camera
+    # permission. Written through st.markdown(unsafe_allow_html=True).
+    iframe_html = (
+        f'<iframe src="{_html.escape(LIVE_VIDEO_V10_URL, quote=True)}" '
+        f'allow="camera; microphone; fullscreen" '
+        f'title="Omytea live video" '
+        f'style="width:100%;height:{int(height)}px;border:0;'
+        f'border-radius:10px;background:#0a0c11;'
+        f'box-shadow:0 10px 40px rgba(0,0,0,0.35);"></iframe>'
+    )
+    st.markdown(iframe_html, unsafe_allow_html=True)
+
+    st.caption(T("live_video.embed_caption"))
 
 
 # Component pixel height. Tall enough for the side-by-side layout (camera

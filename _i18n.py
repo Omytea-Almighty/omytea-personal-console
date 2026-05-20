@@ -300,6 +300,80 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_ES: "Cámara en vivo — percepción continua",
         LANG_FR: "Caméra en direct — perception continue",
     },
+    "composer.live.active_note": {
+        LANG_EN: (
+            "Live video is on — it is running in the output region "
+            "above (camera, motion loop and live heatmap together). "
+            "Toggle off to return to the prediction heatmap."
+        ),
+        LANG_ZH: (
+            "实时视频已开启——正在上方输出区运行（摄像头、运动检测循环"
+            "与实时热力图协同）。关闭开关即可返回预测热力图。"
+        ),
+        LANG_ES: (
+            "El video en vivo está activado — se ejecuta en la región "
+            "de salida de arriba (cámara, bucle de movimiento y mapa "
+            "de calor en vivo juntos). Desactívalo para volver al mapa "
+            "de calor de predicción."
+        ),
+        LANG_FR: (
+            "La vidéo en direct est activée — elle s'exécute dans la "
+            "région de sortie ci-dessus (caméra, boucle de mouvement et "
+            "carte de chaleur en direct ensemble). Désactivez pour "
+            "revenir à la carte de chaleur de prédiction."
+        ),
+    },
+    "live_video.open_btn": {
+        LANG_EN: "▸ Open live video",
+        LANG_ZH: "▸ 打开实时视频",
+        LANG_ES: "▸ Abrir video en vivo",
+        LANG_FR: "▸ Ouvrir la vidéo en direct",
+    },
+    "live_video.fallback_note": {
+        LANG_EN: (
+            "Live video opens in its own tab — that is the full Omytea "
+            "live-perception app, where your browser grants the camera "
+            "directly. Camera, motion loop and live heatmap all run "
+            "there."
+        ),
+        LANG_ZH: (
+            "实时视频会在独立标签页中打开——那是完整的 Omytea 实时感知"
+            "应用，浏览器会在那里直接授予摄像头权限。摄像头、运动检测"
+            "循环与实时热力图都在那里运行。"
+        ),
+        LANG_ES: (
+            "El video en vivo se abre en su propia pestaña — es la app "
+            "completa de percepción en vivo de Omytea, donde el "
+            "navegador concede la cámara directamente."
+        ),
+        LANG_FR: (
+            "La vidéo en direct s'ouvre dans son propre onglet — c'est "
+            "l'application complète de perception en direct d'Omytea, où "
+            "le navigateur accorde la caméra directement."
+        ),
+    },
+    "live_video.embed_caption": {
+        LANG_EN: (
+            "Live perception — camera, pixel-diff motion loop and live "
+            "heatmap, running together. If the camera does not appear, "
+            "use the button above to open it in its own tab."
+        ),
+        LANG_ZH: (
+            "实时感知——摄像头、像素差分运动循环与实时热力图协同运行。"
+            "若摄像头未出现，请用上方按钮在独立标签页中打开。"
+        ),
+        LANG_ES: (
+            "Percepción en vivo — cámara, bucle de movimiento por "
+            "diferencia de píxeles y mapa de calor en vivo, juntos. Si "
+            "la cámara no aparece, usa el botón de arriba."
+        ),
+        LANG_FR: (
+            "Perception en direct — caméra, boucle de mouvement par "
+            "différence de pixels et carte de chaleur en direct, "
+            "ensemble. Si la caméra n'apparaît pas, utilisez le bouton "
+            "ci-dessus."
+        ),
+    },
     "composer.lens": {
         LANG_EN: "玄学 lens",
         LANG_ZH: "玄学透镜",
