@@ -124,6 +124,327 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_ES: "Modo",
         LANG_FR: "Mode",
     },
+    # -----  Sidebar navigation (history-rail shell)  -----
+    "nav.new_prediction": {
+        LANG_EN: "✦  New prediction",
+        LANG_ZH: "✦  新预测",
+        LANG_ES: "✦  Nueva predicción",
+        LANG_FR: "✦  Nouvelle prédiction",
+    },
+    "nav.history": {
+        LANG_EN: "History",
+        LANG_ZH: "历史",
+        LANG_ES: "Historial",
+        LANG_FR: "Historique",
+    },
+    "nav.history.empty": {
+        LANG_EN: "No predictions yet. Run one and it appears here.",
+        LANG_ZH: "还没有预测。生成一个就会出现在这里。",
+        LANG_ES: "Aún no hay predicciones. Ejecuta una y aparecerá aquí.",
+        LANG_FR: "Pas encore de prédictions. Lancez-en une et elle apparaîtra ici.",
+    },
+    "nav.more": {
+        LANG_EN: "More",
+        LANG_ZH: "更多",
+        LANG_ES: "Más",
+        LANG_FR: "Plus",
+    },
+    "nav.more.hint": {
+        LANG_EN: "Video, live camera, the 玄学 lens, and other surfaces.",
+        LANG_ZH: "视频、实时摄像头、玄学透镜及其它界面。",
+        LANG_ES: "Video, cámara en vivo, la lente 玄学 y otras superficies.",
+        LANG_FR: "Vidéo, caméra en direct, la lentille 玄学 et autres surfaces.",
+    },
+    "nav.settings": {
+        LANG_EN: "Settings",
+        LANG_ZH: "设置",
+        LANG_ES: "Ajustes",
+        LANG_FR: "Paramètres",
+    },
+    "settings.language": {
+        LANG_EN: "Language",
+        LANG_ZH: "语言",
+        LANG_ES: "Idioma",
+        LANG_FR: "Langue",
+    },
+    "settings.currency": {
+        LANG_EN: "Currency",
+        LANG_ZH: "货币",
+        LANG_ES: "Moneda",
+        LANG_FR: "Devise",
+    },
+    "history.bucket.today": {
+        LANG_EN: "Today",
+        LANG_ZH: "今天",
+        LANG_ES: "Hoy",
+        LANG_FR: "Aujourd'hui",
+    },
+    "history.bucket.yesterday": {
+        LANG_EN: "Yesterday",
+        LANG_ZH: "昨天",
+        LANG_ES: "Ayer",
+        LANG_FR: "Hier",
+    },
+    "history.bucket.prev7": {
+        LANG_EN: "Previous 7 days",
+        LANG_ZH: "前 7 天",
+        LANG_ES: "Últimos 7 días",
+        LANG_FR: "7 derniers jours",
+    },
+    "history.bucket.prev30": {
+        LANG_EN: "Previous 30 days",
+        LANG_ZH: "前 30 天",
+        LANG_ES: "Últimos 30 días",
+        LANG_FR: "30 derniers jours",
+    },
+    "measurement.opened_from_history": {
+        LANG_EN: "Opened from history",
+        LANG_ZH: "从历史记录打开",
+        LANG_ES: "Abierto desde el historial",
+        LANG_FR: "Ouvert depuis l'historique",
+    },
+    "measurement.not_found": {
+        LANG_EN: "This prediction is no longer available in this session.",
+        LANG_ZH: "本次会话中已找不到该预测记录。",
+        LANG_ES: "Esta predicción ya no está disponible en esta sesión.",
+        LANG_FR: "Cette prédiction n'est plus disponible dans cette session.",
+    },
+    # -----  Unified composer (workspace input modalities)  -----
+    "composer.section": {
+        LANG_EN: "Compose your prediction",
+        LANG_ZH: "组合你的预测输入",
+        LANG_ES: "Compón tu predicción",
+        LANG_FR: "Composez votre prédiction",
+    },
+    "composer.scenario": {
+        LANG_EN: "Scenario",
+        LANG_ZH: "情景",
+        LANG_ES: "Escenario",
+        LANG_FR: "Scénario",
+    },
+    "composer.attach": {
+        LANG_EN: "+  Attach",
+        LANG_ZH: "+  附加",
+        LANG_ES: "+  Adjuntar",
+        LANG_FR: "+  Joindre",
+    },
+    "composer.attach.hint": {
+        LANG_EN: "Add a video or files to ground the prediction in real input.",
+        LANG_ZH: "附加视频或文件，让预测建立在真实输入之上。",
+        LANG_ES: "Añade un video o archivos para fundamentar la predicción.",
+        LANG_FR: "Ajoutez une vidéo ou des fichiers pour ancrer la prédiction.",
+    },
+    "composer.attach.video": {
+        LANG_EN: "Video",
+        LANG_ZH: "视频",
+        LANG_ES: "Video",
+        LANG_FR: "Vidéo",
+    },
+    "composer.attach.files": {
+        LANG_EN: "Other files (context)",
+        LANG_ZH: "其它文件（上下文）",
+        LANG_ES: "Otros archivos (contexto)",
+        LANG_FR: "Autres fichiers (contexte)",
+    },
+    "composer.attach.video_ready": {
+        LANG_EN: "Video attached — the analysis panel opens below.",
+        LANG_ZH: "已附加视频 —— 分析面板已在下方展开。",
+        LANG_ES: "Video adjunto — el panel de análisis se abre abajo.",
+        LANG_FR: "Vidéo jointe — le panneau d'analyse s'ouvre ci-dessous.",
+    },
+    "composer.attach.files_ready": {
+        LANG_EN: "context file(s) attached.",
+        LANG_ZH: "个上下文文件已附加。",
+        LANG_ES: "archivo(s) de contexto adjunto(s).",
+        LANG_FR: "fichier(s) de contexte joint(s).",
+    },
+    "composer.attach.panel": {
+        LANG_EN: "Attached video — scene prediction",
+        LANG_ZH: "附加视频 —— 场景预测",
+        LANG_ES: "Video adjunto — predicción de escena",
+        LANG_FR: "Vidéo jointe — prédiction de scène",
+    },
+    "composer.attach.panel_hint": {
+        LANG_EN: (
+            "The attached video is analyzed as its own scene prediction "
+            "with the same branch / coherence / evidence machinery."
+        ),
+        LANG_ZH: (
+            "附加的视频会作为独立的场景预测来分析，使用相同的分支 / 相干 / "
+            "证据机制。"
+        ),
+        LANG_ES: (
+            "El video adjunto se analiza como su propia predicción de "
+            "escena con la misma maquinaria de ramas / coherencia."
+        ),
+        LANG_FR: (
+            "La vidéo jointe est analysée comme sa propre prédiction de "
+            "scène avec la même machinerie de branches / cohérence."
+        ),
+    },
+    "composer.live": {
+        LANG_EN: "Live video",
+        LANG_ZH: "实时视频",
+        LANG_ES: "Video en vivo",
+        LANG_FR: "Vidéo en direct",
+    },
+    "composer.live.hint": {
+        LANG_EN: "Stream your camera as a live input modality.",
+        LANG_ZH: "把摄像头作为实时输入模态接入。",
+        LANG_ES: "Transmite tu cámara como modalidad de entrada en vivo.",
+        LANG_FR: "Diffusez votre caméra comme modalité d'entrée en direct.",
+    },
+    "composer.live.panel": {
+        LANG_EN: "Live camera — continuous perception",
+        LANG_ZH: "实时摄像头 —— 连续感知",
+        LANG_ES: "Cámara en vivo — percepción continua",
+        LANG_FR: "Caméra en direct — perception continue",
+    },
+    "composer.lens": {
+        LANG_EN: "玄学 lens",
+        LANG_ZH: "玄学透镜",
+        LANG_ES: "Lente 玄学",
+        LANG_FR: "Lentille 玄学",
+    },
+    "composer.lens.hint": {
+        LANG_EN: (
+            "An optional traditional-prior lens on the same prediction. "
+            "Off by default — the substance is the world model."
+        ),
+        LANG_ZH: (
+            "对同一预测的可选传统先验透镜。默认关闭 —— 实质是世界模型。"
+        ),
+        LANG_ES: (
+            "Una lente opcional de prior tradicional sobre la misma "
+            "predicción. Desactivada por defecto."
+        ),
+        LANG_FR: (
+            "Une lentille optionnelle de prior traditionnel sur la même "
+            "prédiction. Désactivée par défaut."
+        ),
+    },
+    # -----  History tree (user-owned categories + labels)  -----
+    "history.manage": {
+        LANG_EN: "Manage categories",
+        LANG_ZH: "管理分类",
+        LANG_ES: "Gestionar categorías",
+        LANG_FR: "Gérer les catégories",
+    },
+    "history.new_category": {
+        LANG_EN: "New category name",
+        LANG_ZH: "新分类名称",
+        LANG_ES: "Nombre de nueva categoría",
+        LANG_FR: "Nom de la nouvelle catégorie",
+    },
+    "history.new_category.ph": {
+        LANG_EN: "e.g. Career, Investing, Health",
+        LANG_ZH: "例如：职业、投资、健康",
+        LANG_ES: "p. ej. Carrera, Inversión, Salud",
+        LANG_FR: "ex. Carrière, Investissement, Santé",
+    },
+    "history.create_category": {
+        LANG_EN: "Create category",
+        LANG_ZH: "创建分类",
+        LANG_ES: "Crear categoría",
+        LANG_FR: "Créer la catégorie",
+    },
+    "history.category_name": {
+        LANG_EN: "Category name",
+        LANG_ZH: "分类名称",
+        LANG_ES: "Nombre de categoría",
+        LANG_FR: "Nom de la catégorie",
+    },
+    "history.delete_category": {
+        LANG_EN: "Delete this category (predictions stay, uncategorized)",
+        LANG_ZH: "删除此分类（预测保留，归为未分类）",
+        LANG_ES: "Eliminar esta categoría (las predicciones quedan sin categoría)",
+        LANG_FR: "Supprimer cette catégorie (les prédictions restent, non classées)",
+    },
+    "history.filter_by_label": {
+        LANG_EN: "Filter by label",
+        LANG_ZH: "按标签筛选",
+        LANG_ES: "Filtrar por etiqueta",
+        LANG_FR: "Filtrer par étiquette",
+    },
+    "history.all_labels": {
+        LANG_EN: "All predictions",
+        LANG_ZH: "全部预测",
+        LANG_ES: "Todas las predicciones",
+        LANG_FR: "Toutes les prédictions",
+    },
+    "history.no_label_match": {
+        LANG_EN: "No predictions carry that label.",
+        LANG_ZH: "没有预测带有该标签。",
+        LANG_ES: "Ninguna predicción tiene esa etiqueta.",
+        LANG_FR: "Aucune prédiction ne porte cette étiquette.",
+    },
+    "history.uncategorized": {
+        LANG_EN: "Uncategorized",
+        LANG_ZH: "未分类",
+        LANG_ES: "Sin categoría",
+        LANG_FR: "Non classé",
+    },
+    # -----  Prediction organizer (category + labels on a prediction)  --
+    "organizer.title": {
+        LANG_EN: "Organize · category & labels",
+        LANG_ZH: "整理 · 分类与标签",
+        LANG_ES: "Organizar · categoría y etiquetas",
+        LANG_FR: "Organiser · catégorie et étiquettes",
+    },
+    "organizer.category": {
+        LANG_EN: "Category",
+        LANG_ZH: "分类",
+        LANG_ES: "Categoría",
+        LANG_FR: "Catégorie",
+    },
+    "organizer.uncategorized": {
+        LANG_EN: "— Uncategorized —",
+        LANG_ZH: "— 未分类 —",
+        LANG_ES: "— Sin categoría —",
+        LANG_FR: "— Non classé —",
+    },
+    "organizer.no_categories": {
+        LANG_EN: "Create categories in the sidebar's Manage categories panel.",
+        LANG_ZH: "在侧边栏的「管理分类」面板中创建分类。",
+        LANG_ES: "Crea categorías en el panel Gestionar categorías de la barra lateral.",
+        LANG_FR: "Créez des catégories dans le panneau Gérer les catégories.",
+    },
+    "organizer.labels": {
+        LANG_EN: "Labels",
+        LANG_ZH: "标签",
+        LANG_ES: "Etiquetas",
+        LANG_FR: "Étiquettes",
+    },
+    "organizer.no_labels": {
+        LANG_EN: "No labels yet. Add one below.",
+        LANG_ZH: "还没有标签。在下方添加。",
+        LANG_ES: "Aún no hay etiquetas. Añade una abajo.",
+        LANG_FR: "Pas encore d'étiquettes. Ajoutez-en une ci-dessous.",
+    },
+    "organizer.remove_label": {
+        LANG_EN: "Remove this label",
+        LANG_ZH: "移除此标签",
+        LANG_ES: "Quitar esta etiqueta",
+        LANG_FR: "Retirer cette étiquette",
+    },
+    "organizer.add_label": {
+        LANG_EN: "Add a label",
+        LANG_ZH: "添加标签",
+        LANG_ES: "Añadir una etiqueta",
+        LANG_FR: "Ajouter une étiquette",
+    },
+    "organizer.add_label.ph": {
+        LANG_EN: "e.g. urgent, revisit-Q3, high-stakes",
+        LANG_ZH: "例如：紧急、Q3复盘、高风险",
+        LANG_ES: "p. ej. urgente, revisar-T3, alto-riesgo",
+        LANG_FR: "ex. urgent, revoir-T3, enjeux-élevés",
+    },
+    "organizer.add_label_btn": {
+        LANG_EN: "Add label",
+        LANG_ZH: "添加",
+        LANG_ES: "Añadir etiqueta",
+        LANG_FR: "Ajouter l'étiquette",
+    },
     # -----  New prediction page  -----
     "new.hero.title": {
         LANG_EN: "A decision, calibrated.",
@@ -178,6 +499,71 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_ZH: "30 秒读懂用法",
         LANG_ES: "Cómo funciona · 30 segundos",
         LANG_FR: "Comment ça marche · 30 secondes",
+    },
+    "new.howto.body": {
+        LANG_EN: (
+            "1. **Compose.** Describe a decision in the scenario fields, "
+            "or attach a video / toggle live camera with the **+** bar "
+            "above. Optionally turn on the 玄学 lens.\n"
+            "2. **Run.** The system produces 6–8 future branches with "
+            "priors, a wishful and a worst-case anchor, off-diagonal "
+            "correlations, and a recommended-evidence list "
+            "(ΔP in percentage points).\n"
+            "3. **Come back later.** Every prediction appears in the "
+            "**History** rail on the left. Click one to reopen it and "
+            "score how each branch actually materialized — the system "
+            "computes your calibration (Brier / log-loss). Organize the "
+            "rail into your own categories and labels.\n\n"
+            "Not fortune-telling, not medical / legal / financial "
+            "advice. No external API required — runs end-to-end locally "
+            "when self-hosted with Ollama."
+        ),
+        LANG_ZH: (
+            "1. **组合输入。** 在情景字段里描述一个决定，或用上方的 "
+            "**+** 工具栏附加视频 / 开启实时摄像头。可选地打开玄学透镜。\n"
+            "2. **运行。** 系统会生成 6–8 个带先验的未来分支、一个理想"
+            "锚点和一个最坏锚点、非对角相关性，以及一份推荐证据清单"
+            "（ΔP 以百分点计）。\n"
+            "3. **稍后回来。** 每份预测都会出现在左侧的**历史**栏。"
+            "点击任意一份即可重新打开并为各分支实际兑现程度打分——"
+            "系统会算出你的校准度（Brier / 对数损失）。你还可以把历史栏"
+            "整理成自己的分类和标签。\n\n"
+            "这不是算命，也不构成医疗 / 法律 / 金融建议。无需外部 API——"
+            "本地用 Ollama 自托管即可端到端运行。"
+        ),
+        LANG_ES: (
+            "1. **Componer.** Describe una decisión en los campos del "
+            "escenario, o adjunta un video / activa la cámara en vivo "
+            "con la barra **+** de arriba. Opcionalmente activa la "
+            "lente 玄学.\n"
+            "2. **Ejecutar.** El sistema produce 6–8 ramas futuras con "
+            "priors, un ancla optimista y otra pesimista, correlaciones "
+            "fuera de la diagonal y una lista de evidencia recomendada "
+            "(ΔP en puntos porcentuales).\n"
+            "3. **Vuelve más tarde.** Cada predicción aparece en el "
+            "panel **Historial** a la izquierda. Haz clic para reabrirla "
+            "y puntuar cómo se materializó cada rama. Organiza el panel "
+            "en tus propias categorías y etiquetas.\n\n"
+            "No es adivinación, ni asesoramiento médico / legal / "
+            "financiero. No requiere API externa."
+        ),
+        LANG_FR: (
+            "1. **Composer.** Décrivez une décision dans les champs du "
+            "scénario, ou joignez une vidéo / activez la caméra en "
+            "direct avec la barre **+** ci-dessus. Activez "
+            "éventuellement la lentille 玄学.\n"
+            "2. **Lancer.** Le système produit 6–8 branches futures avec "
+            "priors, une ancre optimiste et une pessimiste, des "
+            "corrélations hors-diagonale et une liste de preuves "
+            "recommandées (ΔP en points de pourcentage).\n"
+            "3. **Revenez plus tard.** Chaque prédiction apparaît dans "
+            "le panneau **Historique** à gauche. Cliquez pour la "
+            "rouvrir et noter comment chaque branche s'est concrétisée. "
+            "Organisez le panneau en vos propres catégories et "
+            "étiquettes.\n\n"
+            "Ni divination, ni conseil médical / juridique / financier. "
+            "Aucune API externe requise."
+        ),
     },
     "new.owner_bias": {
         LANG_EN: "I am the project owner / this is a self-test",
@@ -290,30 +676,32 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
     "trad.hero.subtitle": {
         LANG_EN: (
             "Read the same prediction through a time-honored lens — "
-            "八字, 易经, Tarot, or a Western natal chart. Each "
-            "is an explicitly weighted prior, never a verdict; the "
-            "model's own number is always shown beside the combined "
-            "one. Pick the system, pick the weight, watch it move."
+            "八字, 占星, 易经, and Tarot all together, mapped onto one "
+            "Nye Clock solar system. Each system is an explicitly "
+            "weighted prior, never a verdict; the model's own number is "
+            "always shown beside the 玄学-consensus one. Adjust the "
+            "weight, watch the instrument move."
         ),
         LANG_ZH: (
-            "用一种古法视角重读同一份预测——八字、易经、"
-            "塔罗、或西方星盘。每一种都只是一个可调权重的先验，绝非"
-            "定论；模型自己的数字始终与融合后的数字并列展示。"
-            "选体系、调权重，看仪器随之转动。"
+            "用一种古法视角重读同一份预测——八字、占星、易经、"
+            "塔罗一并纳入，映射到同一台 Nye Clock 太阳系仪器上。"
+            "每一种体系都只是一个可调权重的先验，绝非定论；模型自己的"
+            "数字始终与玄学共识数字并列展示。调权重，看仪器随之转动。"
         ),
         LANG_ES: (
             "Lee la misma predicción a través de una lente tradicional "
-            "— 八字, 易经, Tarot o una carta natal occidental. "
-            "Cada una es un prior con peso explícito, nunca un "
-            "veredicto; el número del modelo siempre se muestra junto "
-            "al combinado."
+            "— 八字, 占星, 易经 y Tarot juntos, mapeados en un sistema "
+            "solar Nye Clock. Cada sistema es un prior con peso "
+            "explícito, nunca un veredicto; el número del modelo "
+            "siempre se muestra junto al de consenso 玄学."
         ),
         LANG_FR: (
             "Lisez la même prédiction à travers une lentille "
-            "traditionnelle — 八字, 易经, Tarot ou un thème "
-            "astral occidental. Chacune est un prior pondéré "
-            "explicitement, jamais un verdict ; le chiffre du modèle "
-            "est toujours affiché à côté du combiné."
+            "traditionnelle — 八字, 占星, 易经 et Tarot réunis, "
+            "projetés sur un système solaire Nye Clock. Chaque système "
+            "est un prior pondéré explicitement, jamais un verdict ; le "
+            "chiffre du modèle est toujours affiché à côté du consensus "
+            "玄学."
         ),
     },
     "trad.birth.section": {

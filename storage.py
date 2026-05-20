@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 
-SCHEMA_VERSION = 5  # v4.16 playbook adopt: + sean_ellis + effort_test columns
+SCHEMA_VERSION = 6  # v4.18 Stage 4: + categories + prediction_labels tables
 
 DEFAULT_DB_PATH = Path(
     os.environ.get(
@@ -58,6 +58,25 @@ class PredictionRecord:
     joint_offdiag: dict[str, Any]  # off-diagonal joint hypotheses
     notes: str = ""
     is_owner_bias_flagged: bool = False
+    # v4.18 Stage 4 — the user-defined category (folder) this prediction
+    # sits in. None = uncategorized. Read-only on the record; mutated
+    # via assign_prediction_category().
+    category_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Category:
+    """v4.18 Stage 4 — a user-defined history category (folder).
+
+    The app imposes no fixed taxonomy. The user creates / renames /
+    deletes their own categories, exactly like Notion folders or a
+    file manager. Scoped per user_id.
+    """
+
+    category_id: str
+    user_id: str
+    name: str
+    created_at: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -281,6 +300,55 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
             "ADD COLUMN effort_test_response TEXT DEFAULT ''"
         )
 
+    # v4.18 Stage 4 migration: user-organized history tree. The app
+    # imposes no fixed taxonomy — the user creates their own categories
+    # (folders) and labels (tags). Three pieces:
+    #   • categories       — user-defined folders, scoped per user_id.
+    #   • predictions.category_id — which folder a prediction sits in
+    #     (NULL = uncategorized). ON DELETE the category is set NULL so
+    #     deleting a folder never destroys predictions.
+    #   • prediction_labels — free-form tags; a prediction may carry
+    #     several. Composite-unique on (prediction_id, label) so the
+    #     same tag can't be added twice.
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS categories (
+            category_id   TEXT PRIMARY KEY,
+            user_id       TEXT NOT NULL,
+            name          TEXT NOT NULL,
+            created_at    REAL NOT NULL
+        )
+        """
+    )
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_categories_user "
+        "ON categories(user_id)"
+    )
+    if not _column_exists(conn, "predictions", "category_id"):
+        cur.execute(
+            "ALTER TABLE predictions ADD COLUMN category_id TEXT DEFAULT NULL"
+        )
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS prediction_labels (
+            label_id        TEXT PRIMARY KEY,
+            prediction_id   TEXT NOT NULL,
+            label           TEXT NOT NULL,
+            created_at      REAL NOT NULL,
+            UNIQUE (prediction_id, label),
+            FOREIGN KEY (prediction_id) REFERENCES predictions(prediction_id)
+        )
+        """
+    )
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_pred_labels_prediction "
+        "ON prediction_labels(prediction_id)"
+    )
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_pred_labels_label "
+        "ON prediction_labels(label)"
+    )
+
     cur.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     conn.commit()
 
@@ -308,8 +376,8 @@ def save_prediction(rec: PredictionRecord, db_path: Path | None = None) -> None:
                 prediction_id, user_id, scenario, created_at,
                 user_input_json, belief_program_json,
                 wavefunction_json, joint_offdiag_json, notes,
-                is_owner_bias_flagged
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                is_owner_bias_flagged, category_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 rec.prediction_id,
@@ -322,6 +390,7 @@ def save_prediction(rec: PredictionRecord, db_path: Path | None = None) -> None:
                 json.dumps(rec.joint_offdiag, ensure_ascii=False),
                 rec.notes,
                 1 if rec.is_owner_bias_flagged else 0,
+                rec.category_id,
             ),
         )
         conn.commit()
@@ -366,13 +435,18 @@ def list_user_predictions(
             (user_id,),
         ).fetchall()
         for r in rows:
-            # is_owner_bias_flagged may be missing for old rows from a
-            # pre-migration DB (defensive read).
+            # is_owner_bias_flagged / category_id may be missing for old
+            # rows from a pre-migration DB (defensive read).
             owner_flag = 0
             try:
                 owner_flag = int(r["is_owner_bias_flagged"] or 0)
             except (IndexError, KeyError):
                 owner_flag = 0
+            category_id = None
+            try:
+                category_id = r["category_id"]
+            except (IndexError, KeyError):
+                category_id = None
             out.append(
                 PredictionRecord(
                     prediction_id=r["prediction_id"],
@@ -385,6 +459,7 @@ def list_user_predictions(
                     joint_offdiag=json.loads(r["joint_offdiag_json"]),
                     notes=r["notes"] or "",
                     is_owner_bias_flagged=bool(owner_flag),
+                    category_id=category_id,
                 )
             )
     return out
@@ -643,6 +718,195 @@ def new_drilldown_id() -> str:
 
 def now_unix() -> float:
     return time.time()
+
+
+def new_category_id() -> str:
+    return str(uuid.uuid4())
+
+
+def new_label_id() -> str:
+    return str(uuid.uuid4())
+
+
+# ============================================================
+# v4.18 Stage 4 — user-organized history tree (categories + labels)
+#
+# The app imposes no fixed taxonomy. These functions back a Notion-
+# style sidebar tree the user owns: create / rename / delete their
+# own categories, assign predictions to them, and add / remove
+# free-form labels on a prediction.
+# ============================================================
+
+
+def create_category(
+    user_id: str, name: str, db_path: Path | None = None,
+) -> Category:
+    """Create a new user-defined category (folder)."""
+    cat = Category(
+        category_id=new_category_id(),
+        user_id=user_id,
+        name=name.strip(),
+        created_at=now_unix(),
+    )
+    with db_connect(db_path) as conn:
+        conn.execute(
+            "INSERT INTO categories (category_id, user_id, name, "
+            "created_at) VALUES (?, ?, ?, ?)",
+            (cat.category_id, cat.user_id, cat.name, cat.created_at),
+        )
+        conn.commit()
+    return cat
+
+
+def list_categories(
+    user_id: str, db_path: Path | None = None,
+) -> list[Category]:
+    """All categories owned by a user, oldest-first (stable order)."""
+    out: list[Category] = []
+    with db_connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT * FROM categories WHERE user_id = ? "
+            "ORDER BY created_at ASC",
+            (user_id,),
+        ).fetchall()
+        for r in rows:
+            out.append(
+                Category(
+                    category_id=r["category_id"],
+                    user_id=r["user_id"],
+                    name=r["name"],
+                    created_at=r["created_at"],
+                )
+            )
+    return out
+
+
+def rename_category(
+    category_id: str, new_name: str, db_path: Path | None = None,
+) -> None:
+    """Rename a category in place."""
+    with db_connect(db_path) as conn:
+        conn.execute(
+            "UPDATE categories SET name = ? WHERE category_id = ?",
+            (new_name.strip(), category_id),
+        )
+        conn.commit()
+
+
+def delete_category(
+    category_id: str, db_path: Path | None = None,
+) -> None:
+    """Delete a category. Predictions in it are NOT destroyed — their
+    category_id is reset to NULL (back to uncategorized)."""
+    with db_connect(db_path) as conn:
+        conn.execute(
+            "UPDATE predictions SET category_id = NULL "
+            "WHERE category_id = ?",
+            (category_id,),
+        )
+        conn.execute(
+            "DELETE FROM categories WHERE category_id = ?",
+            (category_id,),
+        )
+        conn.commit()
+
+
+def assign_prediction_category(
+    prediction_id: str,
+    category_id: str | None,
+    db_path: Path | None = None,
+) -> None:
+    """Move a prediction into a category (or out — pass None)."""
+    with db_connect(db_path) as conn:
+        conn.execute(
+            "UPDATE predictions SET category_id = ? "
+            "WHERE prediction_id = ?",
+            (category_id, prediction_id),
+        )
+        conn.commit()
+
+
+def add_label(
+    prediction_id: str, label: str, db_path: Path | None = None,
+) -> None:
+    """Add a free-form label to a prediction. Idempotent — adding the
+    same label twice is a no-op (composite-unique constraint)."""
+    clean = label.strip()
+    if not clean:
+        return
+    with db_connect(db_path) as conn:
+        conn.execute(
+            "INSERT INTO prediction_labels (label_id, prediction_id, "
+            "label, created_at) VALUES (?, ?, ?, ?) "
+            "ON CONFLICT (prediction_id, label) DO NOTHING",
+            (new_label_id(), prediction_id, clean, now_unix()),
+        )
+        conn.commit()
+
+
+def remove_label(
+    prediction_id: str, label: str, db_path: Path | None = None,
+) -> None:
+    """Remove a label from a prediction."""
+    with db_connect(db_path) as conn:
+        conn.execute(
+            "DELETE FROM prediction_labels "
+            "WHERE prediction_id = ? AND label = ?",
+            (prediction_id, label.strip()),
+        )
+        conn.commit()
+
+
+def list_labels(
+    prediction_id: str, db_path: Path | None = None,
+) -> list[str]:
+    """All labels on one prediction, alphabetical."""
+    with db_connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT label FROM prediction_labels "
+            "WHERE prediction_id = ? ORDER BY label ASC",
+            (prediction_id,),
+        ).fetchall()
+        return [r["label"] for r in rows]
+
+
+def list_user_labels(
+    user_id: str, db_path: Path | None = None,
+) -> list[str]:
+    """Every distinct label the user has ever used, alphabetical.
+
+    Joins prediction_labels to predictions so a label is only listed
+    if it sits on one of this user's predictions.
+    """
+    with db_connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT DISTINCT pl.label FROM prediction_labels pl "
+            "JOIN predictions p ON p.prediction_id = pl.prediction_id "
+            "WHERE p.user_id = ? ORDER BY pl.label ASC",
+            (user_id,),
+        ).fetchall()
+        return [r["label"] for r in rows]
+
+
+def labels_for_predictions(
+    prediction_ids: list[str], db_path: Path | None = None,
+) -> dict[str, list[str]]:
+    """Batch label lookup — {prediction_id: [labels]} for many
+    predictions at once (one query for the whole history rail)."""
+    out: dict[str, list[str]] = {pid: [] for pid in prediction_ids}
+    if not prediction_ids:
+        return out
+    placeholders = ",".join("?" for _ in prediction_ids)
+    with db_connect(db_path) as conn:
+        rows = conn.execute(
+            f"SELECT prediction_id, label FROM prediction_labels "
+            f"WHERE prediction_id IN ({placeholders}) "
+            f"ORDER BY label ASC",
+            tuple(prediction_ids),
+        ).fetchall()
+        for r in rows:
+            out.setdefault(r["prediction_id"], []).append(r["label"])
+    return out
 
 
 # ============================================================

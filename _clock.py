@@ -1219,7 +1219,556 @@ def _render_astro(reading: LensReading,
 
 
 # ======================================================================
-# Instrument 6 — the unified celestial astrolabe (八字 ⊕ 占星)
+# Instrument 7 — the Nye Clock solar system (八字 ⊕ 占星 on a Sun-Earth-
+# Moon orbital). A faithful static-SVG recreation of the founder's real
+# Nye Clock app (nye-clock-backdrop.html): deep-space cosmic backdrop,
+# a 20°-oblique elliptical Earth orbit, the Sun at the orbit focus, the
+# Earth riding the orbit with its own Moon. No WebGL — pure static SVG
+# so it embeds verbatim via st.markdown(unsafe_allow_html=True).
+#
+# 玄学 data mapping (legible, not arbitrary):
+#   • Sun at centre       — the 占星 Sun sign drives its lit-sphere hue
+#                           and the engraved core readout.
+#   • Earth-orbit ring    — the 八字 sexagenary movement: a 10-segment
+#                           gold 天干 stem rail + a 12-segment blue
+#                           地支 branch rail; the active stem/branch of
+#                           the day pillar are lit.
+#   • Earth's position    — placed at the 占星 Sun-sign ecliptic angle.
+#   • Moon                — placed at the 占星 Moon-sign angle on its
+#                           own small orbit around the Earth.
+#   • Four pillar jewels  — the 年/月/日/时 pillars ride the orbit ring.
+# ======================================================================
+
+# Nye Clock canvas — matches nye-clock-backdrop.html exactly.
+_NYE_VB_W = 1000
+_NYE_VB_H = 920
+_NYE_CX = 500.0
+_NYE_CY = 455.0
+_NYE_OBLIQUE_DEG = 20.0
+# Elliptical Earth orbit + its stem/branch rails (Nye Clock radii).
+_NYE_EARTH_RX = 330.0
+_NYE_EARTH_RY = 196.0
+_NYE_STEM_RX = 352.0
+_NYE_STEM_RY = 208.0
+_NYE_BR_RX = 306.0
+_NYE_BR_RY = 182.0
+_NYE_MESH_OUT_RX = 364.0
+_NYE_MESH_OUT_RY = 214.0
+_NYE_MESH_IN_RX = 296.0
+_NYE_MESH_IN_RY = 174.0
+# Moon orbit around the Earth.
+_NYE_MOON_RX = 61.0
+_NYE_MOON_RY = 37.0
+
+
+def _nye_ell(rx: float, ry: float, deg: float) -> tuple[float, float]:
+    """Point on an ellipse centred at the origin (the oblique frame
+    is applied by an outer <g rotate>). deg measured the SVG way."""
+    r = math.radians(deg)
+    return rx * math.cos(r), ry * math.sin(r)
+
+
+def _nye_ell_arc(rx: float, ry: float, a0: float, a1: float) -> str:
+    """Open elliptical arc path between two angles (degrees)."""
+    p0 = _nye_ell(rx, ry, a0)
+    p1 = _nye_ell(rx, ry, a1)
+    delta = a1 - a0
+    while delta <= 0:
+        delta += 360.0
+    large = 1 if delta > 180.0 else 0
+    return (
+        f"M {p0[0]:.2f} {p0[1]:.2f} "
+        f"A {rx:.2f} {ry:.2f} 0 {large} 1 {p1[0]:.2f} {p1[1]:.2f}"
+    )
+
+
+def _nye_defs() -> str:
+    """Gradient + filter defs — copied faithfully from the Nye Clock's
+    helio instrument (sun core/corona/halo, earth ocean/land/atmo/limb,
+    moon surface/shade, the cosmos background + vignette)."""
+    return (
+        '<defs>'
+        # cosmos backdrop + vignette
+        '<radialGradient id="nye-cosmos-bg" cx="50%" cy="42%" r="72%">'
+        '<stop offset="0%" stop-color="rgba(42,72,140,0.62)"/>'
+        '<stop offset="38%" stop-color="rgba(10,18,48,0.88)"/>'
+        '<stop offset="100%" stop-color="rgba(2,4,14,1)"/>'
+        '</radialGradient>'
+        '<radialGradient id="nye-vignette" cx="50%" cy="46%" r="78%">'
+        '<stop offset="0%" stop-color="rgba(4,8,20,0)"/>'
+        '<stop offset="48%" stop-color="rgba(2,6,18,0.32)"/>'
+        '<stop offset="100%" stop-color="rgba(0,1,8,0.94)"/>'
+        '</radialGradient>'
+        # soft nebula glows — deep-space depth (Nye Clock cosmic bloom)
+        '<radialGradient id="nye-nebula-a" cx="50%" cy="50%" r="50%">'
+        '<stop offset="0%" stop-color="rgba(126,88,255,0.16)"/>'
+        '<stop offset="70%" stop-color="rgba(126,88,255,0)"/>'
+        '</radialGradient>'
+        '<radialGradient id="nye-nebula-b" cx="50%" cy="50%" r="50%">'
+        '<stop offset="0%" stop-color="rgba(77,168,255,0.14)"/>'
+        '<stop offset="72%" stop-color="rgba(77,168,255,0)"/>'
+        '</radialGradient>'
+        # sun
+        '<radialGradient id="nye-sun-core" cx="32%" cy="30%" r="55%">'
+        '<stop offset="0%" stop-color="#ffffff"/>'
+        '<stop offset="14%" stop-color="#fff8e8"/>'
+        '<stop offset="32%" stop-color="#ffe4a8"/>'
+        '<stop offset="55%" stop-color="#ff9c40"/>'
+        '<stop offset="78%" stop-color="#d85818"/>'
+        '<stop offset="100%" stop-color="rgba(90,28,6,0)"/>'
+        '</radialGradient>'
+        '<radialGradient id="nye-sun-inner" cx="45%" cy="42%" r="48%">'
+        '<stop offset="0%" stop-color="#fffef8"/>'
+        '<stop offset="40%" stop-color="#ffd888"/>'
+        '<stop offset="100%" stop-color="rgba(200,80,20,0.15)"/>'
+        '</radialGradient>'
+        '<radialGradient id="nye-sun-corona" cx="50%" cy="50%" r="50%">'
+        '<stop offset="0%" stop-color="rgba(255,248,220,0.88)"/>'
+        '<stop offset="28%" stop-color="rgba(255,190,100,0.45)"/>'
+        '<stop offset="62%" stop-color="rgba(255,120,50,0.18)"/>'
+        '<stop offset="100%" stop-color="rgba(255,80,30,0)"/>'
+        '</radialGradient>'
+        '<radialGradient id="nye-sun-halo" cx="50%" cy="50%" r="50%">'
+        '<stop offset="0%" stop-color="rgba(255,230,180,0.35)"/>'
+        '<stop offset="50%" stop-color="rgba(255,140,60,0.12)"/>'
+        '<stop offset="100%" stop-color="rgba(255,100,40,0)"/>'
+        '</radialGradient>'
+        # earth
+        '<radialGradient id="nye-earth-ocean" cx="34%" cy="28%" r="70%">'
+        '<stop offset="0%" stop-color="#b8e4ff"/>'
+        '<stop offset="18%" stop-color="#3a8ec4"/>'
+        '<stop offset="40%" stop-color="#145a82"/>'
+        '<stop offset="62%" stop-color="#0a3550"/>'
+        '<stop offset="100%" stop-color="#020a14"/>'
+        '</radialGradient>'
+        '<radialGradient id="nye-earth-land" cx="58%" cy="36%" r="52%">'
+        '<stop offset="0%" stop-color="rgba(110,175,108,0.92)"/>'
+        '<stop offset="42%" stop-color="rgba(32,88,52,0.58)"/>'
+        '<stop offset="100%" stop-color="rgba(0,0,0,0)"/>'
+        '</radialGradient>'
+        '<radialGradient id="nye-earth-atmo" cx="50%" cy="26%" r="82%">'
+        '<stop offset="0%" stop-color="rgba(200,240,255,0.55)"/>'
+        '<stop offset="35%" stop-color="rgba(90,170,230,0.22)"/>'
+        '<stop offset="100%" stop-color="rgba(0,0,0,0)"/>'
+        '</radialGradient>'
+        '<linearGradient id="nye-earth-term" x1="0%" y1="0%" '
+        'x2="100%" y2="0%">'
+        '<stop offset="0%" stop-color="rgba(0,0,0,0.82)"/>'
+        '<stop offset="38%" stop-color="rgba(0,0,0,0.06)"/>'
+        '<stop offset="62%" stop-color="rgba(255,255,255,0.14)"/>'
+        '<stop offset="100%" stop-color="rgba(255,255,255,0.38)"/>'
+        '</linearGradient>'
+        '<radialGradient id="nye-earth-limb" cx="72%" cy="32%" r="55%">'
+        '<stop offset="0%" stop-color="rgba(255,255,255,0.5)"/>'
+        '<stop offset="45%" stop-color="rgba(180,220,255,0.12)"/>'
+        '<stop offset="100%" stop-color="rgba(0,0,0,0)"/>'
+        '</radialGradient>'
+        # moon
+        '<radialGradient id="nye-moon-surf" cx="36%" cy="30%" r="64%">'
+        '<stop offset="0%" stop-color="#f8fafc"/>'
+        '<stop offset="38%" stop-color="#c4ccd8"/>'
+        '<stop offset="100%" stop-color="#4a5468"/>'
+        '</radialGradient>'
+        '<radialGradient id="nye-moon-shade" cx="68%" cy="62%" r="58%">'
+        '<stop offset="0%" stop-color="rgba(0,0,0,0)"/>'
+        '<stop offset="55%" stop-color="rgba(0,0,0,0.22)"/>'
+        '<stop offset="100%" stop-color="rgba(0,0,0,0.45)"/>'
+        '</radialGradient>'
+        # orbit rails
+        '<linearGradient id="nye-stem-rail" x1="0%" y1="0%" '
+        'x2="100%" y2="100%">'
+        '<stop offset="0%" stop-color="rgba(255,218,150,0.98)"/>'
+        '<stop offset="100%" stop-color="rgba(210,110,55,0.5)"/>'
+        '</linearGradient>'
+        '<linearGradient id="nye-branch-rail" x1="0%" y1="0%" '
+        'x2="0%" y2="100%">'
+        '<stop offset="0%" stop-color="rgba(150,220,255,0.92)"/>'
+        '<stop offset="100%" stop-color="rgba(55,120,205,0.45)"/>'
+        '</linearGradient>'
+        # filters
+        '<filter id="nye-soft-glow" x="-50%" y="-50%" '
+        'width="200%" height="200%">'
+        '<feGaussianBlur in="SourceGraphic" stdDeviation="3.2" '
+        'result="b"/>'
+        '<feMerge><feMergeNode in="b"/>'
+        '<feMergeNode in="SourceGraphic"/></feMerge>'
+        '</filter>'
+        '<filter id="nye-sun-bloom" x="-80%" y="-80%" '
+        'width="260%" height="260%">'
+        '<feGaussianBlur in="SourceGraphic" stdDeviation="14" '
+        'result="b"/>'
+        '<feMerge><feMergeNode in="b"/>'
+        '<feMergeNode in="SourceGraphic"/></feMerge>'
+        '</filter>'
+        '<filter id="nye-sun-tight" x="-40%" y="-40%" '
+        'width="180%" height="180%">'
+        '<feGaussianBlur in="SourceGraphic" stdDeviation="4.5" '
+        'result="b"/>'
+        '<feMerge><feMergeNode in="b"/>'
+        '<feMergeNode in="SourceGraphic"/></feMerge>'
+        '</filter>'
+        '</defs>'
+    )
+
+
+def _nye_cosmos() -> str:
+    """Deep-space backdrop — radial nebula fill + a deterministic star
+    field + an outer vignette. Mirrors the Nye Clock's helioLayerCosmos
+    (168 stars on a golden-angle spiral)."""
+    out: list[str] = [
+        f'<rect x="0" y="0" width="{_NYE_VB_W}" height="{_NYE_VB_H}" '
+        f'fill="url(#nye-cosmos-bg)"></rect>'
+    ]
+    # two off-centre nebula blobs for deep-space depth
+    out.append(
+        f'<ellipse cx="{_NYE_VB_W * 0.22:.0f}" '
+        f'cy="{_NYE_VB_H * 0.26:.0f}" rx="320" ry="250" '
+        f'fill="url(#nye-nebula-a)"></ellipse>'
+        f'<ellipse cx="{_NYE_VB_W * 0.78:.0f}" '
+        f'cy="{_NYE_VB_H * 0.74:.0f}" rx="300" ry="240" '
+        f'fill="url(#nye-nebula-b)"></ellipse>'
+    )
+    for s in range(168):
+        a = (s * 137.5) % 360.0
+        rr = 48.0 + (s * 79) % 420
+        t = math.radians(a - 90.0)
+        x = _NYE_CX + rr * math.cos(t)
+        y = _NYE_CY + rr * math.sin(t)
+        op = 0.07 + (s % 8) * 0.02
+        rad = 0.32 + (s % 6) * 0.11
+        out.append(
+            f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{rad:.2f}" '
+            f'fill="rgba(255,255,255,{op:.3f})"></circle>'
+        )
+    out.append(
+        f'<rect x="0" y="0" width="{_NYE_VB_W}" height="{_NYE_VB_H}" '
+        f'fill="url(#nye-vignette)" style="pointer-events:none"></rect>'
+    )
+    return "".join(out)
+
+
+def _nye_sun(sun_sign_color: str) -> str:
+    """The Sun at the orbit focus — layered halo / corona / inner /
+    core lit sphere, faithful to the Nye Clock helioLayerSun. The
+    占星 Sun-sign hue tints the outermost engraved ring."""
+    return (
+        '<g>'
+        '<circle cx="0" cy="0" r="168" fill="url(#nye-sun-halo)" '
+        'opacity="0.4" filter="url(#nye-sun-bloom)"></circle>'
+        '<circle cx="0" cy="0" r="128" fill="url(#nye-sun-corona)" '
+        'opacity="0.5" filter="url(#nye-sun-bloom)"></circle>'
+        '<circle cx="0" cy="0" r="92" fill="url(#nye-sun-corona)" '
+        'opacity="0.38"></circle>'
+        '<circle cx="0" cy="0" r="74" fill="url(#nye-sun-inner)" '
+        'filter="url(#nye-sun-tight)"></circle>'
+        '<circle cx="0" cy="0" r="54" fill="url(#nye-sun-core)" '
+        'filter="url(#nye-soft-glow)"></circle>'
+        '<circle cx="0" cy="0" r="56" fill="none" '
+        'stroke="rgba(255,252,235,0.42)" stroke-width="1.15"></circle>'
+        f'<circle cx="0" cy="0" r="48" fill="none" '
+        f'stroke="{sun_sign_color}" stroke-opacity="0.5" '
+        f'stroke-width="0.9"></circle>'
+        '<circle cx="0" cy="0" r="38" fill="rgba(255,255,255,0.08)" '
+        'stroke="rgba(255,240,200,0.18)" stroke-width="0.35"></circle>'
+        '</g>'
+    )
+
+
+def _nye_earth() -> str:
+    """The Earth globe — atmosphere, ocean, land masses, terminator,
+    limb highlight, cloud wisps. Faithful to the Nye Clock
+    helioEarthCluster. Drawn at the origin; the caller translates it
+    onto the orbit."""
+    return (
+        '<g>'
+        '<circle r="52" cx="0" cy="0" fill="url(#nye-earth-atmo)" '
+        'opacity="0.72"></circle>'
+        '<circle r="39" cx="0" cy="0" fill="url(#nye-earth-ocean)" '
+        'stroke="rgba(255,255,255,0.22)" stroke-width="0.62"></circle>'
+        '<circle r="39" cx="0" cy="0" fill="url(#nye-earth-land)" '
+        'opacity="0.9"></circle>'
+        '<path d="M-26,-10 C-12,-22 10,-20 22,-8 S32,10 16,22 '
+        'C6,28 -10,26 -22,14 S-32,-4 -26,-10Z" '
+        'fill="rgba(48,118,78,0.58)" opacity="0.72"></path>'
+        '<path d="M-10,8 C4,-6 20,-2 26,12 S14,30 -6,26 '
+        'S-22,16 -10,8Z" fill="rgba(40,102,62,0.52)" '
+        'opacity="0.68"></path>'
+        '<path d="M8,-18 C22,-14 28,-4 24,8 S8,14 -4,6 '
+        'S-2,-14 8,-18Z" fill="rgba(55,125,85,0.45)" '
+        'opacity="0.62"></path>'
+        '<circle r="39" cx="0" cy="0" fill="url(#nye-earth-term)" '
+        'opacity="0.46"></circle>'
+        '<circle r="39" cx="0" cy="0" fill="url(#nye-earth-limb)" '
+        'opacity="0.55"></circle>'
+        '<ellipse rx="14" ry="21" cx="-13" cy="-12" '
+        'fill="rgba(255,255,255,0.32)" opacity="0.88"></ellipse>'
+        '<path d="M-30,-5 Q-10,12 22,2" fill="none" '
+        'stroke="rgba(255,255,255,0.16)" stroke-width="0.58" '
+        'stroke-linecap="round" opacity="0.92"></path>'
+        '<path d="M-12,14 Q8,24 26,10" fill="none" '
+        'stroke="rgba(255,255,255,0.11)" stroke-width="0.42" '
+        'stroke-linecap="round"></path>'
+        '<circle r="40.5" cx="0" cy="0" fill="none" '
+        'stroke="rgba(120,200,255,0.18)" stroke-width="0.45" '
+        'opacity="0.85"></circle>'
+        '</g>'
+    )
+
+
+def _nye_moon(cx: float, cy: float) -> str:
+    """The Moon lit sphere — surface, shade, craters, glint. Faithful
+    to the Nye Clock orbHelioMoonNode."""
+    return (
+        f'<g transform="translate({cx:.2f},{cy:.2f})">'
+        '<circle r="11.2" cx="0" cy="0" fill="url(#nye-moon-surf)" '
+        'stroke="rgba(255,255,255,0.48)" stroke-width="0.48" '
+        'filter="url(#nye-soft-glow)"></circle>'
+        '<circle r="11.2" cx="0" cy="0" fill="url(#nye-moon-shade)" '
+        'opacity="0.85"></circle>'
+        '<ellipse cx="-3.2" cy="-2.8" rx="2.1" ry="1.6" '
+        'fill="rgba(0,0,0,0.14)"></ellipse>'
+        '<circle cx="3.5" cy="2.8" r="1.15" '
+        'fill="rgba(0,0,0,0.12)"></circle>'
+        '<circle cx="-2" cy="4" r="0.85" '
+        'fill="rgba(0,0,0,0.1)"></circle>'
+        '<ellipse cx="3" cy="-3" rx="1.4" ry="1" '
+        'fill="rgba(255,255,255,0.22)" opacity="0.9"></ellipse>'
+        '</g>'
+    )
+
+
+def _render_nye_solar_system(
+    reading_bazi: LensReading,
+    reading_astro: LensReading,
+    branch_probabilities: list[tuple[str, float, str]],
+    top_label: str, top_value: str,
+    bottom_label: str, bottom_value: str,
+    meta: str,
+) -> str:
+    """The Nye Clock solar-system 玄学 lens — Sun-Earth-Moon orbital.
+
+    Replaces the dense unified astrolabe (founder verdict on it:
+    "不知所云"). Faithfully recreates the founder's real Nye Clock app
+    as lightweight static SVG: a deep-space backdrop, a 20°-oblique
+    elliptical Earth orbit carrying the 八字 sexagenary rails, the Sun
+    at the focus, the Earth riding the orbit with its Moon.
+
+    `branch_probabilities` is accepted for call-site parity.
+    """
+    _ = branch_probabilities
+    bazi = reading_bazi.bazi
+    chart = reading_astro.natal
+
+    # --- 占星 angles: zodiac index (0-11) → ecliptic degrees ---
+    sun_idx = chart.sun if chart is not None else 0
+    moon_idx = chart.moon if chart is not None else 6
+    # Map the zodiac wheel onto the ellipse; -90 puts index 0 at top.
+    earth_deg = -90.0 + sun_idx * 30.0
+    moon_deg = -90.0 + moon_idx * 30.0
+    sun_color = (
+        ASTRO_ELEMENT_COLOR[ZODIAC[sun_idx].element]
+        if chart is not None else _GAL_GOLD
+    )
+
+    # --- 八字: the active stem / branch of the day pillar light up ---
+    day_stem_idx = bazi.day_pillar[0] if bazi is not None else 0
+    day_branch_idx = bazi.day_pillar[1] if bazi is not None else 0
+
+    body: list[str] = [
+        f'<svg viewBox="0 0 {_NYE_VB_W} {_NYE_VB_H}" width="100%" '
+        f'preserveAspectRatio="xMidYMid meet" style="display:block;" '
+        f'role="img" aria-label="Nye Clock solar system 玄学 lens">',
+        _nye_defs(),
+        _nye_cosmos(),
+    ]
+
+    # --- oblique frame: everything orbital tilts 20° like the Nye Clock
+    body.append(
+        f'<g transform="translate({_NYE_CX},{_NYE_CY}) '
+        f'rotate({_NYE_OBLIQUE_DEG})">'
+    )
+
+    # === Earth-orbit mesh — fine radial ticks between two ellipses ===
+    for k in range(60):
+        deg = -90.0 + k * 6.0
+        po = _nye_ell(_NYE_MESH_OUT_RX, _NYE_MESH_OUT_RY, deg)
+        pi = _nye_ell(_NYE_MESH_IN_RX, _NYE_MESH_IN_RY, deg)
+        is_mesh = (k % 5 == 0)
+        body.append(
+            f'<line x1="{pi[0]:.2f}" y1="{pi[1]:.2f}" '
+            f'x2="{po[0]:.2f}" y2="{po[1]:.2f}" '
+            f'stroke="{"rgba(255,210,155,0.26)" if is_mesh else "rgba(175,205,255,0.11)"}" '
+            f'stroke-width="{0.9 if is_mesh else 0.38}" '
+            f'stroke-linecap="round" '
+            f'opacity="{0.92 if is_mesh else 0.58}"></line>'
+        )
+
+    # === 八字 天干 stem rail — 10 gold segments, active one lit ===
+    for i in range(10):
+        a0 = -90.0 + i * 36.0
+        a1 = a0 + 36.0
+        lit = (i == day_stem_idx)
+        body.append(
+            f'<path d="{_nye_ell_arc(_NYE_STEM_RX, _NYE_STEM_RY, a0 + 0.4, a1 - 0.4)}" '
+            f'fill="none" stroke="url(#nye-stem-rail)" '
+            f'stroke-width="{6.8 if lit else 5.0}" '
+            f'stroke-linecap="round" '
+            f'opacity="{0.98 if lit else 0.5}"></path>'
+        )
+
+    # === 八字 地支 branch rail — 12 blue segments, active one lit ===
+    for i in range(12):
+        a0 = -90.0 + i * 30.0
+        a1 = a0 + 30.0
+        lit = (i == day_branch_idx)
+        body.append(
+            f'<path d="{_nye_ell_arc(_NYE_BR_RX, _NYE_BR_RY, a0 + 0.48, a1 - 0.48)}" '
+            f'fill="none" stroke="url(#nye-branch-rail)" '
+            f'stroke-width="{5.4 if lit else 4.0}" '
+            f'stroke-linecap="round" '
+            f'opacity="{0.95 if lit else 0.42}"></path>'
+        )
+
+    # === the Earth orbit path itself (slim guide ellipse) ===
+    body.append(
+        f'<ellipse cx="0" cy="0" rx="{_NYE_EARTH_RX:.1f}" '
+        f'ry="{_NYE_EARTH_RY:.1f}" fill="none" '
+        f'stroke="rgba(150,200,255,0.20)" stroke-width="0.8"></ellipse>'
+    )
+
+    # === four 八字 pillar jewels riding the orbit ring ===
+    if bazi is not None:
+        for pil in (bazi.year_pillar, bazi.month_pillar,
+                    bazi.day_pillar, bazi.hour_pillar):
+            jdeg = -90.0 + _sexagenary_index(pil) * 6.0
+            jx, jy = _nye_ell(_NYE_EARTH_RX, _NYE_EARTH_RY, jdeg)
+            body.append(
+                f'<circle cx="{jx:.2f}" cy="{jy:.2f}" r="5.4" '
+                f'fill="#0c0e14" stroke="rgba(0,0,0,0.55)" '
+                f'stroke-width="1.1"></circle>'
+                f'<circle cx="{jx:.2f}" cy="{jy:.2f}" r="4.0" '
+                f'fill="{_GAL_GOLD}" stroke="rgba(255,255,255,0.5)" '
+                f'stroke-width="0.8" filter="url(#nye-soft-glow)">'
+                f'</circle>'
+            )
+
+    # === the Sun at the orbit focus (centre of the oblique frame) ===
+    body.append(_nye_sun(sun_color))
+
+    # === the Earth on its orbit, with the Moon ===
+    ex, ey = _nye_ell(_NYE_EARTH_RX, _NYE_EARTH_RY, earth_deg)
+    body.append(f'<g transform="translate({ex:.2f},{ey:.2f})">')
+    # Moon-orbit fine tick ring — radial ticks between the moon-stem
+    # and moon-branch ellipses, faithful to the Nye Clock gMoonTracks.
+    moon_stem_rx, moon_stem_ry = 68.0, 42.0
+    moon_br_rx, moon_br_ry = 54.0, 33.0
+    for k in range(60):
+        deg = -90.0 + k * 6.0
+        po = _nye_ell(moon_stem_rx + 5, moon_stem_ry + 3, deg)
+        pi = _nye_ell(moon_br_rx - 4, moon_br_ry - 2, deg)
+        bold = (k % 6 == 0)
+        body.append(
+            f'<line x1="{pi[0]:.2f}" y1="{pi[1]:.2f}" '
+            f'x2="{po[0]:.2f}" y2="{po[1]:.2f}" '
+            f'stroke="{"rgba(255,215,175,0.30)" if bold else "rgba(175,205,255,0.13)"}" '
+            f'stroke-width="{0.46 if bold else 0.22}" '
+            f'stroke-linecap="round"></line>'
+        )
+    body.append(_nye_earth())
+    mx, my = _nye_ell(_NYE_MOON_RX, _NYE_MOON_RY, moon_deg)
+    body.append(_nye_moon(mx, my))
+    body.append('</g>')  # end Earth cluster
+
+    body.append('</g>')  # end oblique frame
+
+    # === readout plate — a compact level panel at the foot of the
+    # scene, exactly like the Nye Clock's hero-solar-readout (it sits
+    # below the orbital, never eclipsing the Sun). The Sun stays the
+    # glowing centrepiece; the MODEL / 玄学-consensus numbers read off
+    # to the side / below as engraved instrument text.
+    plate_w = 360.0
+    plate_h = 96.0
+    plate_x = _NYE_CX - plate_w / 2.0
+    plate_y = _NYE_VB_H - plate_h - 26.0
+    body.append(
+        f'<g transform="translate({plate_x:.1f},{plate_y:.1f})">'
+        f'<rect x="0" y="0" width="{plate_w}" height="{plate_h}" '
+        f'rx="14" fill="rgba(8,11,20,0.82)" '
+        f'stroke="rgba(255,255,255,0.10)" stroke-width="1"></rect>'
+        f'<rect x="0.8" y="0.8" width="{plate_w - 1.6}" '
+        f'height="{plate_h - 1.6}" rx="13" fill="none" '
+        f'stroke="rgba(255,255,255,0.04)" stroke-width="0.7"></rect>'
+        # left readout — MODEL
+        f'<text x="{plate_w * 0.27:.0f}" y="26" font-family="{_MONO}" '
+        f'font-size="9" fill="{_INK2}" letter-spacing="0.2em" '
+        f'text-anchor="middle">{_esc(top_label, 18)}</text>'
+        f'<text x="{plate_w * 0.27:.0f}" y="54" font-family="{_SERIF}" '
+        f'font-size="30" fill="{_INK0}" font-weight="600" '
+        f'text-anchor="middle" dominant-baseline="middle">'
+        f'{_esc(top_value, 10)}</text>'
+        # centre hairline divider
+        f'<line x1="{plate_w * 0.5:.0f}" y1="20" '
+        f'x2="{plate_w * 0.5:.0f}" y2="{plate_h - 20:.0f}" '
+        f'stroke="rgba(255,255,255,0.10)" stroke-width="0.9"></line>'
+        # right readout — 玄学 consensus
+        f'<text x="{plate_w * 0.73:.0f}" y="26" font-family="{_MONO}" '
+        f'font-size="9" fill="{_INK2}" letter-spacing="0.2em" '
+        f'text-anchor="middle">{_esc(bottom_label, 18)}</text>'
+        f'<text x="{plate_w * 0.73:.0f}" y="54" font-family="{_SERIF}" '
+        f'font-size="30" fill="{_GAL_GOLD}" font-weight="600" '
+        f'text-anchor="middle" dominant-baseline="middle">'
+        f'{_esc(bottom_value, 10)}</text>'
+        # meta strip along the bottom
+        f'<text x="{plate_w * 0.5:.0f}" y="{plate_h - 13:.0f}" '
+        f'font-family="{_MONO}" font-size="7.5" fill="{_INK3}" '
+        f'letter-spacing="0.14em" text-anchor="middle">'
+        f'{_esc(meta, 44)}</text>'
+        f'</g>'
+    )
+
+    # === a slim caption above the Sun naming the lens ===
+    body.append(
+        f'<text x="{_NYE_CX}" y="40" font-family="{_MONO}" '
+        f'font-size="9" fill="{_INK3}" letter-spacing="0.32em" '
+        f'text-anchor="middle">NYE CLOCK · 玄学 LENS</text>'
+    )
+
+    # === corner legend — the four 八字 pillars in 干支, Nye-Clock style
+    if bazi is not None:
+        for pil, name, (px, py) in (
+            (bazi.year_pillar,  "YEAR",  (62, 50)),
+            (bazi.month_pillar, "MONTH", (_NYE_VB_W - 62, 50)),
+            (bazi.day_pillar,   "DAY",   (62, _NYE_VB_H - 54)),
+            (bazi.hour_pillar,  "HOUR",  (_NYE_VB_W - 62, _NYE_VB_H - 54)),
+        ):
+            txt = pillar_text(pil)
+            idx = _sexagenary_index(pil)
+            body.append(
+                f'<g transform="translate({px - 42},{py - 22})">'
+                f'<rect x="0" y="0" width="84" height="44" rx="8" '
+                f'fill="rgba(10,14,24,0.72)" '
+                f'stroke="rgba(255,255,255,0.10)" stroke-width="1">'
+                f'</rect>'
+                f'<text x="42" y="19" font-family="{_SERIF}" '
+                f'font-size="19" text-anchor="middle" '
+                f'dominant-baseline="middle" font-weight="600">'
+                f'<tspan fill="{_GAL_GOLD}">'
+                f'{_esc(txt[0] if txt else "", 1)}</tspan>'
+                f'<tspan fill="{_GAL_CYAN}">'
+                f'{_esc(txt[1] if len(txt) > 1 else "", 1)}</tspan>'
+                f'</text>'
+                f'<text x="42" y="34" font-family="{_MONO}" '
+                f'font-size="7" fill="{_INK3}" letter-spacing="0.12em" '
+                f'text-anchor="middle">{name} · {idx + 1:02d}/60</text>'
+                f'</g>'
+            )
+
+    body.append('</svg>')
+    return "".join(body)
+
+
+# ======================================================================
+# Instrument 6 — the unified celestial astrolabe (八字 ⊕ 占星) [legacy]
 # ======================================================================
 
 def _render_celestial(reading_bazi: LensReading,
@@ -1456,16 +2005,23 @@ def render_celestial_svg(
     center_bottom_value: str,
     center_meta: str,
 ) -> str:
-    """Render the unified celestial astrolabe — 八字 ⊕ 占星 on one dial.
+    """Render the 玄学 lens as the Nye Clock solar system.
 
-    The unified 玄学 lens calls this once instead of dispatching the
-    八字 and 占星 instruments as two separate dials.
+    The unified 玄学 lens calls this once. As of the v4.18 console
+    redesign (Stage 3) the dense unified astrolabe — founder verdict
+    "不知所云" — is replaced by a faithful static-SVG recreation of the
+    founder's real Nye Clock app: a Sun-Earth-Moon orbital with the
+    八字 sexagenary movement carried on the Earth orbit ring and the
+    占星 Sun / Moon signs placing the bodies.
+
+    The legacy astrolabe renderer (`_render_celestial`) is kept in the
+    module for reference / back-compat but is no longer the lens.
     """
-    return _render_celestial(reading_bazi, reading_astro,
-                             branch_probabilities,
-                             center_top_label, center_top_value,
-                             center_bottom_label, center_bottom_value,
-                             center_meta)
+    return _render_nye_solar_system(
+        reading_bazi, reading_astro, branch_probabilities,
+        center_top_label, center_top_value,
+        center_bottom_label, center_bottom_value, center_meta,
+    )
 
 
 # Back-compat shim — the previous single-system entry point.

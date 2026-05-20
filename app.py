@@ -181,116 +181,389 @@ st.markdown(
 # Sidebar — system status + measurement-update entry
 # ============================================================
 
-def render_sidebar() -> str:
-    """Sidebar — navigation + language switcher only.
+# Route kinds returned by render_sidebar(). A route is a 2-tuple
+# (kind, payload):
+#   ("workspace", None)              — the default new-prediction composer
+#   ("history", prediction_id:str)   — open a past prediction (viewer)
+#   ("secondary", mode_key:str)      — a transitional secondary surface
+ROUTE_WORKSPACE = "workspace"
+ROUTE_HISTORY = "history"
+ROUTE_SECONDARY = "secondary"
 
-    Intentionally clean: no developer chrome (the "System status",
-    substrate-available, mock-mode, Ollama-available, etc. messages
-    are all suppressed). The substrate is detected silently at the
-    use sites that actually need it; non-technical visitors never see
-    a developer-style status panel.
+# Secondary surfaces still reachable while the unified composer is built
+# out across later stages. Nothing is dropped — only re-housed.
+SECONDARY_MODES = (
+    "Traditional × Calibrated",
+    "Video query",
+    "Live webcam",
+    "Measurement update",
+    "Calibration history",
+    "Pricing & pre-order",
+)
+SECONDARY_MODE_I18N = {
+    "Traditional × Calibrated": "mode.traditional",
+    "Video query": "mode.video_query",
+    "Live webcam": "mode.live_webcam",
+    "Measurement update": "mode.measurement_update",
+    "Calibration history": "mode.calibration_history",
+    "Pricing & pre-order": "mode.pricing",
+}
+
+
+def session_user_id() -> str:
+    """Stable per-session user handle.
+
+    The history rail and every save site key off this id, so a
+    prediction created in the composer shows up in the rail without
+    the user having to retype a handle. Same value as the auto-suggested
+    form handle (`tester-XXXX`).
     """
-    # ---- Language switcher (top of sidebar, before any other chrome) ----
+    if "_default_user_id" not in st.session_state:
+        import random
+        import string
+        rand_tail = "".join(
+            random.choices(string.ascii_lowercase + string.digits, k=4)
+        )
+        st.session_state._default_user_id = f"tester-{rand_tail}"
+    return str(st.session_state._default_user_id)
+
+
+def _history_item_label(rec: "storage.PredictionRecord") -> str:
+    """One-line label for a history-rail row.
+
+    Prefers a human-meaningful field from the saved input; falls back
+    to the scenario name + short id so the row is never blank.
+    """
+    inp = rec.user_input or {}
+    for candidate in ("current_role", "question", "decision", "title"):
+        val = inp.get(candidate)
+        if isinstance(val, str) and val.strip():
+            text = val.strip()
+            return text if len(text) <= 38 else text[:37] + "…"
+    scen = (rec.scenario or "prediction").replace("_", " ")
+    return f"{scen} · {rec.prediction_id[:6]}"
+
+
+def _date_bucket(created_at: float) -> str:
+    """ChatGPT-style date grouping for the history rail."""
+    import datetime as _dt
+
+    now = _dt.datetime.now()
+    then = _dt.datetime.fromtimestamp(float(created_at))
+    days = (now.date() - then.date()).days
+    if days <= 0:
+        return T("history.bucket.today")
+    if days == 1:
+        return T("history.bucket.yesterday")
+    if days < 7:
+        return T("history.bucket.prev7")
+    if days < 30:
+        return T("history.bucket.prev30")
+    return then.strftime("%Y-%m")
+
+
+def _render_history_rail(route: tuple[str, Any]) -> tuple[str, Any]:
+    """The user-organized history tree (Stage 4).
+
+    A flat date-grouped list when the user has created no categories;
+    a category-grouped tree once they have. The user owns the taxonomy
+    — there is a create-category control, rename / delete, per-
+    prediction category assignment + labels (those last two live in
+    the prediction viewer), and a group-by-category / filter-by-label
+    rail. Returns the (possibly updated) route tuple.
+    """
+    uid = session_user_id()
+    try:
+        predictions = storage.list_user_predictions(uid)
+        categories = storage.list_categories(uid)
+        all_labels = storage.list_user_labels(uid)
+        label_map = storage.labels_for_predictions(
+            [p.prediction_id for p in predictions]
+        )
+    except Exception:  # noqa: BLE001 — a broken DB must not blank the app
+        predictions, categories, all_labels, label_map = [], [], [], {}
+
+    # ---- Manage-categories control ----
+    with st.sidebar.expander(T("history.manage"), expanded=False):
+        new_cat = st.text_input(
+            T("history.new_category"),
+            key="_new_category_name",
+            placeholder=T("history.new_category.ph"),
+        )
+        if st.button(
+            T("history.create_category"),
+            key="_create_category_btn",
+            use_container_width=True,
+        ):
+            if new_cat.strip():
+                storage.create_category(uid, new_cat.strip())
+                st.session_state["_new_category_name"] = ""
+                st.rerun()
+        # rename / delete each existing category
+        for cat in categories:
+            cc1, cc2 = st.columns([4, 1])
+            with cc1:
+                renamed = st.text_input(
+                    T("history.category_name"),
+                    value=cat.name,
+                    key=f"_catname_{cat.category_id}",
+                    label_visibility="collapsed",
+                )
+            with cc2:
+                if st.button(
+                    "✕",
+                    key=f"_catdel_{cat.category_id}",
+                    help=T("history.delete_category"),
+                ):
+                    storage.delete_category(cat.category_id)
+                    st.rerun()
+            if renamed.strip() and renamed.strip() != cat.name:
+                storage.rename_category(cat.category_id, renamed.strip())
+                st.rerun()
+
+    # ---- Label filter ----
+    active_label = st.session_state.get("_history_label_filter", "")
+    if all_labels:
+        filter_options = [""] + all_labels
+        chosen_label = st.sidebar.selectbox(
+            T("history.filter_by_label"),
+            options=filter_options,
+            format_func=lambda x: (
+                T("history.all_labels") if x == "" else f"# {x}"
+            ),
+            index=(
+                filter_options.index(active_label)
+                if active_label in filter_options else 0
+            ),
+            key="_history_label_filter",
+        )
+        active_label = chosen_label
+
+    # ---- Apply the label filter ----
+    if active_label:
+        predictions = [
+            p for p in predictions
+            if active_label in label_map.get(p.prediction_id, [])
+        ]
+
+    if not predictions:
+        msg = (
+            T("history.no_label_match") if active_label
+            else T("nav.history.empty")
+        )
+        st.sidebar.markdown(
+            f"<div style='color:#4b525d;font-size:12px;line-height:1.5;"
+            f"padding:4px 0 2px;'>{msg}</div>",
+            unsafe_allow_html=True,
+        )
+        return route
+
+    def _emit_item(rec: "storage.PredictionRecord") -> tuple[str, Any]:
+        is_active = (
+            route[0] == ROUTE_HISTORY and route[1] == rec.prediction_id
+        )
+        labels = label_map.get(rec.prediction_id, [])
+        label_suffix = ("  · " + " ".join(f"#{x}" for x in labels[:2])
+                        if labels else "")
+        if st.sidebar.button(
+            _history_item_label(rec) + label_suffix,
+            key=f"_hist_{rec.prediction_id}",
+            use_container_width=True,
+            type="primary" if is_active else "secondary",
+        ):
+            new_route = (ROUTE_HISTORY, rec.prediction_id)
+            st.session_state._route = new_route
+            return new_route
+        return route
+
+    if categories:
+        # ---- Category-grouped tree ----
+        cat_by_id = {c.category_id: c for c in categories}
+        for cat in categories:
+            members = [
+                p for p in predictions if p.category_id == cat.category_id
+            ]
+            st.sidebar.markdown(
+                f"<div style='color:#8b8cff;font-size:10.5px;"
+                f"letter-spacing:0.04em;margin:12px 0 2px;"
+                f"font-weight:600;'>▸ {_esc_html(cat.name)} "
+                f"<span style='color:#4b525d;font-weight:400;'>"
+                f"({len(members)})</span></div>",
+                unsafe_allow_html=True,
+            )
+            for rec in members:
+                route = _emit_item(rec)
+        # uncategorized bucket
+        loose = [
+            p for p in predictions
+            if not p.category_id or p.category_id not in cat_by_id
+        ]
+        if loose:
+            st.sidebar.markdown(
+                f"<div style='color:#5a626e;font-size:10.5px;"
+                f"letter-spacing:0.04em;margin:12px 0 2px;'>"
+                f"▸ {T('history.uncategorized')} "
+                f"<span style='color:#4b525d;'>({len(loose)})</span>"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+            for rec in loose:
+                route = _emit_item(rec)
+    else:
+        # ---- Flat date-grouped list (no categories created yet) ----
+        last_bucket = None
+        for rec in predictions:
+            bucket = _date_bucket(rec.created_at)
+            if bucket != last_bucket:
+                st.sidebar.markdown(
+                    f"<div style='color:#5a626e;font-size:10px;"
+                    f"letter-spacing:0.04em;margin:10px 0 2px;'>"
+                    f"{bucket}</div>",
+                    unsafe_allow_html=True,
+                )
+                last_bucket = bucket
+            route = _emit_item(rec)
+
+    return route
+
+
+def _esc_html(text: str) -> str:
+    """Minimal HTML-escape for user-supplied category names rendered
+    inside st.markdown(unsafe_allow_html=True)."""
+    import html as _html
+    return _html.escape(str(text))
+
+
+def render_sidebar() -> tuple[str, Any]:
+    """Sidebar — ChatGPT-shaped navigation: brand → New prediction →
+    a date-grouped history of past predictions → a transitional "More"
+    expander for the secondary surfaces → a Settings expander → footer.
+
+    Returns a route tuple consumed by ``main()``. See ROUTE_* constants.
+
+    Intentionally clean: no developer chrome (substrate-available,
+    mock-mode, Ollama-available, etc. are all suppressed). The substrate
+    is detected silently at the use sites that need it.
+    """
     if "ui_lang" not in st.session_state:
         st.session_state.ui_lang = _i18n.DEFAULT_LANG
 
-    # Compact segmented control. radio with horizontal=True is the
-    # closest Streamlit primitive to a segmented switcher.
-    chosen_lang = st.sidebar.radio(
-        " ",  # empty label — visible chrome is the chips themselves
-        options=list(_i18n.SUPPORTED_LANGS),
-        format_func=lambda k: _i18n.LANG_LABEL.get(k, k),
-        horizontal=True,
-        index=list(_i18n.SUPPORTED_LANGS).index(st.session_state.ui_lang),
-        key="_lang_radio",
-        label_visibility="collapsed",
-    )
-    if chosen_lang != st.session_state.ui_lang:
-        st.session_state.ui_lang = chosen_lang
-        st.rerun()
-
+    # ---- Brand wordmark ----
     st.sidebar.markdown(
         f"<div style='font-family:\"Cormorant Garamond\",Georgia,serif;"
         f"font-size:22px;font-weight:600;letter-spacing:-0.015em;"
-        f"color:#f0f2f5;margin:6px 0 2px;'>"
+        f"color:#f0f2f5;margin:2px 0 2px;'>"
         f"{_brand.BRAND_NAME_SHORT}"
         f"</div>"
         f"<div style='color:#76808d;font-size:12px;letter-spacing:0.01em;"
-        f"margin-bottom:18px;'>"
+        f"margin-bottom:14px;'>"
         f"{T('brand.tagline')}"
         f"</div>",
         unsafe_allow_html=True,
     )
 
-    # ---- Mode nav ----
-    mode_keys = (
-        "New prediction", "Traditional × Calibrated",
-        "Video query", "Live webcam",
-        "Measurement update", "Calibration history",
-        "Pricing & pre-order",
-    )
-    mode_key_to_i18n = {
-        "New prediction": "mode.new_prediction",
-        "Traditional × Calibrated": "mode.traditional",
-        "Video query": "mode.video_query",
-        "Live webcam": "mode.live_webcam",
-        "Measurement update": "mode.measurement_update",
-        "Calibration history": "mode.calibration_history",
-        "Pricing & pre-order": "mode.pricing",
-    }
-    mode = st.sidebar.radio(
-        T("mode.sidebar_section"),
-        options=mode_keys,
-        format_func=lambda k: T(mode_key_to_i18n[k]),
-        index=0,
+    # The active route is held in session_state so a history click on
+    # one run survives into the next. Default = the workspace composer.
+    route: tuple[str, Any] = st.session_state.get(
+        "_route", (ROUTE_WORKSPACE, None)
     )
 
-    # ---- Currency/locale selector — pushed below mode nav, smaller chrome ----
-    detected = currency.detect_locale()
-    if "user_locale" not in st.session_state:
-        st.session_state.user_locale = detected
-    locale_labels = {
-        currency.LOCALE_US: "US · USD",
-        currency.LOCALE_CN: "中国 · CNY",
-        currency.LOCALE_EU: "EU · EUR",
-        currency.LOCALE_GB: "UK · GBP",
-        currency.LOCALE_JP: "日本 · JPY",
-    }
-    st.sidebar.divider()
-    chosen = st.sidebar.selectbox(
-        "Currency",
-        options=list(currency.SUPPORTED_LOCALES),
-        format_func=lambda k: locale_labels.get(k, k),
-        index=list(currency.SUPPORTED_LOCALES).index(
-            st.session_state.user_locale
-        ),
-        help=(
-            "Affects price displays in the Pricing tab. Billing currency "
-            "remains USD; non-USD displays are marked approximate."
-        ),
-        label_visibility="visible",
-    )
-    st.session_state.user_locale = chosen
+    # ---- New prediction button — always returns to the composer ----
+    if st.sidebar.button(
+        T("nav.new_prediction"),
+        use_container_width=True,
+        type="primary",
+        key="_nav_new_prediction",
+    ):
+        route = (ROUTE_WORKSPACE, None)
+        st.session_state._route = route
+        st.rerun()
 
-    # ---- Footer: thin, in-keeping muted disclaimer + brand links ----
+    # ---- History rail — user-organized tree (categories + labels) ----
+    st.sidebar.markdown(
+        f"<div style='color:#76808d;font-size:11px;letter-spacing:0.08em;"
+        f"text-transform:uppercase;margin:18px 0 4px;'>"
+        f"{T('nav.history')}</div>",
+        unsafe_allow_html=True,
+    )
+    route = _render_history_rail(route)
+
+    # ---- "More" expander — transitional home for secondary surfaces ----
+    with st.sidebar.expander(T("nav.more"), expanded=False):
+        st.caption(T("nav.more.hint"))
+        for mode_key in SECONDARY_MODES:
+            is_active = (
+                route[0] == ROUTE_SECONDARY and route[1] == mode_key
+            )
+            if st.button(
+                T(SECONDARY_MODE_I18N[mode_key]),
+                key=f"_more_{mode_key}",
+                use_container_width=True,
+                type="primary" if is_active else "secondary",
+            ):
+                route = (ROUTE_SECONDARY, mode_key)
+                st.session_state._route = route
+                st.rerun()
+
+    # ---- Settings expander — language + currency, out of the main flow ----
+    with st.sidebar.expander(T("nav.settings"), expanded=False):
+        chosen_lang = st.radio(
+            T("settings.language"),
+            options=list(_i18n.SUPPORTED_LANGS),
+            format_func=lambda k: _i18n.LANG_LABEL.get(k, k),
+            horizontal=True,
+            index=list(_i18n.SUPPORTED_LANGS).index(
+                st.session_state.ui_lang
+            ),
+            key="_lang_radio",
+        )
+        if chosen_lang != st.session_state.ui_lang:
+            st.session_state.ui_lang = chosen_lang
+            st.rerun()
+
+        detected = currency.detect_locale()
+        if "user_locale" not in st.session_state:
+            st.session_state.user_locale = detected
+        locale_labels = {
+            currency.LOCALE_US: "US · USD",
+            currency.LOCALE_CN: "中国 · CNY",
+            currency.LOCALE_EU: "EU · EUR",
+            currency.LOCALE_GB: "UK · GBP",
+            currency.LOCALE_JP: "日本 · JPY",
+        }
+        chosen = st.selectbox(
+            T("settings.currency"),
+            options=list(currency.SUPPORTED_LOCALES),
+            format_func=lambda k: locale_labels.get(k, k),
+            index=list(currency.SUPPORTED_LOCALES).index(
+                st.session_state.user_locale
+            ),
+            help=(
+                "Affects price displays in the Pricing surface. Billing "
+                "currency remains USD; non-USD displays are approximate."
+            ),
+        )
+        st.session_state.user_locale = chosen
+
+    # ---- Footer: thin muted disclaimer + brand links ----
     st.sidebar.markdown(
         f"<div style='color:#4b525d;font-size:11px;line-height:1.5;"
-        f"margin-top:32px;padding-top:18px;border-top:1px solid #232834;'>"
+        f"margin-top:24px;padding-top:16px;border-top:1px solid #232834;'>"
         f"{T('brand.disclaimer')}"
         f"</div>"
-        f"<div style='color:#76808d;font-size:11px;margin-top:14px;'>"
+        f"<div style='color:#76808d;font-size:11px;margin-top:12px;'>"
         f"{_brand.footer_markdown()}"
         f"</div>"
         # Tiny build marker — lets the user confirm which build the
-        # Streamlit Cloud worker is actually serving, useful when
-        # debugging "I don't see any changes" reports.
+        # Streamlit Cloud worker is actually serving.
         f"<div style='color:#3a3f49;font-size:9.5px;margin-top:10px;"
         f"letter-spacing:0.15em;text-transform:uppercase;'>"
-        f"build · v4.17.0 · mode-7 lens</div>",
+        f"build · v4.18.0 · history rail</div>",
         unsafe_allow_html=True,
     )
 
-    return str(mode)
+    st.session_state._route = route
+    return route
 
 
 # ============================================================
@@ -322,35 +595,87 @@ def render_new_prediction() -> None:
     # Tight "how it works" expander — collapsed by default, so the hero
     # breathes. Anyone who needs the explainer is one click away.
     with st.expander(T("new.howto.title"), expanded=False):
-        st.markdown(
-            """
-1. **Describe the decision.** Pick a scenario, fill the fields, or click
-   *Fill with sample data* to see the full flow with zero typing.
-2. **Generate.** The system produces 6–8 future branches with priors,
-   a wishful and a worst-case anchor, off-diagonal correlations, and
-   a recommended-evidence list (ΔP in percentage points).
-3. **Come back later.** Use the Measurement update tab with the
-   prediction ID. Score each branch by how much it actually
-   materialized. The system computes your calibration (Brier / log-loss).
-
-Not fortune-telling, not medical / legal / financial advice. No
-external API required — runs end-to-end locally when self-hosted with
-Ollama.
-"""
-        )
+        st.markdown(T("new.howto.body"))
 
     # Auto-suggested user handle so the field never blocks submission.
-    if "_default_user_id" not in st.session_state:
-        import random
-        import string
-        rand_tail = "".join(
-            random.choices(string.ascii_lowercase + string.digits, k=4)
+    # Shares the session-stable id with the history rail, so a
+    # prediction created here appears in the sidebar immediately.
+    session_user_id()
+
+    # ============================================================
+    # Unified composer — one workspace, multiple input modalities.
+    # Borrows ONLY the "one composer + attach" affordance from a chat
+    # UI; this is NOT a chatbox. Text conditions + a "+" attach (video
+    # / files) + a live-video toggle + a 玄学-lens toggle, all in one
+    # place, feeding a single "Run prediction".
+    # ============================================================
+    st.markdown(
+        f"<div style='color:#76808d;font-size:11px;letter-spacing:0.08em;"
+        f"text-transform:uppercase;margin:8px 0 6px;'>"
+        f"{T('composer.section')}</div>",
+        unsafe_allow_html=True,
+    )
+
+    # ---- Modality bar: attach (+) · live video · 玄学 lens ----
+    mod_attach, mod_live, mod_lens = st.columns([2, 2, 2])
+
+    with mod_attach:
+        with st.popover(T("composer.attach"), use_container_width=True):
+            st.caption(T("composer.attach.hint"))
+            attached_video = st.file_uploader(
+                T("composer.attach.video"),
+                type=["mp4", "mov", "webm", "avi", "mkv"],
+                accept_multiple_files=False,
+                key="_composer_video",
+            )
+            attached_files = st.file_uploader(
+                T("composer.attach.files"),
+                accept_multiple_files=True,
+                key="_composer_files",
+            )
+            if attached_video is not None:
+                st.success(T("composer.attach.video_ready"))
+            if attached_files:
+                st.success(
+                    f"{len(attached_files)} "
+                    f"{T('composer.attach.files_ready')}"
+                )
+    with mod_live:
+        live_on = st.toggle(
+            T("composer.live"),
+            key="_composer_live_toggle",
+            help=T("composer.live.hint"),
         )
-        st.session_state._default_user_id = f"tester-{rand_tail}"
+    with mod_lens:
+        lens_on = st.toggle(
+            T("composer.lens"),
+            key="_composer_lens_toggle",
+            value=st.session_state.get("_composer_lens_toggle", False),
+            help=T("composer.lens.hint"),
+        )
+    # The lens toggle is consumed downstream by _render_result.
+    st.session_state["_xuanxue_lens_on"] = bool(lens_on)
+
+    attached_video = st.session_state.get("_composer_video")
+
+    # ---- Live-video modality: embed the webcam panel inline ----
+    if live_on:
+        with st.container(border=True):
+            st.markdown(f"**{T('composer.live.panel')}**")
+            render_live_webcam(embedded=True)
+        st.divider()
+
+    # ---- Attached-video modality: embed the video pipeline inline ----
+    if attached_video is not None:
+        with st.container(border=True):
+            st.markdown(f"**{T('composer.attach.panel')}**")
+            st.caption(T("composer.attach.panel_hint"))
+            render_video_query(embedded=True)
+        st.divider()
 
     # Scenario selection (only one scenario today — career_decision)
     scenario = st.selectbox(
-        "Scenario",
+        T("composer.scenario"),
         options=list(AVAILABLE_SCENARIOS.keys()),
         format_func=lambda k: AVAILABLE_SCENARIOS[k]["description"][:100],
     )
@@ -1501,12 +1826,13 @@ def _render_result(
     else:
         _render_story_view(wishful, realistic, worst, result.decision_options)
 
-    # v4.17 P1 — "Time-honored lens" easter egg. A single subtle line
-    # below the result + view-mode dispatch invites the user to read
-    # the same prediction through a traditional-prior lens. Collapsed
-    # by default so it never imposes on visitors who don't want it;
-    # opens inline so they don't lose their place. Reuses the Mode 7
+    # v4.17 P1 — "Time-honored lens". The composer's 玄学-lens toggle
+    # controls this surface. When the toggle is on, the lens renders
+    # expanded inline (the user explicitly asked for it). When off, it
+    # stays a single subtle invite line below the result — collapsed,
+    # never imposing on visitors who don't want it. Reuses the Mode 7
     # render helper so both surfaces stay in lockstep visually.
+    lens_on = bool(st.session_state.get("_xuanxue_lens_on", False))
     st.markdown(
         "<div style='margin:24px 0 -8px;text-align:center;'>"
         f"<span style='color:#76808d;font-size:11.5px;"
@@ -1515,7 +1841,7 @@ def _render_result(
         "</div>",
         unsafe_allow_html=True,
     )
-    with st.expander(T("trad.lens.expander_label"), expanded=False):
+    with st.expander(T("trad.lens.expander_label"), expanded=lens_on):
         _render_traditional_lens(
             list(result.hypotheses),
             key_prefix=f"_trad_lens_{prediction_id or 'inline'}",
@@ -1604,8 +1930,86 @@ def _render_result(
 # Mode 2 — Measurement update
 # ============================================================
 
-def render_measurement_update() -> None:
-    """User comes back, looks up prior prediction, reports actual outcome."""
+def _render_prediction_organizer(
+    pred: "storage.PredictionRecord", user_id: str,
+) -> None:
+    """Stage 4 — let the user file this prediction into their own
+    history tree: pick a category (folder) and add / remove free-form
+    labels. The app imposes no taxonomy; the user owns it.
+    """
+    try:
+        categories = storage.list_categories(user_id)
+        current_labels = storage.list_labels(pred.prediction_id)
+    except Exception:  # noqa: BLE001 — never block the viewer on a DB hiccup
+        categories, current_labels = [], []
+
+    with st.expander(T("organizer.title"), expanded=False):
+        # ---- category assignment ----
+        cat_ids: list[str | None] = [None] + [c.category_id for c in categories]
+        cat_name = {c.category_id: c.name for c in categories}
+        try:
+            cur_idx = cat_ids.index(pred.category_id)
+        except ValueError:
+            cur_idx = 0
+        chosen = st.selectbox(
+            T("organizer.category"),
+            options=cat_ids,
+            index=cur_idx,
+            format_func=lambda cid: (
+                T("organizer.uncategorized") if cid is None
+                else cat_name.get(cid, cid)
+            ),
+            key=f"_org_cat_{pred.prediction_id}",
+        )
+        if chosen != pred.category_id:
+            storage.assign_prediction_category(pred.prediction_id, chosen)
+            st.rerun()
+        if not categories:
+            st.caption(T("organizer.no_categories"))
+
+        # ---- labels ----
+        st.markdown(f"**{T('organizer.labels')}**")
+        if current_labels:
+            lab_cols = st.columns(min(len(current_labels), 4))
+            for i, lab in enumerate(current_labels):
+                with lab_cols[i % len(lab_cols)]:
+                    if st.button(
+                        f"# {lab}  ✕",
+                        key=f"_org_rmlab_{pred.prediction_id}_{lab}",
+                        help=T("organizer.remove_label"),
+                        use_container_width=True,
+                    ):
+                        storage.remove_label(pred.prediction_id, lab)
+                        st.rerun()
+        else:
+            st.caption(T("organizer.no_labels"))
+        new_label = st.text_input(
+            T("organizer.add_label"),
+            key=f"_org_addlab_{pred.prediction_id}",
+            placeholder=T("organizer.add_label.ph"),
+        )
+        if st.button(
+            T("organizer.add_label_btn"),
+            key=f"_org_addlab_btn_{pred.prediction_id}",
+        ):
+            if new_label.strip():
+                storage.add_label(pred.prediction_id, new_label.strip())
+                st.rerun()
+
+
+def render_measurement_update(
+    preloaded_prediction_id: str | None = None,
+) -> None:
+    """Open a past prediction → score how it actually turned out.
+
+    Two entry paths:
+      * ``preloaded_prediction_id`` set — a history-rail click opened
+        this prediction directly; the user handle is the current
+        session id, no manual entry.
+      * ``preloaded_prediction_id`` None — the standalone "Measurement
+        update" secondary surface; the user types their handle and
+        picks from a list.
+    """
     st.markdown(
         f"""
         <div style='text-align:center;padding:40px 24px 28px;'>
@@ -1623,28 +2027,50 @@ def render_measurement_update() -> None:
         unsafe_allow_html=True,
     )
 
-    user_id = st.text_input(
-        "Your handle (same one you used when creating the prediction)",
-    )
-    if not user_id:
-        return
+    if preloaded_prediction_id:
+        # History-rail path: resolve the prediction directly by id.
+        # The rail only ever lists the session user's predictions, so
+        # the session id is the right scope to search.
+        user_id = session_user_id()
+        predictions = storage.list_user_predictions(user_id)
+        pred = next(
+            (p for p in predictions
+             if p.prediction_id == preloaded_prediction_id),
+            None,
+        )
+        if pred is None:
+            st.warning(T("measurement.not_found"))
+            return
+        st.caption(
+            f"{T('measurement.opened_from_history')} · "
+            f"`{pred.prediction_id[:8]}` · {pred.scenario}"
+        )
+    else:
+        user_id = st.text_input(
+            "Your handle (same one you used when creating the prediction)",
+        )
+        if not user_id:
+            return
 
-    predictions = storage.list_user_predictions(user_id)
-    if not predictions:
-        st.warning(f"No predictions found for user `{user_id}`.")
-        return
+        predictions = storage.list_user_predictions(user_id)
+        if not predictions:
+            st.warning(f"No predictions found for user `{user_id}`.")
+            return
 
-    pred_labels = [
-        f"{i + 1}. [{p.scenario}] {p.prediction_id[:8]}… "
-        f"({p.user_input.get('current_role', '<no role>')[:40]}…)"
-        for i, p in enumerate(predictions)
-    ]
-    sel_idx = st.selectbox(
-        "Select the prediction to update",
-        options=range(len(predictions)),
-        format_func=lambda i: pred_labels[i],
-    )
-    pred = predictions[sel_idx]
+        pred_labels = [
+            f"{i + 1}. [{p.scenario}] {p.prediction_id[:8]}… "
+            f"({p.user_input.get('current_role', '<no role>')[:40]}…)"
+            for i, p in enumerate(predictions)
+        ]
+        sel_idx = st.selectbox(
+            "Select the prediction to update",
+            options=range(len(predictions)),
+            format_func=lambda i: pred_labels[i],
+        )
+        pred = predictions[sel_idx]
+
+    # ---- Stage 4: organize this prediction (category + labels) ----
+    _render_prediction_organizer(pred, user_id)
 
     st.divider()
     st.subheader("Original prediction branches")
@@ -1995,9 +2421,9 @@ def render_pricing_and_preorder() -> None:
         )
 
 
-def render_video_query() -> None:
-    """Mode 5 — Video Query: upload a video file, ask a question,
-    get probabilistic predictions about the scene.
+def render_video_query(embedded: bool = False) -> None:
+    """Video Query: upload a video file, ask a question, get
+    probabilistic predictions about the scene.
 
     Pipeline:
     1. User uploads mp4/mov/webm
@@ -2011,24 +2437,28 @@ def render_video_query() -> None:
        table / decision timeline / continuous distribution /
        coherence decay / evidence ΔP) just work.
 
+    ``embedded`` — when True, the standalone hero is suppressed so the
+    flow can be hosted inside the unified composer's "+" attach panel.
     Master plan §9 first-cut consumer surface for the video path.
     """
-    st.markdown(
-        f"""
-        <div style='text-align:center;padding:40px 24px 28px;'>
-          <h1 style='font-family:"Cormorant Garamond",Georgia,serif;
-                     font-size:52px;font-weight:600;letter-spacing:-0.02em;
-                     margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
-            {T("video.hero.title")}
-          </h1>
-          <p style='max-width:600px;margin:0 auto;color:#b9bfc8;
-                    font-size:16px;line-height:1.55;letter-spacing:0.005em;'>
-            {T("video.hero.subtitle")}
-          </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    if not embedded:
+        st.markdown(
+            f"""
+            <div style='text-align:center;padding:40px 24px 28px;'>
+              <h1 style='font-family:"Cormorant Garamond",Georgia,serif;
+                         font-size:52px;font-weight:600;letter-spacing:-0.02em;
+                         margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
+                {T("video.hero.title")}
+              </h1>
+              <p style='max-width:600px;margin:0 auto;color:#b9bfc8;
+                        font-size:16px;line-height:1.55;
+                        letter-spacing:0.005em;'>
+                {T("video.hero.subtitle")}
+              </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     # Silently probe the vision backend. If it's not ready, the
     # honest-fallback in compile_scene_query handles the timeout +
@@ -2433,9 +2863,8 @@ def _render_entity_quantum_evolution(
 # ============================================================
 
 
-def render_live_webcam() -> None:
-    """Mode 6 — Live webcam streaming with continuous quantum-state
-    evolution.
+def render_live_webcam(embedded: bool = False) -> None:
+    """Live webcam streaming with continuous quantum-state evolution.
 
     Pipeline:
     1. streamlit-webrtc opens a local WebRTC peer in the browser →
@@ -2450,29 +2879,33 @@ def render_live_webcam() -> None:
        racing.
     4. A "Capture for prediction" button freezes the latest snapshot
        and asks the vision LLM about the current scene, returning
-       a full ConsoleResult — same rendering as Mode 5 from there.
+       a full ConsoleResult — same rendering as the video path.
 
+    ``embedded`` — when True, the standalone hero is suppressed so the
+    flow can be hosted inside the unified composer's live-video toggle.
     Master plan §9 World Console direction — direct live perception
     rather than file upload. §2.9 negative scope — no biometric ID,
     no demographic features, no multi-camera fusion (single stream
     only).
     """
-    st.markdown(
-        f"""
-        <div style='text-align:center;padding:40px 24px 28px;'>
-          <h1 style='font-family:"Cormorant Garamond",Georgia,serif;
-                     font-size:52px;font-weight:600;letter-spacing:-0.02em;
-                     margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
-            {T("webcam.title")}
-          </h1>
-          <p style='max-width:600px;margin:0 auto;color:#b9bfc8;
-                    font-size:16px;line-height:1.55;letter-spacing:0.005em;'>
-            {T("webcam.subtitle")}
-          </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    if not embedded:
+        st.markdown(
+            f"""
+            <div style='text-align:center;padding:40px 24px 28px;'>
+              <h1 style='font-family:"Cormorant Garamond",Georgia,serif;
+                         font-size:52px;font-weight:600;letter-spacing:-0.02em;
+                         margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
+                {T("webcam.title")}
+              </h1>
+              <p style='max-width:600px;margin:0 auto;color:#b9bfc8;
+                        font-size:16px;line-height:1.55;
+                        letter-spacing:0.005em;'>
+                {T("webcam.subtitle")}
+              </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     # Probe streamlit-webrtc availability up front. We deliberately do
     # NOT surface raw substrate-import errors to the user — they look
@@ -2788,21 +3221,30 @@ def render_live_webcam() -> None:
 
 
 def main() -> None:
-    mode = render_sidebar()
-    if mode == "New prediction":
+    kind, payload = render_sidebar()
+
+    if kind == ROUTE_HISTORY:
+        # A history-rail click → open that prediction in the
+        # measurement-update viewer, pre-loaded by id.
+        render_measurement_update(preloaded_prediction_id=str(payload))
+    elif kind == ROUTE_SECONDARY:
+        if payload == "Traditional × Calibrated":
+            render_traditional_view()
+        elif payload == "Video query":
+            render_video_query()
+        elif payload == "Live webcam":
+            render_live_webcam()
+        elif payload == "Measurement update":
+            render_measurement_update()
+        elif payload == "Calibration history":
+            render_calibration_history()
+        elif payload == "Pricing & pre-order":
+            render_pricing_and_preorder()
+        else:
+            render_new_prediction()
+    else:
+        # ROUTE_WORKSPACE — the default new-prediction composer.
         render_new_prediction()
-    elif mode == "Traditional × Calibrated":
-        render_traditional_view()
-    elif mode == "Video query":
-        render_video_query()
-    elif mode == "Live webcam":
-        render_live_webcam()
-    elif mode == "Measurement update":
-        render_measurement_update()
-    elif mode == "Calibration history":
-        render_calibration_history()
-    elif mode == "Pricing & pre-order":
-        render_pricing_and_preorder()
 
     # Single, consistent footer rendered after the mode body so users
     # always see the version + GitHub + privacy links.

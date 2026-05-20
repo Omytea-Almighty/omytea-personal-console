@@ -398,7 +398,14 @@ def test_aggregate_readings_is_bounded_equal_weight_mean() -> None:
     assert mp.aggregate_readings([]) == (0.5, 0.5)
 
 
-def test_render_celestial_svg_merges_bazi_and_astro() -> None:
+def test_render_celestial_svg_is_nye_solar_system() -> None:
+    """v4.18 Stage 3 — the 玄学 lens is the Nye Clock solar system.
+
+    The dense unified astrolabe (founder verdict "不知所云") was
+    replaced by a faithful static-SVG recreation of the founder's real
+    Nye Clock app: a Sun-Earth-Moon orbital. This test pins the new
+    visual contract.
+    """
     bd = mp.BirthData(1988, 2, 29, 9)
     rb = mp.compute_reading("bazi", birth=bd, seed="s",
                             outcome="career_success")
@@ -411,11 +418,40 @@ def test_render_celestial_svg_merges_bazi_and_astro() -> None:
         center_meta="八字 ⊕ 占星",
     )
     assert svg.startswith("<svg ") and svg.endswith("</svg>")
-    assert 'viewBox="0 0 480 480"' in svg
-    # carries the 八字 gear movement AND the 占星 zodiac, one instrument
-    assert "url(#gear-gold)" in svg and "url(#gear-cyan)" in svg
-    assert any(s.glyph in svg for s in mp.ZODIAC)
+    # The Nye Clock canvas — NOT the old 480x480 astrolabe.
+    assert 'viewBox="0 0 1000 920"' in svg
+    # Sun-Earth-Moon orbital: the three bodies' gradient defs.
+    assert "url(#nye-sun-core)" in svg
+    assert "url(#nye-earth-ocean)" in svg
+    assert "url(#nye-moon-surf)" in svg
+    # the deep-space cosmic backdrop
+    assert "url(#nye-cosmos-bg)" in svg
+    assert "url(#nye-vignette)" in svg
+    # 八字 sexagenary rails carried on the Earth orbit
+    assert "url(#nye-stem-rail)" in svg
+    assert "url(#nye-branch-rail)" in svg
+    # the 20-degree oblique frame
+    assert "rotate(20" in svg
     # the four 八字 pillars appear as corner cartouches
     assert "YEAR" in svg and "MONTH" in svg
     assert "DAY" in svg and "HOUR" in svg
+    # the dual readout still carries the model + combined values
     assert "34.2%" in svg and "48.0%" in svg
+    assert "玄学" in svg
+
+
+def test_render_celestial_svg_handles_missing_natal() -> None:
+    """A 八字 reading with no natal chart must not crash the lens —
+    the Sun/Moon fall back to neutral positions."""
+    bd = mp.BirthData(1990, 7, 1, 12)
+    rb = mp.compute_reading("bazi", birth=bd, seed="s2",
+                            outcome="career_success")
+    # rb has no .natal; pass it as the astro arg too (defensive path).
+    svg = render_celestial_svg(
+        rb, rb, _SAMPLE_BRANCHES,
+        center_top_label="MODEL", center_top_value="50%",
+        center_bottom_label="COMBINED", center_bottom_value="50%",
+        center_meta="八字 only",
+    )
+    assert svg.startswith("<svg ") and svg.endswith("</svg>")
+    assert "url(#nye-sun-core)" in svg
