@@ -108,21 +108,31 @@ st.markdown(
             #0a0c11;
         background-attachment: fixed;
     }
-    [data-testid="stHeader"] { background: transparent; }
+    /* Streamlit header — kept present so the sidebar collapse / expand
+       control is always reachable; just made visually quiet. */
+    [data-testid="stHeader"] {
+        background: transparent !important;
+        box-shadow: none !important;
+    }
     .block-container { padding-top: 2.4rem; }
 
-    /* ---- Sidebar: a hair lighter than canvas, fine right
-       hairline, the faintest top-down lift so the brand
-       wordmark sits in its own light. ---- */
+    /* ---- Sidebar: a clearly lifted surface plane so it reads as its
+       own panel against the deep canvas — a flat #161922 fill that
+       sits unmistakably above the #0a0c11 canvas, and a crisp 1px
+       right hairline. One flat plane, no competing glow: the sidebar
+       must never visually dissolve into the canvas. ---- */
     section[data-testid="stSidebar"] {
-        background:
-            linear-gradient(180deg,
-                rgba(139,140,255,0.05) 0%,
-                rgba(139,140,255,0) 220px),
-            #0d0f16;
-        border-right: 1px solid #1d212b;
+        background: #161922;
+        border-right: 1px solid #2b313e;
     }
-    section[data-testid="stSidebar"] .block-container { padding-top: 2rem; }
+    section[data-testid="stSidebar"] > div {
+        background: transparent;
+    }
+    section[data-testid="stSidebar"] .block-container {
+        padding-top: 1.6rem;
+        padding-left: 1.15rem;
+        padding-right: 1.15rem;
+    }
     section[data-testid="stSidebar"] h1 {
         font-family: -apple-system, "Inter", system-ui, sans-serif;
         font-size: 17px !important;
@@ -188,9 +198,9 @@ st.markdown(
         box-shadow: 0 0 0 3px rgba(139,140,255,0.22);
     }
 
-    /* ---- Sidebar buttons: quieter than the main column.
-       History rows read as a flat rail; the active row gets
-       a thin lavender spine. ---- */
+    /* ---- Sidebar buttons: quieter than the main column. History /
+       nav rows read as a flat rail on the lifted sidebar plane; hover
+       lifts a hair, the active row gets a thin lavender spine. ---- */
     section[data-testid="stSidebar"] .stButton > button {
         background: transparent;
         border: 1px solid transparent;
@@ -199,11 +209,13 @@ st.markdown(
         justify-content: flex-start;
         color: #aab1bc;
         font-weight: 450;
-        padding: 6px 10px;
+        font-size: 13px;
+        padding: 7px 11px;
+        border-radius: 7px;
     }
     section[data-testid="stSidebar"] .stButton > button:hover {
-        background: rgba(139,140,255,0.07);
-        border-color: #232834;
+        background: rgba(139,140,255,0.08);
+        border-color: transparent;
         color: #f0f2f5;
         box-shadow: none;
     }
@@ -211,7 +223,7 @@ st.markdown(
         background: rgba(139,140,255,0.13);
         border: 1px solid transparent;
         border-left: 2px solid #8b8cff;
-        border-radius: 4px;
+        border-radius: 7px;
         color: #f0f2f5;
         box-shadow: none;
     }
@@ -224,6 +236,7 @@ st.markdown(
         border-radius: 9px;
         color: #0a0c11;
         font-weight: 600;
+        font-size: 13.5px;
         text-align: center;
         justify-content: center;
         padding: 9px 12px;
@@ -349,16 +362,21 @@ st.markdown(
     }
     section[data-testid="stSidebar"] [data-testid="stExpander"] {
         margin-bottom: 7px;
-        border-radius: 10px;
-        background: #0f1219;
+        border-radius: 9px;
+        border-color: #2b313e;
+        background: #1d212b;
     }
     section[data-testid="stSidebar"] [data-testid="stExpander"] summary {
-        background: #0f1219;
+        background: #1d212b;
         padding: 9px 12px;
-        font-size: 13px;
+        font-size: 12.5px;
     }
     section[data-testid="stSidebar"] [data-testid="stExpander"] summary:hover {
-        background: #14171f;
+        background: #232834;
+    }
+    section[data-testid="stSidebar"]
+        [data-testid="stExpander"] [data-testid="stExpanderDetails"] {
+        background: #1d212b;
     }
     [data-testid="stExpander"] summary,
     [data-testid="stExpander"] details > summary {
@@ -605,6 +623,109 @@ st.markdown(
         border: 2px solid #0a0c11;
     }
     ::-webkit-scrollbar-thumb:hover { background: #2f3542; }
+
+    /* ========================================================
+       Spacing rhythm + composer polish — premium through
+       restraint. One consistent vertical cadence so the
+       workspace breathes; the modality row aligned; widget
+       labels on one quiet type scale.
+       ======================================================== */
+
+    /* A calm, even gap between stacked widgets — the workspace
+       reads as a measured rhythm, not a cramped stack. Streamlit's
+       default vertical block gap is tightened/standardised here. */
+    section[data-testid="stMain"]
+        div[data-testid="stVerticalBlock"] {
+        gap: 0.85rem;
+    }
+    /* The composer pane stays a touch tighter than the page so its
+       inputs group without crowding. */
+    section[data-testid="stMain"]
+        [data-testid="stExpander"]
+        div[data-testid="stVerticalBlock"] {
+        gap: 0.6rem;
+    }
+
+    /* Modality row (+Attach · Live video · 玄学 lens) — vertically
+       centred so the popover trigger and the two toggles sit on one
+       calm baseline instead of drifting. */
+    section[data-testid="stMain"]
+        div[data-testid="stHorizontalBlock"] {
+        align-items: center;
+    }
+    /* The popover trigger reads as a peer of the toggles — same
+       quiet secondary-button language, comfortable height. */
+    [data-testid="stPopover"] > div > button {
+        width: 100%;
+    }
+
+    /* Form fields inside the composer — generous, even breathing
+       room so the conditions never feel boxed-in. */
+    [data-testid="stForm"] {
+        border: none !important;
+        padding: 0 !important;
+        background: transparent !important;
+    }
+    [data-testid="stForm"]
+        div[data-testid="stVerticalBlock"] {
+        gap: 0.7rem;
+    }
+
+    /* Widget labels — one type scale across every input: a quiet
+       --ink-2 grey, light, with a hair of space below so the label
+       and its field read as a pair, not a collision. */
+    [data-testid="stWidgetLabel"] p,
+    [data-testid="stWidgetLabel"] label {
+        margin-bottom: 4px !important;
+        font-size: 12.5px !important;
+        letter-spacing: 0.004em;
+    }
+
+    /* Headings — a clear, restrained type scale. */
+    h1 { font-size: 30px !important; line-height: 1.2; }
+    h2 { font-size: 22px !important; line-height: 1.25; }
+    h3 { font-size: 17px !important; line-height: 1.3; }
+    h4 { font-size: 14.5px !important; line-height: 1.35; }
+
+    /* Caption hint lines sit close under their control. */
+    section[data-testid="stMain"]
+        [data-testid="stCaptionContainer"] {
+        margin-top: 2px;
+        line-height: 1.5;
+    }
+
+    /* Segmented control (the output-view switch) — same calm dark
+       system: a flat surface track, one hairline, lavender on the
+       selected segment. No loud pill. */
+    [data-testid="stSegmentedControl"] [role="radiogroup"] {
+        background: #11141b;
+        border: 1px solid #232834;
+        border-radius: 9px;
+        padding: 2px;
+        gap: 2px;
+    }
+    [data-testid="stSegmentedControl"] [role="radio"] {
+        border: none !important;
+        background: transparent !important;
+        color: #76808d !important;
+        border-radius: 7px !important;
+        font-size: 12.5px !important;
+        font-weight: 500 !important;
+    }
+    [data-testid="stSegmentedControl"] [role="radio"]:hover {
+        color: #b9bfc8 !important;
+        background: rgba(139,140,255,0.06) !important;
+    }
+    [data-testid="stSegmentedControl"] [role="radio"][aria-checked="true"] {
+        background: rgba(139,140,255,0.14) !important;
+        color: #f0f2f5 !important;
+    }
+
+    /* Spinner accent — the one lavender thread, not Streamlit red. */
+    [data-testid="stSpinner"] svg { color: #8b8cff !important; }
+    [data-testid="stSpinner"] i {
+        border-top-color: #8b8cff !important;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -1058,8 +1179,12 @@ def _idle_heatmap_branches() -> list[Any]:
 # own ``st.container(height=…)`` scroll box, so scrolling one never
 # moves the other. The output pane is the larger one (the quantum
 # heatmap is the centerpiece); the composer pane is smaller.
-_OUTPUT_PANE_HEIGHT = 430
-_COMPOSER_PANE_HEIGHT = 285
+#
+# Streamlit's header (~50px) is kept visible so the sidebar collapse /
+# expand control stays reachable — the two panes give that space back
+# rather than hiding the header.
+_OUTPUT_PANE_HEIGHT = 410
+_COMPOSER_PANE_HEIGHT = 275
 
 # Composer fields shown directly; every other scenario field folds into
 # the composer's "More details" expander so the composer stays compact.
@@ -1073,10 +1198,17 @@ _COMPOSER_CORE_FIELDS = (
 # Injected once at the top of the workspace: reclaim Streamlit's tall
 # default chrome padding so the output + composer panes fit one screen
 # with no marketing hero pushing them down.
+#
+# The Streamlit header is kept PRESENT (not hidden) — hiding it also
+# removes the sidebar collapse / expand control, which would strand a
+# collapsed sidebar with no way to reopen it. Instead the header is made
+# visually quiet (transparent, no shadow) and the ~50px it occupies is
+# given back from the pane heights above.
 _WORKSPACE_CHROME_CSS = (
     "<style>"
-    "header[data-testid='stHeader']{display:none!important;}"
-    ".block-container{padding-top:1.0rem!important;"
+    "header[data-testid='stHeader']{background:transparent!important;"
+    "box-shadow:none!important;}"
+    ".block-container{padding-top:0.6rem!important;"
     "padding-bottom:0.3rem!important;}"
     "</style>"
 )

@@ -126,6 +126,11 @@ def branches_to_payload(hypotheses: list[Any]) -> list[dict[str, Any]]:
         except (TypeError, ValueError):
             prob = 0.0
         label = (getattr(h, "label", "") or "").strip()
+        # snake_case hypothesis ids (e.g. "thrive_at_new_role") render as
+        # unreadable stubs — humanise them into "Thrive at new role".
+        if label and "_" in label and " " not in label:
+            label = label.replace("_", " ")
+            label = label[:1].upper() + label[1:]
         btype = str(getattr(h, "branch_type", "realistic"))
         if btype not in ("wishful", "worst", "realistic"):
             btype = "realistic"
@@ -845,7 +850,7 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
       rows: n, cols: ncols, grid: g, gmax: gm || 1,
       rowLabels: branches.map(function (b, ix) {{
         var lbl = (b.label || ("Branch " + (ix + 1))).trim();
-        return lbl.length > 11 ? lbl.slice(0, 10) + "…" : lbl;
+        return lbl.length > 15 ? lbl.slice(0, 14) + "…" : lbl;
       }}),
       rowColors: colors,
       branches: branches,
@@ -858,7 +863,7 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
     var labels = ["Branch A", "Branch B", "Branch C",
                   "Branch D", "Branch E"];
     for (var i = 0; i < labels.length; i++) {{
-      out.push({{ label: labels[i] + " — awaiting your decision",
+      out.push({{ label: labels[i],
                   probability: 0.2, branch_type: "realistic" }});
     }}
     return out;

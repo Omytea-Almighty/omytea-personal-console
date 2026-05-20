@@ -728,29 +728,17 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
     },
     "result.heatmap_reading": {
         LANG_EN: (
-            "Each row is one future; each column a slice of your scoring "
-            "horizon. Read across a row to see one future's likelihood "
-            "evolve; read down a column for the whole distribution at "
-            "that moment. The spread sharpens from uncertain (now) "
-            "toward the calibrated probabilities (your horizon)."
+            "Each row is one future; each column a moment on the way "
+            "to your horizon."
         ),
-        LANG_ZH: (
-            "每一行是一条未来分支，每一列是你评分时限上的一个切片。"
-            "横看一行 = 这条未来的概率随时间如何演变；纵看一列 = "
-            "那个时刻的整体概率分布。分布从「现在」的不确定逐步收敛"
-            "到「时限」处校准过的概率。"
-        ),
+        LANG_ZH: "每一行是一条未来分支，每一列是通往你时限路上的一个时刻。",
         LANG_ES: (
-            "Cada fila es un futuro; cada columna un tramo de tu "
-            "horizonte. A lo largo de una fila ves cómo evoluciona una "
-            "probabilidad; hacia abajo en una columna, la distribución "
-            "en ese momento."
+            "Cada fila es un futuro; cada columna un momento camino "
+            "a tu horizonte."
         ),
         LANG_FR: (
-            "Chaque ligne est un futur ; chaque colonne une tranche de "
-            "votre horizon. En lisant une ligne : l'évolution d'une "
-            "probabilité ; en lisant une colonne : la distribution à "
-            "cet instant."
+            "Chaque ligne est un futur ; chaque colonne un instant "
+            "vers votre horizon."
         ),
     },
     # -----  Interactive heatmap + camera component (v10 port)  -----
