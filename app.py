@@ -3969,12 +3969,13 @@ def _force_sidebar_open() -> None:
               var sb = d.querySelector('section[data-testid="stSidebar"]');
               if (!sb || sb.getAttribute('aria-expanded') !== 'false') return;
               var c = d.querySelector(
-                '[data-testid="stSidebarCollapsedControl"]');
-              if (c) { (c.querySelector('button') || c).click(); }
+                '[data-testid="stExpandSidebarButton"]');
+              if (c) { c.click(); }
             } catch (e) {}
           }
           setTimeout(openSb, 150);
           setTimeout(openSb, 700);
+          setTimeout(openSb, 1600);
         })();
         </script>
         """,
