@@ -56,6 +56,7 @@ from __future__ import annotations
 
 import html as _html
 import json
+from pathlib import Path
 from typing import Any
 
 import streamlit as st
@@ -67,21 +68,16 @@ __all__ = [
     "branches_to_payload",
     "render_heatmap_camera_component",
     "render_live_video_v10",
-    "LIVE_VIDEO_V10_URL",
     "LIVE_VIDEO_V10_FILE",
 ]
 
 # The v10 marketing demo — a single, complete, working HTML/JS app:
 # camera + pixel-diff motion loop + live heatmap + see-both-at-once
-# layout, all integrated. It is copied verbatim into ``static/`` and
-# served by Streamlit's static file server (``enableStaticServing``),
-# so the console's live-video surface IS this file, embedded whole —
-# never recreated piece by piece.
+# layout, all integrated. It is kept verbatim in ``static/`` and
+# embedded WHOLE as the console's live-video surface — never recreated
+# piece by piece. See ``render_live_video_v10``.
 LIVE_VIDEO_V10_FILE = "live_video_v10.html"
-# Streamlit serves ``omytea-personal-console/static/`` at ``app/static``
-# (relative to the app root). A relative src keeps it same-origin under
-# any deployment host (localhost, Streamlit Cloud, custom domain).
-LIVE_VIDEO_V10_URL = f"app/static/{LIVE_VIDEO_V10_FILE}"
+_V10_PATH = Path(__file__).resolve().parent / "static" / LIVE_VIDEO_V10_FILE
 
 # Embedded-iframe pixel height for the v10 live-video app. The v10
 # layout (scenario row + see-both-at-once camera|heatmap grid) needs a
@@ -114,6 +110,29 @@ def branches_to_payload(hypotheses: list[Any]) -> list[dict[str, Any]]:
     return payload
 
 
+def _v10_srcdoc() -> str | None:
+    """Read the v10 app and escape it for an iframe ``srcdoc`` attribute.
+
+    Returns ``None`` if the static file is missing (a deploy fault).
+
+    The escape is two passes. First :func:`html.escape` (``& < > " '``)
+    so the v10 source becomes a valid double-quoted attribute value.
+    Then every newline is collapsed to a numeric character reference:
+    the iframe must be ONE physical line, because ``st.markdown`` keeps
+    a raw ``<iframe>`` intact only as a single HTML block — a blank line
+    inside the attribute would split the block and spill v10 source as
+    markdown. The browser restores the newlines when it parses srcdoc.
+    """
+    try:
+        raw = _V10_PATH.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    escaped = _html.escape(raw, quote=True)
+    # Collapse newlines to numeric refs — \r and \n kept distinct so the
+    # browser rebuilds the file byte-for-byte when it parses srcdoc.
+    return escaped.replace("\r", "&#13;").replace("\n", "&#10;")
+
+
 def render_live_video_v10(*, height: int = _LIVE_VIDEO_HEIGHT) -> None:
     """Embed the v10 live-video app WHOLE as the live-video surface.
 
@@ -127,47 +146,44 @@ def render_live_video_v10(*, height: int = _LIVE_VIDEO_HEIGHT) -> None:
 
     Camera permission — the one hard part, solved honestly
     ------------------------------------------------------
-    v10's camera is a plain ``getUserMedia`` call.
-    ``st.components.v1.html`` renders inside a sandboxed iframe with no
-    ``allow="camera"`` attribute and no API to add one, so getUserMedia
-    is blocked there. This function instead writes a **top-document
-    iframe** through ``st.markdown(unsafe_allow_html=True)``:
+    v10's camera is a plain ``getUserMedia`` call. ``st.components.v1``
+    ``.html`` renders inside a sandboxed iframe with no ``allow="camera"``
+    and no API to add one, so getUserMedia is blocked there. Serving the
+    file over a URL is not dependable either: ``enableStaticServing`` is
+    not honoured on Streamlit Community Cloud, and GitHub raw / jsDelivr
+    serve ``.html`` as ``text/plain`` (anti-abuse) so it cannot be
+    framed as a page.
 
+    So the v10 app is embedded with **no server round-trip at all** —
+    its full HTML is inlined into a top-document ``<iframe srcdoc="…">``
+    written through ``st.markdown(unsafe_allow_html=True)``:
+
+    * a ``srcdoc`` iframe's document inherits the parent's origin, so it
+      is same-origin and a secure context — getUserMedia is allowed;
     * the iframe carries ``allow="camera; microphone; fullscreen"``;
-    * it sits in the TOP Streamlit document (``app/static/...`` is
-      same-origin), which CAN hold a camera permission grant — NOT
-      inside a components.html sandbox;
-    * the user grants the camera once for the page and the embedded v10
-      app gets it.
+    * it sits in the TOP Streamlit document, NOT a components.html
+      sandbox, so nothing strips the camera permission.
 
-    A clear, prominent **"▸ Open live video"** button is rendered
-    alongside the embed as a guaranteed-working path: it opens the v10
-    static URL in a NEW browser tab, where the page IS v10 with full
-    camera permission. So the live-video control is never dead — if the
-    embedded camera is blocked in some browser, the new-tab path works
-    100 %.
+    The user grants the camera once and the embedded v10 app gets it.
 
     Parameters
     ----------
     height:
         Embedded-iframe pixel height.
     """
-    # The guaranteed-working path first: a prominent button that opens
-    # v10 in its own tab (full camera permission, it IS v10). This is
-    # never a dead button — ``st.link_button`` to a real served URL.
-    st.link_button(
-        T("live_video.open_btn"),
-        LIVE_VIDEO_V10_URL,
-        use_container_width=True,
-        type="primary",
-        help=T("live_video.fallback_note"),
-    )
+    srcdoc = _v10_srcdoc()
+    if srcdoc is None:  # pragma: no cover - deploy fault; asset always ships
+        st.error(
+            "Live-video asset unavailable — static/live_video_v10.html "
+            "is missing from the deployment."
+        )
+        return
 
-    # The embedded path: a top-document iframe (NOT components.html) so
-    # it can carry allow="camera" and inherit the top document's camera
-    # permission. Written through st.markdown(unsafe_allow_html=True).
+    # A top-document iframe (NOT components.html) carrying the v10 app
+    # inline via srcdoc — same-origin, so it can hold the camera grant.
+    # Built as ONE physical line; see _v10_srcdoc on why that matters.
     iframe_html = (
-        f'<iframe src="{_html.escape(LIVE_VIDEO_V10_URL, quote=True)}" '
+        f'<iframe srcdoc="{srcdoc}" '
         f'allow="camera; microphone; fullscreen" '
         f'title="Omytea live video" '
         f'style="width:100%;height:{int(height)}px;border:0;'

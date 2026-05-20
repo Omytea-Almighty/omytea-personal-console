@@ -323,55 +323,28 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
             "revenir à la carte de chaleur de prédiction."
         ),
     },
-    "live_video.open_btn": {
-        LANG_EN: "▸ Open live video",
-        LANG_ZH: "▸ 打开实时视频",
-        LANG_ES: "▸ Abrir video en vivo",
-        LANG_FR: "▸ Ouvrir la vidéo en direct",
-    },
-    "live_video.fallback_note": {
-        LANG_EN: (
-            "Live video opens in its own tab — that is the full Omytea "
-            "live-perception app, where your browser grants the camera "
-            "directly. Camera, motion loop and live heatmap all run "
-            "there."
-        ),
-        LANG_ZH: (
-            "实时视频会在独立标签页中打开——那是完整的 Omytea 实时感知"
-            "应用，浏览器会在那里直接授予摄像头权限。摄像头、运动检测"
-            "循环与实时热力图都在那里运行。"
-        ),
-        LANG_ES: (
-            "El video en vivo se abre en su propia pestaña — es la app "
-            "completa de percepción en vivo de Omytea, donde el "
-            "navegador concede la cámara directamente."
-        ),
-        LANG_FR: (
-            "La vidéo en direct s'ouvre dans son propre onglet — c'est "
-            "l'application complète de perception en direct d'Omytea, où "
-            "le navigateur accorde la caméra directement."
-        ),
-    },
     "live_video.embed_caption": {
         LANG_EN: (
             "Live perception — camera, pixel-diff motion loop and live "
-            "heatmap, running together. If the camera does not appear, "
-            "use the button above to open it in its own tab."
+            "heatmap, running together in one frame. Start the camera "
+            "inside the panel and allow access when your browser asks."
         ),
         LANG_ZH: (
-            "实时感知——摄像头、像素差分运动循环与实时热力图协同运行。"
-            "若摄像头未出现，请用上方按钮在独立标签页中打开。"
+            "实时感知——摄像头、像素差分运动循环与实时热力图在同一画面中"
+            "协同运行。在面板内启动摄像头，并在浏览器询问时允许访问。"
         ),
         LANG_ES: (
             "Percepción en vivo — cámara, bucle de movimiento por "
-            "diferencia de píxeles y mapa de calor en vivo, juntos. Si "
-            "la cámara no aparece, usa el botón de arriba."
+            "diferencia de píxeles y mapa de calor en vivo, juntos en un "
+            "solo marco. Inicia la cámara dentro del panel y permite el "
+            "acceso cuando el navegador lo pida."
         ),
         LANG_FR: (
             "Perception en direct — caméra, boucle de mouvement par "
             "différence de pixels et carte de chaleur en direct, "
-            "ensemble. Si la caméra n'apparaît pas, utilisez le bouton "
-            "ci-dessus."
+            "ensemble dans un seul cadre. Démarrez la caméra dans le "
+            "panneau et autorisez l'accès quand le navigateur le "
+            "demande."
         ),
     },
     "composer.lens": {

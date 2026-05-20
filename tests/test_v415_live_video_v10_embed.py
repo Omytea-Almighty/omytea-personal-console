@@ -106,32 +106,12 @@ def test_v10_static_asset_is_a_complete_app() -> None:
 
 
 # --------------------------------------------------------------------
-# Streamlit static file serving — required so the v10 URL is real and
-# same-origin (so a top-document iframe can carry the camera grant).
-# --------------------------------------------------------------------
-
-def test_streamlit_static_serving_enabled() -> None:
-    """``enableStaticServing`` is on so ``static/`` is served."""
-    cfg = CONFIG_PATH.read_text(encoding="utf-8")
-    assert "enableStaticServing = true" in cfg
-
-
-def test_v10_url_is_app_static_relative() -> None:
-    """The v10 URL is the relative ``app/static`` path Streamlit serves.
-
-    A relative URL keeps the embed same-origin under any host
-    (localhost, Streamlit Cloud, custom domain) — same-origin is what
-    lets the top-document iframe inherit the camera permission.
-    """
-    assert _heatmap_component.LIVE_VIDEO_V10_URL == (
-        f"app/static/{_heatmap_component.LIVE_VIDEO_V10_FILE}"
-    )
-    assert not _heatmap_component.LIVE_VIDEO_V10_URL.startswith("/")
-    assert "://" not in _heatmap_component.LIVE_VIDEO_V10_URL
-
-
-# --------------------------------------------------------------------
 # render_live_video_v10 — exercised directly with a fake ``st``.
+#
+# The embed has NO serving dependency: ``enableStaticServing`` is not
+# honoured on Streamlit Community Cloud, and GitHub raw / jsDelivr serve
+# ``.html`` as ``text/plain``. So the v10 app is inlined whole into a
+# top-document ``<iframe srcdoc="…">`` — same-origin, camera works.
 # --------------------------------------------------------------------
 
 class _FakeSt:
@@ -139,17 +119,17 @@ class _FakeSt:
 
     def __init__(self) -> None:
         self.markdown_calls: list[tuple[str, dict]] = []
-        self.link_button_calls: list[tuple[tuple, dict]] = []
         self.caption_calls: list[str] = []
+        self.error_calls: list[str] = []
 
     def markdown(self, body: str, **kw: object) -> None:
         self.markdown_calls.append((body, kw))
 
-    def link_button(self, *a: object, **kw: object) -> None:
-        self.link_button_calls.append((a, kw))
-
     def caption(self, body: str, **kw: object) -> None:
         self.caption_calls.append(body)
+
+    def error(self, body: str, **kw: object) -> None:
+        self.error_calls.append(body)
 
 
 def _render_with_fake_st() -> _FakeSt:
@@ -157,7 +137,7 @@ def _render_with_fake_st() -> _FakeSt:
     fake = _FakeSt()
     real_st = sys.modules.get("streamlit")
     fake_module = types.ModuleType("streamlit")
-    for attr in ("markdown", "link_button", "caption"):
+    for attr in ("markdown", "caption", "error"):
         setattr(fake_module, attr, getattr(fake, attr))
     # components.v1.html is referenced at import time elsewhere in the
     # module; provide a no-op so the import stays clean.
@@ -203,11 +183,42 @@ def test_embedded_iframe_carries_camera_allow_attribute() -> None:
     assert 'allow="camera; microphone; fullscreen"' in body
 
 
-def test_embedded_iframe_points_at_the_v10_static_url() -> None:
-    """The iframe ``src`` is the served v10 static URL."""
+def test_embedded_iframe_inlines_the_v10_app_via_srcdoc() -> None:
+    """The iframe carries the v10 app inline through ``srcdoc``.
+
+    There is no served URL — ``enableStaticServing`` is not honoured on
+    Streamlit Community Cloud — so the whole v10 HTML is inlined. A
+    ``srcdoc`` iframe is same-origin with the parent, which is what lets
+    getUserMedia run inside it.
+    """
     fake = _render_with_fake_st()
     body = fake.markdown_calls[0][0]
-    assert f'src="{_heatmap_component.LIVE_VIDEO_V10_URL}"' in body
+    assert 'srcdoc="' in body
+    # v10's own integrated pieces survive html-escaping unchanged (these
+    # tokens carry no <>&"' chars) — proof the WHOLE app is inlined.
+    assert "getUserMedia" in body
+    assert "input-camera" in body
+    assert "scenario-card" in body
+
+
+def test_embed_has_no_static_serving_url() -> None:
+    """No ``app/static`` URL — the embed must not depend on serving."""
+    fake = _render_with_fake_st()
+    body = fake.markdown_calls[0][0]
+    assert "app/static" not in body
+
+
+def test_embedded_iframe_is_a_single_physical_line() -> None:
+    """The iframe markdown is ONE physical line.
+
+    ``st.markdown`` keeps a raw ``<iframe>`` intact only as a single
+    HTML block; a newline inside the ``srcdoc`` attribute would split
+    the block and spill v10 source as rendered markdown. ``_v10_srcdoc``
+    collapses every newline to a numeric ref to guarantee this.
+    """
+    fake = _render_with_fake_st()
+    body = fake.markdown_calls[0][0]
+    assert "\n" not in body
 
 
 def test_embedded_iframe_is_not_a_components_html_sandbox() -> None:
@@ -223,19 +234,20 @@ def test_embedded_iframe_is_not_a_components_html_sandbox() -> None:
     assert "sandbox" not in body
 
 
-def test_render_live_video_v10_renders_open_in_new_tab_button() -> None:
-    """A prominent "▸ Open live video" button opens v10 in a new tab.
+def test_v10_srcdoc_round_trips_to_the_verbatim_v10_app() -> None:
+    """``_v10_srcdoc`` escaping is loss-free — the browser rebuilds v10.
 
-    This is the guaranteed-working fallback (path 2): it opens the v10
-    static URL where the camera works 100 %. The control is NEVER dead.
+    HTML-unescaping the ``srcdoc`` attribute (what the browser does when
+    it parses the iframe) must yield the v10 file byte-for-byte. This is
+    the embed's correctness guarantee: the inlined app IS v10, whole.
     """
-    fake = _render_with_fake_st()
-    assert fake.link_button_calls, "no st.link_button — no fallback path"
-    args, kw = fake.link_button_calls[0]
-    # link_button(label, url, ...)
-    assert args[1] == _heatmap_component.LIVE_VIDEO_V10_URL
-    label = str(args[0])
-    assert "Open live video" in label
+    import html as _html_mod
+
+    srcdoc = _heatmap_component._v10_srcdoc()
+    assert srcdoc is not None
+    rebuilt = _html_mod.unescape(srcdoc)
+    asset = STATIC_DIR / _heatmap_component.LIVE_VIDEO_V10_FILE
+    assert rebuilt == asset.read_text(encoding="utf-8")
 
 
 # --------------------------------------------------------------------
