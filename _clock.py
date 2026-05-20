@@ -202,6 +202,42 @@ def _common_defs() -> str:
         f'<stop offset="0%" stop-color="#20242f"/>'
         f'<stop offset="100%" stop-color="#15181f"/>'
         '</linearGradient>',
+        # violet nebula blob — deep-space depth behind the starfield
+        '<radialGradient id="nebula-violet" cx="50%" cy="50%" r="50%">'
+        '<stop offset="0%" stop-color="rgba(180,126,255,0.20)"/>'
+        '<stop offset="58%" stop-color="rgba(139,140,255,0.05)"/>'
+        '<stop offset="100%" stop-color="rgba(139,140,255,0)"/>'
+        '</radialGradient>',
+        # lit-sphere shading — bright spot upper-left → a 3-D body
+        '<radialGradient id="sphere-sun" cx="36%" cy="32%" r="72%">'
+        '<stop offset="0%" stop-color="#fff4cf"/>'
+        '<stop offset="55%" stop-color="#f7c940"/>'
+        '<stop offset="100%" stop-color="#a8770f"/>'
+        '</radialGradient>',
+        '<radialGradient id="sphere-moon" cx="36%" cy="32%" r="74%">'
+        '<stop offset="0%" stop-color="#f3f5fc"/>'
+        '<stop offset="55%" stop-color="#aeb7cb"/>'
+        '<stop offset="100%" stop-color="#4f5870"/>'
+        '</radialGradient>',
+        # sun corona — a soft blurred halo
+        '<radialGradient id="corona-glow" cx="50%" cy="50%" r="50%">'
+        '<stop offset="0%" stop-color="rgba(247,201,64,0.55)"/>'
+        '<stop offset="42%" stop-color="rgba(247,201,64,0.15)"/>'
+        '<stop offset="100%" stop-color="rgba(247,201,64,0)"/>'
+        '</radialGradient>',
+        # gear metal — one coherent top-lit sheen across the instrument
+        f'<linearGradient id="gear-gold" gradientUnits="userSpaceOnUse" '
+        f'x1="{_CX}" y1="24" x2="{_CX}" y2="456">'
+        '<stop offset="0%" stop-color="#ffe79a"/>'
+        '<stop offset="46%" stop-color="#f0bf3d"/>'
+        '<stop offset="100%" stop-color="#7e5d11"/>'
+        '</linearGradient>',
+        f'<linearGradient id="gear-cyan" gradientUnits="userSpaceOnUse" '
+        f'x1="{_CX}" y1="24" x2="{_CX}" y2="456">'
+        '<stop offset="0%" stop-color="#bdf6ff"/>'
+        '<stop offset="46%" stop-color="#3fd6ec"/>'
+        '<stop offset="100%" stop-color="#136f82"/>'
+        '</linearGradient>',
     ]
     # per-element radial gradients for the 五行 wedges
     for key in WUXING_KEYS:
@@ -235,7 +271,15 @@ def _svg_open() -> str:
         f'<svg viewBox="0 0 {_VB} {_VB}" width="100%" '
         f'preserveAspectRatio="xMidYMid meet" style="display:block;">'
         f'{_common_defs()}'
+        f'<rect x="0" y="0" width="{_VB}" height="{_VB}" fill="{_CANVAS}"></rect>'
         f'<rect x="0" y="0" width="{_VB}" height="{_VB}" fill="url(#bg-glow)"></rect>'
+        # two soft nebula blobs — deep-space depth, off-centre for life
+        f'<ellipse cx="{_VB * 0.30:.0f}" cy="{_VB * 0.30:.0f}" '
+        f'rx="{_VB * 0.44:.0f}" ry="{_VB * 0.36:.0f}" '
+        f'fill="url(#nebula-violet)"></ellipse>'
+        f'<ellipse cx="{_VB * 0.74:.0f}" cy="{_VB * 0.76:.0f}" '
+        f'rx="{_VB * 0.34:.0f}" ry="{_VB * 0.30:.0f}" '
+        f'fill="url(#bg-glow)" opacity="0.55"></ellipse>'
         f'{_starfield()}'
     )
 
@@ -338,6 +382,90 @@ def _branch_ring(branch_probabilities: list[tuple[str, float, str]],
     return "".join(out)
 
 
+# ----------------------------------------------------------------------
+# Nye-Clock celestial primitives — a real gear movement + lit spheres,
+# so the founder's "天干地支咬合" and Sun-Earth-Moon system carry into
+# the in-app instruments as genuine forms, not stick-figure ticks.
+# ----------------------------------------------------------------------
+
+def _ring_path(r_out: float, r_in: float) -> str:
+    """A full annulus as one even-odd path (cx/cy = instrument centre)."""
+    def _circ(r: float) -> str:
+        return (f"M {_CX - r:.2f} {_CY:.2f} "
+                f"A {r:.2f} {r:.2f} 0 1 1 {_CX + r:.2f} {_CY:.2f} "
+                f"A {r:.2f} {r:.2f} 0 1 1 {_CX - r:.2f} {_CY:.2f} Z")
+    return _circ(r_out) + " " + _circ(r_in)
+
+
+def _gear_ring(rim_in: float, rim_out: float, n_teeth: int,
+               tooth_h: float, outward: bool, grad_id: str,
+               edge_col: str, phase_deg: float = 0.0) -> str:
+    """A real toothed gear ring — the founder's 天干地支咬合 mechanism.
+
+    An annular rim plus `n_teeth` trapezoidal teeth. `outward=True` is a
+    pinion (teeth point away from centre); `False` a ring gear (teeth
+    point inward). A 10-tooth gold 天干 ring gear and a 12-tooth cyan
+    地支 pinion interlock to render the 60-cycle as a precision movement.
+    """
+    pitch = 360.0 / n_teeth
+    half_base, half_tip = pitch * 0.30, pitch * 0.15
+    if outward:
+        r_root, r_crest = rim_out, rim_out + tooth_h
+    else:
+        r_root, r_crest = rim_in, rim_in - tooth_h
+    teeth: list[str] = []
+    for i in range(n_teeth):
+        a = phase_deg + i * pitch
+        x0, y0 = _polar(_CX, _CY, r_root, a - half_base)
+        x1, y1 = _polar(_CX, _CY, r_crest, a - half_tip)
+        x2, y2 = _polar(_CX, _CY, r_crest, a + half_tip)
+        x3, y3 = _polar(_CX, _CY, r_root, a + half_base)
+        teeth.append(
+            f'<path d="M {x0:.1f} {y0:.1f} L {x1:.1f} {y1:.1f} '
+            f'L {x2:.1f} {y2:.1f} L {x3:.1f} {y3:.1f} Z"></path>'
+        )
+    return (
+        f'<g fill="url(#{grad_id})" stroke="{edge_col}" '
+        f'stroke-width="0.6" stroke-linejoin="round">'
+        f'<path d="{_ring_path(rim_out, rim_in)}" fill-rule="evenodd"></path>'
+        f'{"".join(teeth)}'
+        # a fine engraved groove along the rim mid-line
+        f'<circle cx="{_CX}" cy="{_CY}" r="{(rim_in + rim_out) / 2:.1f}" '
+        f'fill="none" stroke="rgba(0,0,0,0.30)" stroke-width="0.7"></circle>'
+        f'</g>'
+    )
+
+
+def _lit_sphere(cx: float, cy: float, r: float, grad_id: str,
+                edge_col: str, *, corona: bool = False,
+                glyph: str = "", glyph_col: str = "",
+                glyph_size: float = 13.0) -> str:
+    """A celestial body as a lit sphere — radial-gradient shading from an
+    upper-left light, a soft specular highlight, an optional blurred
+    corona. The Nye Clock Sun-Earth-Moon look in static SVG."""
+    parts: list[str] = []
+    if corona:
+        parts.append(
+            f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r * 2.4:.1f}" '
+            f'fill="url(#corona-glow)"></circle>'
+        )
+    parts.append(
+        f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}" '
+        f'fill="url(#{grad_id})" stroke="{edge_col}" '
+        f'stroke-width="0.9"></circle>'
+        f'<circle cx="{cx - r * 0.32:.1f}" cy="{cy - r * 0.36:.1f}" '
+        f'r="{r * 0.30:.1f}" fill="rgba(255,255,255,0.45)"></circle>'
+    )
+    if glyph:
+        parts.append(
+            f'<text x="{cx:.1f}" y="{cy + 1:.1f}" font-family="{_SERIF}" '
+            f'font-size="{glyph_size:.0f}" fill="{glyph_col}" '
+            f'font-weight="700" text-anchor="middle" '
+            f'dominant-baseline="middle">{glyph}</text>'
+        )
+    return "".join(parts)
+
+
 # ======================================================================
 # Instrument 1 — 八字 "Five-Phase Astrolabe"
 # ======================================================================
@@ -386,40 +514,21 @@ def _render_bazi(reading: LensReading,
             f'fill="{_INK2}"></path>'
         )
 
-    # === SEXAGENARY RING — 60 steps; 10 gold 天干 teeth mesh with
-    # 12 cyan 地支 teeth (the "天干地支咬合" of the Nye Clock). ===
-    r_base = 210.0
+    # === SEXAGENARY MOVEMENT — a 10-tooth gold 天干 ring gear meshing
+    # with a 12-tooth cyan 地支 pinion. LCM(10,12) = 60 is the great
+    # cycle; the founder's "天干地支咬合", rendered as a real movement. ===
+    # cyan 地支 pinion underneath, gold 天干 ring gear over it
+    body.append(_gear_ring(197.0, 203.0, 12, 9.0, True,
+                           "gear-cyan", "#0c2630", phase_deg=15.0))
+    body.append(_gear_ring(214.0, 220.0, 10, 9.0, False,
+                           "gear-gold", "#2a200a"))
+    # a hairline pitch circle through the mesh zone
     body.append(
-        f'<circle cx="{_CX}" cy="{_CY}" r="{r_base}" fill="none" '
-        f'stroke="{_HAIR_SOFT}" stroke-width="0.7"></circle>'
+        f'<circle cx="{_CX}" cy="{_CY}" r="208.5" fill="none" '
+        f'stroke="rgba(247,201,64,0.16)" stroke-width="0.7"></circle>'
     )
-    for i in range(60):
-        ang = i * 6.0
-        # minor tick — all 60 steps
-        x1, y1 = _polar(_CX, _CY, r_base - 1.5, ang)
-        x2, y2 = _polar(_CX, _CY, r_base + 1.5, ang)
-        body.append(
-            f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" '
-            f'stroke="{_INK3}" stroke-width="0.5" opacity="0.45"></line>'
-        )
-        if i % 6 == 0:  # 天干 — gold tooth, points outward
-            xa, ya = _polar(_CX, _CY, r_base + 1, ang)
-            xb, yb = _polar(_CX, _CY, r_base + 11, ang)
-            body.append(
-                f'<line x1="{xa:.1f}" y1="{ya:.1f}" x2="{xb:.1f}" y2="{yb:.1f}" '
-                f'stroke="{_GAL_GOLD}" stroke-width="1.8" '
-                f'stroke-linecap="round" opacity="0.78"></line>'
-            )
-        if i % 5 == 0:  # 地支 — cyan tooth, points inward
-            xa, ya = _polar(_CX, _CY, r_base - 1, ang)
-            xb, yb = _polar(_CX, _CY, r_base - 10, ang)
-            body.append(
-                f'<line x1="{xa:.1f}" y1="{ya:.1f}" x2="{xb:.1f}" y2="{yb:.1f}" '
-                f'stroke="{_GAL_CYAN}" stroke-width="1.6" '
-                f'stroke-linecap="round" opacity="0.66"></line>'
-            )
 
-    # --- the four pillars as coordinates on the 60-cycle ---
+    # --- the four pillars as jewels countersunk into the gold ring ---
     if bazi is not None:
         pillar_seq = (
             (bazi.year_pillar,  "YEAR"),
@@ -430,13 +539,16 @@ def _render_bazi(reading: LensReading,
         for pil, _name in pillar_seq:
             n = _sexagenary_index(pil)
             ang = n * 6.0
-            mx, my = _polar(_CX, _CY, r_base, ang)
-            # a lavender coordinate jewel on the ring
+            mx, my = _polar(_CX, _CY, 217.0, ang)
+            # countersunk seat → lavender jewel → bright core
             body.append(
-                f'<circle cx="{mx:.1f}" cy="{my:.1f}" r="5.4" '
+                f'<circle cx="{mx:.1f}" cy="{my:.1f}" r="6.3" '
+                f'fill="#0c0e14" stroke="rgba(0,0,0,0.55)" '
+                f'stroke-width="1.3"></circle>'
+                f'<circle cx="{mx:.1f}" cy="{my:.1f}" r="5.0" '
                 f'fill="{_SURFACE}" stroke="{_ACCENT}" stroke-width="1.5" '
                 f'filter="url(#soft-glow)"></circle>'
-                f'<circle cx="{mx:.1f}" cy="{my:.1f}" r="2.1" '
+                f'<circle cx="{mx:.1f}" cy="{my:.1f}" r="2.0" '
                 f'fill="{_ACCENT}"></circle>'
             )
 
@@ -445,17 +557,22 @@ def _render_bazi(reading: LensReading,
     sector = 72.0
     for i, key in enumerate(WUXING_KEYS):
         share = max(0.0, balance.get(key, 0.0))
-        thick = 8.0 + share * (r_out - r_in_base - 8.0)
-        r_in = r_out - thick
+        # an even-thickness phase ring — restraint over the old lumpy
+        # variable wedge. The chart's balance reads through wedge
+        # *opacity* + the dominant element's lit plate, not jagged bars.
+        r_in = r_out - 30.0
         a0 = i * sector - sector / 2
         a1 = a0 + sector
         is_dom = (key == dom_key)
         glow = ' filter="url(#soft-glow)"' if is_dom else ""
+        # only the dominant phase is lit; the rest are faint tints — the
+        # same "dark ring, one focal element" restraint as the 占星 wheel.
+        wedge_op = 0.88 if is_dom else min(0.32, 0.05 + share * 1.15)
         body.append(
             f'<path d="{_arc_path(_CX, _CY, r_out, r_in, a0, a1)}" '
             f'fill="url(#wx-{key})" '
-            f'fill-opacity="{0.92 if is_dom else 0.60}" '
-            f'stroke="{_CANVAS}" stroke-width="1.0"{glow}></path>'
+            f'fill-opacity="{wedge_op:.3f}" '
+            f'stroke="{_CANVAS}" stroke-width="1.2"{glow}></path>'
         )
         mr = (r_out + r_in_base) / 2 + 3
         gx, gy = _polar(_CX, _CY, mr, (a0 + a1) / 2)
@@ -471,24 +588,22 @@ def _render_bazi(reading: LensReading,
             f'dominant-baseline="middle">{WUXING_HANZI[i]}</text>'
         )
 
-    # --- separator hairline + branch arc ring ---
+    # --- a slim branch-distribution detail ring, channelled between two
+    # hairlines so it reads as a fine inlay, not a competing band (the
+    # full distribution lives in the main quantum heatmap) ---
     body.append(
         f'<circle cx="{_CX}" cy="{_CY}" r="146" fill="none" '
         f'stroke="{_HAIR_SOFT}" stroke-width="0.7"></circle>'
+        f'<circle cx="{_CX}" cy="{_CY}" r="139.5" fill="none" '
+        f'stroke="{_HAIR_SOFT}" stroke-width="0.6" opacity="0.7"></circle>'
     )
-    body.append(_branch_ring(branch_probabilities, 140.0, 116.0))
+    body.append(_branch_ring(branch_probabilities, 135.0, 127.0))
     body.append(
         f'<circle cx="{_CX}" cy="{_CY}" r="112" fill="none" '
         f'stroke="{_HAIR_SOFT}" stroke-width="0.7"></circle>'
+        f'<circle cx="{_CX}" cy="{_CY}" r="108.5" fill="none" '
+        f'stroke="{_HAIRLINE}" stroke-width="0.8" opacity="0.6"></circle>'
     )
-    for i in range(48):
-        ang = i * 7.5
-        x1, y1 = _polar(_CX, _CY, 110, ang)
-        x2, y2 = _polar(_CX, _CY, 106, ang)
-        body.append(
-            f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" '
-            f'stroke="{_INK3}" stroke-width="0.5" opacity="0.5"></line>'
-        )
 
     # --- engraved core with dual readout ---
     body.append(_centre_readout(top_label, top_value,
@@ -1000,12 +1115,15 @@ def _render_astro(reading: LensReading,
         col = ASTRO_ELEMENT_COLOR[sign.element]
         is_sun = (i == chart.sun)
         is_big3 = (i in big3)
-        alpha = 0.78 if is_sun else (0.50 if is_big3 else 0.30)
+        # a dark, restrained ring — only the sun-sign sector is lit, the
+        # moon's gets a gentle tint, the rest are near-black. The 12
+        # glyphs + hairline dividers carry the structure.
+        alpha = 0.60 if is_sun else (0.19 if is_big3 else 0.085)
         glow = ' filter="url(#soft-glow)"' if is_sun else ""
         body.append(
             f'<path d="{_arc_path(_CX, _CY, r_out, r_in, a0, a1)}" '
             f'fill="{col}" fill-opacity="{alpha:.3f}" '
-            f'stroke="{_CANVAS}" stroke-width="1.0"{glow}></path>'
+            f'stroke="{_HAIRLINE}" stroke-width="0.8"{glow}></path>'
         )
         # zodiac glyph at sector midpoint
         mr = (r_out + r_in) / 2
@@ -1018,36 +1136,47 @@ def _render_astro(reading: LensReading,
             f'dominant-baseline="middle">{sign.glyph}</text>'
         )
 
-    # --- Sun + Moon as bodies on orbital paths (Nye-Clock Sun-Earth-
-    # Moon system borrow): two concentric galaxy-blue orbits, ☉ Sun
-    # inner, ☽ Moon outer — each body on its orbit at its true sign's
-    # angle. (No ascendant ring — the rising sign needs a birth
-    # latitude/longitude this console does not collect.) ---
-    orbits = (
-        ("moon", chart.moon, "☽", _INK1,     140.0, 15),
-        ("sun",  chart.sun,  "☉", _GAL_GOLD, 112.0, 16),
+    # --- Sun + Moon on orbital paths — the Nye Clock Sun-Earth-Moon
+    # system, borrowed as static SVG: two concentric galaxy-blue orbits,
+    # a lit-sphere body on each at its true sign's angle. (No ascendant
+    # ring — the rising sign needs a birth latitude/longitude this
+    # console does not collect.) ---
+    sun_orbit, moon_orbit = 116.0, 140.0
+    for orad in (moon_orbit, sun_orbit):
+        # orbit path — a fine solid ring with a faint outer companion
+        body.append(
+            f'<circle cx="{_CX}" cy="{_CY}" r="{orad + 1.7:.1f}" fill="none" '
+            f'stroke="{_GAL_BLUE}" stroke-width="0.6" opacity="0.13"></circle>'
+            f'<circle cx="{_CX}" cy="{_CY}" r="{orad:.1f}" fill="none" '
+            f'stroke="{_GAL_BLUE}" stroke-width="1.0" opacity="0.46"></circle>'
+        )
+    # 12 sign-graduation ticks on the inner (sun) orbit
+    for k in range(12):
+        tx1, ty1 = _polar(_CX, _CY, sun_orbit - 2.6, k * 30.0)
+        tx2, ty2 = _polar(_CX, _CY, sun_orbit + 2.6, k * 30.0)
+        body.append(
+            f'<line x1="{tx1:.1f}" y1="{ty1:.1f}" x2="{tx2:.1f}" '
+            f'y2="{ty2:.1f}" stroke="{_GAL_BLUE}" stroke-width="0.6" '
+            f'opacity="0.34"></line>'
+        )
+    # the Moon — a lit silver sphere on the outer orbit
+    mmx, mmy = _polar(_CX, _CY, moon_orbit, chart.moon * 30.0)
+    body.append(
+        f'<line x1="{_CX}" y1="{_CY}" x2="{mmx:.1f}" y2="{mmy:.1f}" '
+        f'stroke="{_GAL_BLUE}" stroke-width="0.6" opacity="0.16"></line>'
     )
-    for _bk, idx, _sym, col, orad, _fs in orbits:
-        # the orbit path — faint dashed galaxy-blue ring
-        body.append(
-            f'<circle cx="{_CX}" cy="{_CY}" r="{orad}" fill="none" '
-            f'stroke="{_GAL_BLUE}" stroke-width="0.7" '
-            f'stroke-dasharray="2 5" opacity="0.32"></circle>'
-        )
-    for _bk, idx, sym, col, orad, fs in orbits:
-        mx, my = _polar(_CX, _CY, orad, idx * 30.0)
-        # a faint connector from the centre sun to the body
-        body.append(
-            f'<line x1="{_CX}" y1="{_CY}" x2="{mx:.1f}" y2="{my:.1f}" '
-            f'stroke="{_GAL_BLUE}" stroke-width="0.6" opacity="0.20"></line>'
-            f'<circle cx="{mx:.1f}" cy="{my:.1f}" r="10" fill="{_SURFACE}" '
-            f'stroke="{col}" stroke-width="1.4" '
-            f'filter="url(#soft-glow)"></circle>'
-            f'<text x="{mx:.1f}" y="{my+1:.1f}" font-family="{_SERIF}" '
-            f'font-size="{fs}" fill="{col}" '
-            f'text-anchor="middle" dominant-baseline="middle" '
-            f'font-weight="600">{sym}</text>'
-        )
+    body.append(_lit_sphere(mmx, mmy, 12.0, "sphere-moon", "#2c3346",
+                            glyph="☽", glyph_col="#2a2f3e",
+                            glyph_size=14.0))
+    # the Sun — a lit gold sphere with a corona on the inner orbit
+    ssx, ssy = _polar(_CX, _CY, sun_orbit, chart.sun * 30.0)
+    body.append(
+        f'<line x1="{_CX}" y1="{_CY}" x2="{ssx:.1f}" y2="{ssy:.1f}" '
+        f'stroke="{_GAL_GOLD}" stroke-width="0.7" opacity="0.22"></line>'
+    )
+    body.append(_lit_sphere(ssx, ssy, 15.0, "sphere-sun", "#6e4d09",
+                            corona=True, glyph="☉", glyph_col="#5a3f06",
+                            glyph_size=17.0))
 
     # The natal wheel's "model" half is the orbital system above + the
     # tri-metric chips below the card; no separate branch ring here, so

@@ -63,6 +63,31 @@ def test_bazi_pillars_are_valid_ganzhi() -> None:
             assert stem % 2 == branch % 2, (y, m, d, pillar)
 
 
+def test_bazi_year_turns_at_lichun() -> None:
+    """The 八字 solar year turns at 立春 (early Feb), not Jan 1: a
+    January birth carries the *previous* sexagenary year, a March birth
+    the current one. The boundary is the astronomical 立春 instant."""
+    for y in (1985, 2000, 2012, 2025):
+        jan = mp.bazi_from_birth(mp.BirthData(y, 1, 15, 12))
+        mar = mp.bazi_from_birth(mp.BirthData(y, 3, 15, 12))
+        assert jan.year_pillar == ((y - 1 - 4) % 10, (y - 1 - 4) % 12), y
+        assert mar.year_pillar == ((y - 4) % 10, (y - 4) % 12), y
+
+
+def test_bazi_month_covers_all_twelve_branches() -> None:
+    """节气起月法 read from solar longitude: sweeping the 20th of each
+    month across a year visits all 12 month-branches exactly once, in
+    寅-first order — no date table, no ±1-day boundary error."""
+    branches = {
+        mp.bazi_from_birth(mp.BirthData(2024, m, 20, 12)).month_pillar[1]
+        for m in range(1, 13)
+    }
+    assert branches == set(range(12))
+    # spot-check the named months: Feb → 寅 (2), Aug → 申 (8)
+    assert mp.bazi_from_birth(mp.BirthData(2024, 2, 20, 12)).month_pillar[1] == 2
+    assert mp.bazi_from_birth(mp.BirthData(2024, 8, 20, 12)).month_pillar[1] == 8
+
+
 def test_wuxing_balance_sums_to_one() -> None:
     bz = mp.bazi_from_birth(mp.BirthData(1990, 3, 15, 7))
     bal = mp.wuxing_balance(bz)

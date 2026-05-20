@@ -26,10 +26,12 @@ Every system produces:
   • `auspice` ∈ [0, 1]        — overall favourability, drives the
     per-branch Bayesian reweight (`apply_lens_to_branches`)
 
-Scope honesty — all four use SIMPLIFIED rule libraries (documented at
-each site). A real 节气-corrected 八字, a real 五行局 紫微 placement,
-an author-reviewed 64-hexagram interpretation library, and a full
-78-card Tarot deck with reversY semantics are v0.5+ work.
+Scope honesty — 八字 + 占星 now run a real astronomical engine: the
+八字 节气 boundaries come from the Sun's true ecliptic longitude and the
+占星 sun/moon from a Meeus ephemeris. 易经 + 塔罗 still use SIMPLIFIED
+rule libraries (documented at each site) — an author-reviewed
+64-hexagram interpretation library and a full 78-card Tarot deck with
+reversal semantics are v0.5+ work.
 """
 
 from __future__ import annotations
@@ -223,9 +225,13 @@ WUXING_COLOR_DEEP: dict[str, str] = {
 }
 
 
-# --- Real 八字 engine, ported verbatim from the founder's Nye Clock ---
+# --- Real 八字 engine, ported from the founder's Nye Clock
 # (`nye-clock-backdrop.html` :: getGanZhiYear / getGanZhiMonth /
-#  getGanZhiDay + heroHourStemIndexFromDayStemWushu). The earlier
+#  getGanZhiDay) and then upgraded to a true astronomical 节气. The Nye
+# Clock seeds the month from an approximate ±1-day 节气 date table; here
+# the year + month boundaries are read straight off the Sun's ecliptic
+# longitude (`_sun_longitude`, ephemeris section below), so the 年柱 and
+# 月柱 are exact even at a solar-term boundary. The earlier
 # `(year-4)%60` + `year*365 + month*30 + day` placeholder was simply
 # wrong — it ignored leap years, real month lengths and 节气.
 
@@ -235,45 +241,73 @@ from datetime import date as _date
 _DAY_ANCHOR: Final = _date(1900, 4, 20)
 _DAY_ANCHOR_INDEX: Final = 59
 
-# The 12 "节" that open each 八字 month — (gregorian month, day,
-# branch index). Approximate Gregorian dates (±1 day); the Nye Clock
-# uses the same table as its solar-longitude iteration seed.
-_SOLAR_NODES: Final = (
-    (2, 4, 2),    # 立春 → 寅
-    (3, 5, 3),    # 惊蛰 → 卯
-    (4, 5, 4),    # 清明 → 辰
-    (5, 5, 5),    # 立夏 → 巳
-    (6, 5, 6),    # 芒种 → 午
-    (7, 7, 7),    # 小暑 → 未
-    (8, 7, 8),    # 立秋 → 申
-    (9, 7, 9),    # 白露 → 酉
-    (10, 8, 10),  # 寒露 → 戌
-    (11, 7, 11),  # 立冬 → 亥
-    (12, 7, 0),   # 大雪 → 子
-    (1, 5, 1),    # 小寒 → 丑
-)
 # 五虎遁 — year-stem index → 正月(寅) stem index.
 _WUHU_DUN: Final = {0: 2, 5: 2, 1: 4, 6: 4, 2: 6, 7: 6,
                     3: 8, 8: 8, 4: 0, 9: 0}
 
 
+def _month_branch_from_sun(jd: float) -> int:
+    """八字 month earthly-branch from the Sun's true ecliptic longitude.
+
+    The 12 "节" open the 八字 months and each sits at a fixed solar
+    longitude: 立春 = 315° opens 寅 (branch 2); every further 30° of
+    longitude advances the branch by one (惊蛰 345° → 卯, 清明 15° → 辰,
+    立夏 45° → 巳 …). The branch is therefore a pure function of the
+    Sun's longitude — no date table, no ±1-day boundary error.
+    """
+    lon = _sun_longitude(jd)
+    return (int(((lon - 315.0) % 360.0) // 30.0) + 2) % 12
+
+
+def _lichun_jd(greg_year: int) -> float:
+    """Julian Day (UT) of 立春 for a Gregorian year — the instant the
+    Sun reaches ecliptic longitude 315°. The 八字 solar year turns here,
+    not at Jan 1. Bisection on `_sun_longitude`; 立春 always falls in the
+    first week of February, so a fixed [Feb 1, Feb 8] bracket is safe.
+    """
+    lo = _julian_day(greg_year, 2, 1, 0.0)
+    hi = _julian_day(greg_year, 2, 8, 0.0)
+    for _ in range(64):
+        mid = 0.5 * (lo + hi)
+        # signed gap to 315°, wrapped into (−180°, 180°]
+        diff = (_sun_longitude(mid) - 315.0 + 180.0) % 360.0 - 180.0
+        if diff < 0.0:
+            lo = mid
+        else:
+            hi = mid
+    return 0.5 * (lo + hi)
+
+
 def bazi_from_birth(bd: BirthData) -> BaZiPattern:
     """Compute the 八字 from a birth datetime — the real algorithm.
 
-    Faithful Python port of the Nye Clock's tested engine:
-      • Year  — sexagenary of the year, boundary at 立春 (≈ Feb 4).
-      • Month — 节气起月法 (which 节 the date falls in) + 五虎遁 stem.
+    Faithful port of the Nye Clock's tested engine, upgraded to a true
+    astronomical 节气:
+      • Year  — sexagenary of the solar year; the boundary is the exact
+                立春 instant (Sun at 315°), not a fixed Feb-4.
+      • Month — 节气起月法 read straight off the Sun's longitude, plus
+                the 五虎遁 month stem.
       • Day   — exact day count from the 1900-04-20 (index 59) anchor.
       • Hour  — 时辰 branch from the hour + 五鼠遁 stem.
 
-    Deterministic. The only approximation is the 节气 date table
-    (±1 day at a solar-term boundary); everything else is exact.
+    Deterministic and astronomically exact: the year + month boundaries
+    are solved from `_sun_longitude` and compared in UT — the birth clock
+    time is shifted by the longitude's standard timezone offset first, so
+    a birth on a 节气 day lands on the correct side of the boundary. The
+    residual 真太阳时 correction (equation of time, ≤ ±16 min) is the
+    only v0.5+ refinement left.
     """
     d = _date(bd.year, bd.month, bd.day)
+    # The 节气 boundary is an instant in UT; the birth clock time is
+    # local, so shift by the standard timezone offset implied by the
+    # longitude (116.4°E → UTC+8) before placing the birth on the JD
+    # axis. The day + hour pillars use the local date/hour unchanged.
+    _tz = round(bd.longitude / 15.0)
+    birth_jd = _julian_day(bd.year, bd.month, bd.day, bd.hour - _tz)
 
-    # --- year pillar — sexagenary year, 立春 boundary ---
+    # --- year pillar — sexagenary solar year, exact 立春 boundary ---
     y = bd.year
-    if (bd.month, bd.day) < (2, 4):
+    if birth_jd < _lichun_jd(bd.year):
         y -= 1
     year_stem = (y - 4) % 10
     year_branch = (y - 4) % 12
@@ -283,16 +317,8 @@ def bazi_from_birth(bd: BirthData) -> BaZiPattern:
     day_stem = day_idx % 10
     day_branch = day_idx % 12
 
-    # --- month pillar — 节气起月法 + 五虎遁 ---
-    nodes = [(_date(bd.year, m, dd), bi) for (m, dd, bi) in _SOLAR_NODES]
-    nodes.append((_date(bd.year - 1, 12, 7), 0))  # previous-year 大雪
-    nodes.sort()
-    month_branch = nodes[-1][1]
-    for node_date, branch_idx in nodes:
-        if d >= node_date:
-            month_branch = branch_idx
-        else:
-            break
+    # --- month pillar — 节气起月法 (from solar longitude) + 五虎遁 ---
+    month_branch = _month_branch_from_sun(birth_jd)
     start_stem = _WUHU_DUN[year_stem]
     month_stem = (start_stem + (month_branch - 2) % 12) % 10
 
