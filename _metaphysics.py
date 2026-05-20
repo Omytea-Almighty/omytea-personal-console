@@ -1013,13 +1013,51 @@ def compute_reading(
     )
 
 
+def compute_all_readings(
+    *,
+    birth: BirthData,
+    seed: str,
+    outcome: str,
+) -> dict[str, LensReading]:
+    """Run every surfaced system and return all readings, keyed by system.
+
+    The 玄学 module is meant to speak together, not one tradition at a
+    time — this is the single call the unified lens makes.
+    """
+    return {
+        system: compute_reading(system, birth=birth, seed=seed, outcome=outcome)
+        for system in SYSTEMS
+    }
+
+
+def aggregate_readings(
+    readings: list[LensReading] | dict[str, LensReading],
+) -> tuple[float, float]:
+    """Joint 玄学 prior + auspice — the whole module speaking as one.
+
+    An equal-weight mean across every system's reading. Equal weight is
+    the honest default: no tradition is privileged over another, and the
+    UI shows each system's individual lean beside the joint number so the
+    user can see agreement (or disagreement) for themselves. Returns
+    (joint_prior, joint_auspice), each clamped to [0, 1].
+    """
+    items = (list(readings.values()) if isinstance(readings, dict)
+             else list(readings))
+    if not items:
+        return 0.5, 0.5
+    jp = sum(r.prior for r in items) / len(items)
+    ja = sum(r.auspice for r in items) / len(items)
+    return max(0.0, min(1.0, jp)), max(0.0, min(1.0, ja))
+
+
 __all__ = [
     # shared
     "OUTCOME_CATEGORIES", "CombinationMode", "combine_with_model",
     "apply_lens_to_branches",
     "SYSTEM_BAZI", "SYSTEM_ZIWEI", "SYSTEM_ICHING", "SYSTEM_TAROT",
     "SYSTEM_ASTRO", "SYSTEMS",
-    "LensReading", "compute_reading",
+    "LensReading", "compute_reading", "compute_all_readings",
+    "aggregate_readings",
     # bazi
     "BirthData", "BaZiPattern", "bazi_from_birth", "wuxing_balance",
     "dominant_element", "yongshen", "pillar_text", "outcome_prior",

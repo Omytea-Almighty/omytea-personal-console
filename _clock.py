@@ -1219,6 +1219,194 @@ def _render_astro(reading: LensReading,
 
 
 # ======================================================================
+# Instrument 6 — the unified celestial astrolabe (八字 ⊕ 占星)
+# ======================================================================
+
+def _render_celestial(reading_bazi: LensReading,
+                      reading_astro: LensReading,
+                      branch_probabilities: list[tuple[str, float, str]],
+                      top_label: str, top_value: str,
+                      bottom_label: str, bottom_value: str,
+                      meta: str) -> str:
+    """The unified celestial astrolabe — 八字 and 占星 on one dial.
+
+    Both traditions are read off the sky, so they share a single
+    instrument instead of two separate dials behind a selector:
+
+      • outer ring  — the 八字 sexagenary gear movement (gold 天干 ring
+                      gear meshing the cyan 地支 pinion; the four pillars
+                      ride it as jewels).
+      • middle ring — the 占星 zodiac wheel (12 sectors, sun sign lit).
+      • inner ring  — the 八字 五行 phase ring (dominant element lit).
+      • centre field— the 占星 Sun + Moon as lit spheres on orbits.
+      • core        — the joint MODEL / 玄学-consensus readout.
+
+    `branch_probabilities` is accepted for call-site parity; the branch
+    distribution itself lives in the main quantum heatmap.
+    """
+    _ = branch_probabilities
+    bazi = reading_bazi.bazi
+    balance = reading_bazi.balance or {}
+    dom_key = dominant_element(balance) if balance else None
+    chart = reading_astro.natal
+
+    body: list[str] = [_svg_open()]
+
+    # --- frame + cardinal diamonds ---
+    body.append(
+        f'<circle cx="{_CX}" cy="{_CY}" r="226" fill="none" '
+        f'stroke="{_HAIRLINE}" stroke-width="0.7"></circle>'
+        f'<circle cx="{_CX}" cy="{_CY}" r="221" fill="none" '
+        f'stroke="{_HAIR_STRONG}" stroke-width="1.0" opacity="0.6"></circle>'
+    )
+    for ang in (0, 90, 180, 270):
+        dx, dy = _polar(_CX, _CY, 223.5, ang)
+        body.append(
+            f'<path d="M {dx:.1f} {dy-4:.1f} L {dx+4:.1f} {dy:.1f} '
+            f'L {dx:.1f} {dy+4:.1f} L {dx-4:.1f} {dy:.1f} Z" '
+            f'fill="{_INK2}"></path>'
+        )
+
+    # === 八字 sexagenary gear movement (outer mechanism) ===
+    # muted as a group — on the unified dial the movement frames the
+    # instrument; the four lit pillar jewels are its focal points.
+    body.append(
+        '<g opacity="0.42">'
+        + _gear_ring(190.0, 196.0, 12, 9.0, True,
+                     "gear-cyan", "#0c2630", phase_deg=15.0)
+        + _gear_ring(207.0, 214.0, 10, 9.0, False,
+                     "gear-gold", "#2a200a")
+        + '</g>'
+    )
+    if bazi is not None:
+        for pil in (bazi.year_pillar, bazi.month_pillar,
+                    bazi.day_pillar, bazi.hour_pillar):
+            ang = _sexagenary_index(pil) * 6.0
+            mx, my = _polar(_CX, _CY, 210.5, ang)
+            body.append(
+                f'<circle cx="{mx:.1f}" cy="{my:.1f}" r="5.8" '
+                f'fill="#0c0e14" stroke="rgba(0,0,0,0.55)" '
+                f'stroke-width="1.2"></circle>'
+                f'<circle cx="{mx:.1f}" cy="{my:.1f}" r="4.6" '
+                f'fill="{_SURFACE}" stroke="{_ACCENT}" stroke-width="1.4" '
+                f'filter="url(#soft-glow)"></circle>'
+                f'<circle cx="{mx:.1f}" cy="{my:.1f}" r="1.9" '
+                f'fill="{_ACCENT}"></circle>'
+            )
+
+    # === 占星 zodiac wheel (middle ring) ===
+    zr_out, zr_in = 186.0, 158.0
+    big3 = {chart.sun, chart.moon} if chart is not None else set()
+    for i, sign in enumerate(ZODIAC):
+        a0 = i * 30.0 - 15.0
+        a1 = a0 + 30.0
+        col = ASTRO_ELEMENT_COLOR[sign.element]
+        is_sun = (chart is not None and i == chart.sun)
+        is_big3 = (i in big3)
+        alpha = 0.58 if is_sun else (0.18 if is_big3 else 0.075)
+        glow = ' filter="url(#soft-glow)"' if is_sun else ""
+        body.append(
+            f'<path d="{_arc_path(_CX, _CY, zr_out, zr_in, a0, a1)}" '
+            f'fill="{col}" fill-opacity="{alpha:.3f}" '
+            f'stroke="{_HAIRLINE}" stroke-width="0.8"{glow}></path>'
+        )
+        gx, gy = _polar(_CX, _CY, (zr_out + zr_in) / 2, i * 30.0)
+        body.append(
+            f'<text x="{gx:.1f}" y="{gy+1:.1f}" font-family="{_SERIF}" '
+            f'font-size="{17 if is_sun else 13}" '
+            f'fill="{_INK0 if is_big3 else _INK2}" font-weight="600" '
+            f'text-anchor="middle" dominant-baseline="middle">'
+            f'{sign.glyph}</text>'
+        )
+
+    # === 八字 五行 phase ring (thin inner ring) ===
+    fr_out, fr_in = 152.0, 137.0
+    sector = 72.0
+    for i, key in enumerate(WUXING_KEYS):
+        share = max(0.0, balance.get(key, 0.0))
+        a0 = i * sector - sector / 2
+        a1 = a0 + sector
+        is_dom = (key == dom_key)
+        glow = ' filter="url(#soft-glow)"' if is_dom else ""
+        op = 0.86 if is_dom else min(0.30, 0.05 + share * 1.1)
+        body.append(
+            f'<path d="{_arc_path(_CX, _CY, fr_out, fr_in, a0, a1)}" '
+            f'fill="url(#wx-{key})" fill-opacity="{op:.3f}" '
+            f'stroke="{_CANVAS}" stroke-width="1.1"{glow}></path>'
+        )
+        gx, gy = _polar(_CX, _CY, (fr_out + fr_in) / 2, (a0 + a1) / 2)
+        body.append(
+            f'<text x="{gx:.1f}" y="{gy+0.5:.1f}" font-family="{_SERIF}" '
+            f'font-size="{12.5 if is_dom else 10}" '
+            f'fill="{_INK0 if is_dom else _INK2}" font-weight="600" '
+            f'text-anchor="middle" dominant-baseline="middle">'
+            f'{WUXING_HANZI[i]}</text>'
+        )
+
+    # === 占星 Sun + Moon orbital system (centre field) ===
+    if chart is not None:
+        sun_orbit, moon_orbit = 103.0, 122.0
+        for orad in (moon_orbit, sun_orbit):
+            body.append(
+                f'<circle cx="{_CX}" cy="{_CY}" r="{orad:.1f}" fill="none" '
+                f'stroke="{_GAL_BLUE}" stroke-width="0.9" '
+                f'opacity="0.40"></circle>'
+            )
+        mmx, mmy = _polar(_CX, _CY, moon_orbit, chart.moon * 30.0)
+        body.append(
+            f'<line x1="{_CX}" y1="{_CY}" x2="{mmx:.1f}" y2="{mmy:.1f}" '
+            f'stroke="{_GAL_BLUE}" stroke-width="0.6" opacity="0.16"></line>'
+        )
+        body.append(_lit_sphere(mmx, mmy, 9.5, "sphere-moon", "#2c3346",
+                                glyph="☽", glyph_col="#2a2f3e",
+                                glyph_size=12.0))
+        ssx, ssy = _polar(_CX, _CY, sun_orbit, chart.sun * 30.0)
+        body.append(
+            f'<line x1="{_CX}" y1="{_CY}" x2="{ssx:.1f}" y2="{ssy:.1f}" '
+            f'stroke="{_GAL_GOLD}" stroke-width="0.7" opacity="0.22"></line>'
+        )
+        body.append(_lit_sphere(ssx, ssy, 12.0, "sphere-sun", "#6e4d09",
+                                corona=True, glyph="☉", glyph_col="#5a3f06",
+                                glyph_size=14.0))
+
+    # === engraved core — the joint MODEL / 玄学-consensus readout ===
+    body.append(_centre_readout(top_label, top_value,
+                                bottom_label, bottom_value, meta,
+                                r_core=86.0))
+
+    # --- corner cartouches — the four 八字 pillars in 干支 (gold stem /
+    # cyan branch), filling the otherwise-empty corners ---
+    if bazi is not None:
+        for pil, name, (px, py) in (
+            (bazi.year_pillar,  "YEAR",  (44, 44)),
+            (bazi.month_pillar, "MONTH", (_VB - 44, 44)),
+            (bazi.day_pillar,   "DAY",   (44, _VB - 44)),
+            (bazi.hour_pillar,  "HOUR",  (_VB - 44, _VB - 44)),
+        ):
+            txt = pillar_text(pil)
+            idx = _sexagenary_index(pil)
+            body.append(
+                f'<g transform="translate({px-37},{py-20})">'
+                f'<rect x="0" y="0" width="74" height="40" rx="7" '
+                f'fill="{_SURFACE2}" stroke="{_HAIRLINE}" stroke-width="1"></rect>'
+                f'<text x="37" y="18" font-family="{_SERIF}" font-size="18" '
+                f'text-anchor="middle" dominant-baseline="middle" '
+                f'font-weight="600">'
+                f'<tspan fill="{_GAL_GOLD}">{_esc(txt[0] if txt else "", 1)}</tspan>'
+                f'<tspan fill="{_GAL_CYAN}">'
+                f'{_esc(txt[1] if len(txt) > 1 else "", 1)}</tspan>'
+                f'</text>'
+                f'<text x="37" y="32" font-family="{_MONO}" font-size="7" '
+                f'fill="{_INK3}" letter-spacing="0.12em" text-anchor="middle">'
+                f'{name} · {idx + 1:02d}/60</text>'
+                f'</g>'
+            )
+
+    body.append('</svg>')
+    return "".join(body)
+
+
+# ======================================================================
 # Public dispatch
 # ======================================================================
 
@@ -1258,6 +1446,28 @@ def render_reading_svg(
                         center_meta)
 
 
+def render_celestial_svg(
+    reading_bazi: LensReading,
+    reading_astro: LensReading,
+    branch_probabilities: list[tuple[str, float, str]],
+    center_top_label: str,
+    center_top_value: str,
+    center_bottom_label: str,
+    center_bottom_value: str,
+    center_meta: str,
+) -> str:
+    """Render the unified celestial astrolabe — 八字 ⊕ 占星 on one dial.
+
+    The unified 玄学 lens calls this once instead of dispatching the
+    八字 and 占星 instruments as two separate dials.
+    """
+    return _render_celestial(reading_bazi, reading_astro,
+                             branch_probabilities,
+                             center_top_label, center_top_value,
+                             center_bottom_label, center_bottom_value,
+                             center_meta)
+
+
 # Back-compat shim — the previous single-system entry point.
 def render_nye_clock_svg(
     bazi: BaZiPattern,
@@ -1283,4 +1493,5 @@ def render_nye_clock_svg(
                         center_meta)
 
 
-__all__ = ["render_reading_svg", "render_nye_clock_svg"]
+__all__ = ["render_reading_svg", "render_celestial_svg",
+           "render_nye_clock_svg"]

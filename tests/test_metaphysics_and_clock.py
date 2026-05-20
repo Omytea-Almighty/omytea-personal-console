@@ -16,7 +16,11 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 import _metaphysics as mp  # noqa: E402
-from _clock import render_nye_clock_svg, render_reading_svg  # noqa: E402
+from _clock import (  # noqa: E402
+    render_celestial_svg,
+    render_nye_clock_svg,
+    render_reading_svg,
+)
 
 
 _SAMPLE_BRANCHES = [
@@ -363,3 +367,55 @@ def test_back_compat_shim_renders() -> None:
         center_meta="EARTH",
     )
     assert svg.startswith("<svg ") and svg.endswith("</svg>")
+
+
+# ---------------------------------------------------------------------------
+# unified 玄学 lens — joint readings + the merged celestial astrolabe
+# ---------------------------------------------------------------------------
+
+
+def test_compute_all_readings_covers_every_system() -> None:
+    bd = mp.BirthData(1995, 8, 12, 14)
+    readings = mp.compute_all_readings(birth=bd, seed="seed-x",
+                                       outcome="career_success")
+    assert set(readings.keys()) == set(mp.SYSTEMS)
+    for system, r in readings.items():
+        assert r.system == system
+        assert 0.0 <= r.prior <= 1.0
+        assert 0.0 <= r.auspice <= 1.0
+
+
+def test_aggregate_readings_is_bounded_equal_weight_mean() -> None:
+    bd = mp.BirthData(2002, 11, 3, 21)
+    readings = mp.compute_all_readings(birth=bd, seed="seed-y",
+                                       outcome="wealth_accumulation")
+    jp, ja = mp.aggregate_readings(readings)
+    assert 0.0 <= jp <= 1.0 and 0.0 <= ja <= 1.0
+    # the joint auspice is exactly the equal-weight mean of every system
+    mean_a = sum(r.auspice for r in readings.values()) / len(readings)
+    assert abs(ja - mean_a) < 1e-9
+    # empty input is a safe neutral
+    assert mp.aggregate_readings([]) == (0.5, 0.5)
+
+
+def test_render_celestial_svg_merges_bazi_and_astro() -> None:
+    bd = mp.BirthData(1988, 2, 29, 9)
+    rb = mp.compute_reading("bazi", birth=bd, seed="s",
+                            outcome="career_success")
+    ra = mp.compute_reading("astro", birth=bd, seed="s",
+                            outcome="career_success")
+    svg = render_celestial_svg(
+        rb, ra, _SAMPLE_BRANCHES,
+        center_top_label="MODEL", center_top_value="34.2%",
+        center_bottom_label="COMBINED", center_bottom_value="48.0%",
+        center_meta="八字 ⊕ 占星",
+    )
+    assert svg.startswith("<svg ") and svg.endswith("</svg>")
+    assert 'viewBox="0 0 480 480"' in svg
+    # carries the 八字 gear movement AND the 占星 zodiac, one instrument
+    assert "url(#gear-gold)" in svg and "url(#gear-cyan)" in svg
+    assert any(s.glyph in svg for s in mp.ZODIAC)
+    # the four 八字 pillars appear as corner cartouches
+    assert "YEAR" in svg and "MONTH" in svg
+    assert "DAY" in svg and "HOUR" in svg
+    assert "34.2%" in svg and "48.0%" in svg

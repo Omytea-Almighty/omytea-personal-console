@@ -532,62 +532,44 @@ def _render_traditional_lens(
     sample_birth: tuple[int, int, int, int] = (2000, 6, 15, 12),
     sample_branches: list[tuple[str, float, str]] | None = None,
 ) -> None:
-    """Render the 玄学 lens — system selector + instrument + readout.
+    """Render the unified 玄学 lens — one celestial astrolabe + 易经/塔罗
+    companion instruments, all four systems jointly driving one decision.
 
     Shared between the result-page expander and the standalone Mode 7
-    page. ``key_prefix`` namespaces the widget keys so the two surfaces
-    don't fight over the same st.session_state slot; it also seeds the
+    page. ``key_prefix`` namespaces the widget keys and seeds the
     deterministic 易经 / 塔罗 cast (same prediction → same reading).
 
-    Four divination systems behind one selector:
-      • 八字 / 紫微 read from the birth-date row.
-      • 易经 / 塔罗 are a deterministic cast from the prediction seed —
-        no birth data needed; the birth row is hidden for them.
-
-    The model's branch distribution is fed through
-    ``_metaphysics.apply_lens_to_branches`` (the per-branch Bayesian
-    reweight) so the instrument's inner ring visibly responds to α.
+    No system selector and no click-through: 八字 + 占星 share a single
+    celestial astrolabe (both are read off the sky), 易经 + 塔罗 sit
+    below it as companion instruments, and every system's auspice is
+    aggregated into one 玄学-consensus prior that drives the per-branch
+    Bayesian reweight — the whole module decides together.
     """
+    import html as _html
+
     import _metaphysics as _mp
-    from _clock import render_reading_svg
+    from _clock import render_celestial_svg, render_reading_svg
 
-    # ---- System selector ----
-    system = st.radio(
-        T("trad.system.label"),
-        options=list(_mp.SYSTEMS),
-        format_func=lambda k: T(f"trad.system.{k}"),
-        horizontal=True,
-        index=0,
-        key=f"{key_prefix}_system",
-    )
-    needs_birth = system in (
-        _mp.SYSTEM_BAZI, _mp.SYSTEM_ZIWEI, _mp.SYSTEM_ASTRO,
-    )
-
-    # ---- Birth-data row (八字 / 紫微 only) ----
+    # ---- Birth-data row (八字 + 占星 are both read off it) ----
     sy, sm, sd, sh = sample_birth
-    if needs_birth:
-        c1, c2, c3, c4 = st.columns(4)
-        with c1:
-            b_year = st.number_input(
-                T("trad.birth.year"), min_value=1900, max_value=2100,
-                value=sy, step=1, key=f"{key_prefix}_y")
-        with c2:
-            b_month = st.number_input(
-                T("trad.birth.month"), min_value=1, max_value=12,
-                value=sm, step=1, key=f"{key_prefix}_m")
-        with c3:
-            b_day = st.number_input(
-                T("trad.birth.day"), min_value=1, max_value=31,
-                value=sd, step=1, key=f"{key_prefix}_d")
-        with c4:
-            b_hour = st.number_input(
-                T("trad.birth.hour"), min_value=0, max_value=23,
-                value=sh, step=1, key=f"{key_prefix}_h")
-        st.caption(T("trad.birth.hint"))
-    else:
-        b_year, b_month, b_day, b_hour = sy, sm, sd, sh
-        st.caption(T("trad.cast.hint"))
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        b_year = st.number_input(
+            T("trad.birth.year"), min_value=1900, max_value=2100,
+            value=sy, step=1, key=f"{key_prefix}_y")
+    with c2:
+        b_month = st.number_input(
+            T("trad.birth.month"), min_value=1, max_value=12,
+            value=sm, step=1, key=f"{key_prefix}_m")
+    with c3:
+        b_day = st.number_input(
+            T("trad.birth.day"), min_value=1, max_value=31,
+            value=sd, step=1, key=f"{key_prefix}_d")
+    with c4:
+        b_hour = st.number_input(
+            T("trad.birth.hour"), min_value=0, max_value=23,
+            value=sh, step=1, key=f"{key_prefix}_h")
+    st.caption(T("trad.birth.hint"))
 
     # ---- Outcome + combination controls ----
     cc1, cc2, cc3 = st.columns([2, 2, 1.4])
@@ -616,13 +598,13 @@ def _render_traditional_lens(
             help=T("trad.alpha.hint"),
         )
 
-    # ---- Run the chosen divination system ----
+    # ---- Run every system; aggregate into one 玄学 consensus ----
     birth = _mp.BirthData(year=int(b_year), month=int(b_month),
                           day=int(b_day), hour=int(b_hour))
-    reading = _mp.compute_reading(
-        str(system), birth=birth, seed=key_prefix, outcome=str(outcome),
+    readings = _mp.compute_all_readings(
+        birth=birth, seed=key_prefix, outcome=str(outcome),
     )
-    tradition_prob = reading.prior
+    joint_prior, joint_auspice = _mp.aggregate_readings(readings)
 
     # ---- Choose the focal branch (real or sample) ----
     using_sample = False
@@ -647,65 +629,103 @@ def _render_traditional_lens(
         branch_data = []
         model_prob = 0.0
 
-    # ---- Combine: focal model probability × tradition prior ----
-    combined = _mp.combine_with_model(
-        model_prob, tradition_prob, mode, alpha
-    )
+    # ---- Combine the focal model probability × the 玄学 consensus ----
+    combined = _mp.combine_with_model(model_prob, joint_prior, mode, alpha)
     if mode == "bayesian":
         # Renormalize the focal posterior against its complement for
-        # display (the dial centre focuses on ONE outcome category).
-        denom = combined + (1 - tradition_prob) * (1 - model_prob)
+        # display (the readout centre focuses on ONE outcome category).
+        denom = combined + (1 - joint_prior) * (1 - model_prob)
         combined = combined / denom if denom > 1e-9 else combined
 
-    # ---- Per-branch Bayesian reweight (item b) — drives the inner
-    # ring. A favourable reading (auspice→1) pulls mass toward the
-    # wishful anchor; α scales the pull. mode "off" → no reweight. ----
+    # ---- Per-branch Bayesian reweight, driven by the JOINT auspice —
+    # the four traditions' mean favourability pulls the branch ring. ----
     eff_alpha = 0.0 if mode == "off" else float(alpha)
     display_branches = _mp.apply_lens_to_branches(
-        branch_data, reading.auspice, eff_alpha,
+        branch_data, joint_auspice, eff_alpha,
     )
 
-    # ---- Instrument render ----
     model_value = f"{model_prob * 100:.1f}%"
     combined_value = f"{combined * 100:.1f}%"
-    meta_tag = (
-        f"{T(f'trad.system.{system}').upper()} · "
-        f"{'α=' + format(alpha, '.2f') if mode != 'off' else 'model only'}"
-    )
-    instrument_svg = render_reading_svg(
-        reading, display_branches,
+    alpha_tag = f"α={alpha:.2f}" if mode != "off" else "model only"
+
+    # ---- The unified celestial astrolabe — 八字 ⊕ 占星 on one dial ----
+    astrolabe_svg = render_celestial_svg(
+        readings[_mp.SYSTEM_BAZI], readings[_mp.SYSTEM_ASTRO],
+        display_branches,
         center_top_label=T("trad.metric.model_short"),
         center_top_value=model_value,
         center_bottom_label=T("trad.metric.combined_short"),
         center_bottom_value=combined_value,
-        center_meta=meta_tag,
+        center_meta=f"八字 ⊕ 占星 · {alpha_tag}",
     )
-
-    # ---- Card chrome — matches the v10 heat-card visual rhyme ----
     st.markdown(
         f"<div style='background:#11141b;border:1px solid #232834;"
-        f"border-radius:12px;padding:20px 16px;margin:18px auto 8px;"
-        f"max-width:540px;"
-        f"box-shadow:0 12px 50px rgba(0,0,0,0.4),"
+        f"border-radius:12px;padding:20px 16px;margin:18px auto 10px;"
+        f"max-width:560px;box-shadow:0 12px 50px rgba(0,0,0,0.4),"
         f"0 1px 0 rgba(255,255,255,0.025) inset;'>"
-        f"{instrument_svg}"
-        f"</div>",
+        f"{astrolabe_svg}</div>",
         unsafe_allow_html=True,
     )
+
+    # ---- 易经 + 塔罗 — companion instruments, shown together (no
+    # selector, no click-through) directly below the astrolabe ----
+    for sysk, label in ((_mp.SYSTEM_ICHING, "易经 I CHING"),
+                        (_mp.SYSTEM_TAROT, "塔罗 TAROT")):
+        panel_svg = render_reading_svg(
+            readings[sysk], display_branches,
+            center_top_label=T("trad.metric.model_short"),
+            center_top_value=model_value,
+            center_bottom_label=T("trad.metric.combined_short"),
+            center_bottom_value=combined_value,
+            center_meta=f"{label} · {alpha_tag}",
+        )
+        st.markdown(
+            f"<div style='background:#11141b;border:1px solid #232834;"
+            f"border-radius:12px;padding:16px 14px;margin:10px auto;"
+            f"max-width:560px;box-shadow:0 10px 40px rgba(0,0,0,0.35);'>"
+            f"{panel_svg}</div>",
+            unsafe_allow_html=True,
+        )
 
     if using_sample:
         st.caption(T("trad.using_sample"))
 
-    # ---- Tri-metric readout sits below the instrument ----
+    # ---- Per-system consensus chips — each tradition's favourability,
+    # so the user sees for themselves whether the four agree ----
+    chips = ['<div style="display:flex;gap:8px;flex-wrap:wrap;'
+             'justify-content:center;margin:16px auto 2px;max-width:560px;">']
+    for sysk in _mp.SYSTEMS:
+        ausp = readings[sysk].auspice
+        col = ("#58c5b4" if ausp >= 0.56
+               else "#ff5e6e" if ausp <= 0.44 else "#8b8cff")
+        chips.append(
+            f'<div style="flex:1;min-width:108px;background:#11141b;'
+            f'border:1px solid #232834;border-radius:8px;'
+            f'padding:8px 10px;text-align:center;">'
+            f'<div style="color:#76808d;font-size:9px;'
+            f'letter-spacing:0.13em;text-transform:uppercase;">'
+            f'{_html.escape(str(T(f"trad.system.{sysk}")))}</div>'
+            f'<div style="color:{col};font-size:18px;font-weight:600;'
+            f"font-family:'Cormorant Garamond',Georgia,serif;"
+            f'margin-top:2px;">{ausp * 100:.0f}%</div></div>'
+        )
+    chips.append('</div>')
+    st.markdown("".join(chips), unsafe_allow_html=True)
+    st.markdown(
+        "<div style='color:#76808d;font-size:11px;text-align:center;"
+        "margin:0 auto 4px;max-width:560px;'>Each tradition's "
+        "favourability — the 玄学 consensus is their equal-weight mean.</div>",
+        unsafe_allow_html=True,
+    )
+
+    # ---- Joint tri-metric readout ----
     m1, m2, m3 = st.columns(3)
     with m1:
         st.metric(T("trad.metric.model"), f"{model_prob * 100:.1f}%")
     with m2:
-        st.metric(T("trad.metric.tradition"),
-                  f"{tradition_prob * 100:.1f}%")
+        st.metric(T("trad.metric.tradition"), f"{joint_prior * 100:.1f}%")
     with m3:
-        st.metric(T("trad.metric.combined"),
-                  f"{combined * 100:.1f}%")
+        st.metric(T("trad.metric.combined"), f"{combined * 100:.1f}%")
 
     # ---- Always-visible disclaimer (integrity gate per spec §7) ----
     st.markdown(
