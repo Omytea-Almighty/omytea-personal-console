@@ -82,31 +82,55 @@ _V10_PATH = Path(__file__).resolve().parent / "static" / LIVE_VIDEO_V10_FILE
 # pane (one-screen layout) without the pane itself scrolling.
 _LIVE_VIDEO_HEIGHT = 392
 
-# CSS injected into the embedded v10 copy so the console surfaces ONLY
-# v10's "see-both-at-once" panel — the camera preview beside the quantum
-# heatmap. v10's own onboarding chrome (scenario picker, branding topbar,
-# upload card, info drawers, now-banner) is hidden: the console composer
-# owns ALL prediction input, so the output region must hold output only.
-# v10's side-by-side grid normally needs >=1100px; the console embeds it
-# narrower, so the grid is forced on here regardless of width.
+# CSS + JS injected into the embedded v10 copy so the console surfaces
+# ONLY v10's "see-both-at-once" panel — the camera preview beside the
+# quantum heatmap. The console composer owns ALL prediction input, so
+# the output region must hold output only: v10's onboarding chrome
+# (scenario picker, branding topbar, upload card, now-banner) AND its
+# two remaining input controls — the "Use my camera" start card
+# (.input-row) and the "What would change this picture?" counterfactual
+# box (.cf-card) — are all hidden. With no in-iframe start button the
+# injected script auto-starts the camera on load: the user flipped the
+# composer's "Live video" toggle, which IS the intent to go live.
+# v10's side-by-side grid normally needs >=1100px; the console forces
+# it on here regardless of width.
 _V10_EMBED_SCOPE = """
 <style id="omytea-embed-scope">
 .topbar,#scenario-card,#input-file,#input-scenario,
-.now-banner,.hero-head,.more-row,footer.footer{display:none!important;}
+.now-banner,.hero-head,.more-row,footer.footer,
+.input-row,.cf-card{display:none!important;}
 main{max-width:none!important;margin:0!important;padding:12px 14px!important;}
 body.camera-active main{display:grid!important;
  grid-template-columns:minmax(240px,38%) 1fr!important;
  gap:16px!important;max-width:none!important;}
-/* once the camera runs, the "Use my camera" start card is redundant —
- hide it so the grid is exactly camera | heatmap, side by side. */
-body.camera-active .input-row{display:none!important;}
 #preview-card{top:0!important;}
-.input-row{justify-content:center!important;}
-#input-camera{max-width:460px!important;}
 body{background:#0a0c11!important;}
 @media (max-width:560px){
  body.camera-active main{grid-template-columns:1fr!important;}}
 </style>
+<script id="omytea-embed-autostart">
+/* The console composer owns all input — v10's own "Use my camera"
+   card and counterfactual box are hidden above. With no in-iframe
+   start button, the camera starts automatically on load: this iframe
+   exists only because the user flipped the composer's "Live video"
+   toggle. We click v10's own (now-hidden) camera trigger so v10's
+   real startCamera path runs unchanged. */
+(function () {
+  var started = false;
+  function go() {
+    if (started) return;
+    var btn = document.getElementById('input-camera');
+    if (!btn) return;
+    started = true;
+    btn.click();
+  }
+  if (document.readyState === 'complete') {
+    setTimeout(go, 250);
+  } else {
+    window.addEventListener('load', function () { setTimeout(go, 250); });
+  }
+})();
+</script>
 """
 
 

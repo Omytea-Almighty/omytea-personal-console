@@ -274,6 +274,24 @@ def test_embed_scope_hides_onboarding_and_forces_side_by_side() -> None:
     assert "grid" in scope
 
 
+def test_embed_scope_removes_v10_input_chrome_and_autostarts_camera() -> None:
+    """The console composer owns ALL input — so v10's two remaining
+    input controls are hidden and the camera self-starts.
+
+    v10's "Use my camera" start card (``.input-row``) and its "What
+    would change this picture?" counterfactual box (``.cf-card``) are
+    inputs; the output region must hold output only. With no in-iframe
+    start button, an injected script clicks v10's own camera trigger on
+    load — flipping the composer's "Live video" toggle is the start.
+    """
+    scope = _heatmap_component._V10_EMBED_SCOPE
+    # Both of v10's leftover input controls are hidden.
+    assert ".input-row" in scope and ".cf-card" in scope
+    # The camera auto-starts: an injected script clicks v10's trigger.
+    assert "<script" in scope
+    assert "input-camera" in scope and "click()" in scope
+
+
 # --------------------------------------------------------------------
 # app.py integration — the live-video toggle owns the output surface.
 # --------------------------------------------------------------------
