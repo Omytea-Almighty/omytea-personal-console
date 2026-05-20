@@ -1410,12 +1410,14 @@ def _nye_defs() -> str:
         '<stop offset="100%" stop-color="rgba(96,54,25,0)"/>'
         '</radialGradient>'
         # earth
-        '<radialGradient id="nye-earth-ocean" cx="34%" cy="28%" r="70%">'
-        '<stop offset="0%" stop-color="#b8e4ff"/>'
-        '<stop offset="18%" stop-color="#3a8ec4"/>'
-        '<stop offset="40%" stop-color="#145a82"/>'
-        '<stop offset="62%" stop-color="#0a3550"/>'
-        '<stop offset="100%" stop-color="#020a14"/>'
+        # a SOLID lit ocean — bright on the sunlit (upper-right) side,
+        # deep blue (never near-black) at the far limb, so the globe
+        # reads as an opaque planet, not a fading translucent orb.
+        '<radialGradient id="nye-earth-ocean" cx="64%" cy="32%" r="86%">'
+        '<stop offset="0%" stop-color="#c4e7f6"/>'
+        '<stop offset="30%" stop-color="#62a8cf"/>'
+        '<stop offset="62%" stop-color="#31729a"/>'
+        '<stop offset="100%" stop-color="#16415f"/>'
         '</radialGradient>'
         '<radialGradient id="nye-earth-land" cx="60%" cy="34%" r="80%">'
         '<stop offset="0%" stop-color="#8fb572"/>'
@@ -1423,17 +1425,22 @@ def _nye_defs() -> str:
         '<stop offset="66%" stop-color="#8a7846"/>'
         '<stop offset="100%" stop-color="#3f3a26"/>'
         '</radialGradient>'
-        '<radialGradient id="nye-earth-atmo" cx="50%" cy="26%" r="82%">'
-        '<stop offset="0%" stop-color="rgba(200,240,255,0.55)"/>'
-        '<stop offset="35%" stop-color="rgba(90,170,230,0.22)"/>'
-        '<stop offset="100%" stop-color="rgba(0,0,0,0)"/>'
+        # a THIN atmosphere rim hugging the limb — not a glow halo
+        # (the old wide halo made the globe look like it was emitting).
+        '<radialGradient id="nye-earth-atmo" cx="50%" cy="50%" r="50%">'
+        '<stop offset="0%" stop-color="rgba(150,215,255,0)"/>'
+        '<stop offset="84%" stop-color="rgba(150,215,255,0)"/>'
+        '<stop offset="93%" stop-color="rgba(168,224,255,0.5)"/>'
+        '<stop offset="100%" stop-color="rgba(168,224,255,0)"/>'
         '</radialGradient>'
-        '<linearGradient id="nye-earth-term" x1="0%" y1="0%" '
-        'x2="100%" y2="0%">'
-        '<stop offset="0%" stop-color="rgba(0,0,0,0.82)"/>'
-        '<stop offset="38%" stop-color="rgba(0,0,0,0.06)"/>'
-        '<stop offset="62%" stop-color="rgba(255,255,255,0.14)"/>'
-        '<stop offset="100%" stop-color="rgba(255,255,255,0.38)"/>'
+        # day / night terminator — a dark-only directional shadow from
+        # the upper-right Sun (no white sheen, which read as a glow).
+        '<linearGradient id="nye-earth-term" x1="100%" y1="0%" '
+        'x2="0%" y2="100%">'
+        '<stop offset="0%" stop-color="rgba(2,6,16,0)"/>'
+        '<stop offset="46%" stop-color="rgba(2,6,16,0)"/>'
+        '<stop offset="78%" stop-color="rgba(2,6,16,0.5)"/>'
+        '<stop offset="100%" stop-color="rgba(1,3,10,0.88)"/>'
         '</linearGradient>'
         '<radialGradient id="nye-earth-limb" cx="72%" cy="32%" r="55%">'
         '<stop offset="0%" stop-color="rgba(255,255,255,0.5)"/>'
@@ -1492,9 +1499,14 @@ def _nye_defs() -> str:
         'width="168%" height="168%">'
         '<feTurbulence type="fractalNoise" baseFrequency="0.013" '
         'numOctaves="4" seed="17" result="t"/>'
-        '<feDisplacementMap in="SourceGraphic" in2="t" scale="30" '
+        '<feDisplacementMap in="SourceGraphic" in2="t" scale="16" '
         'xChannelSelector="R" yChannelSelector="G"/>'
         '</filter>'
+        # clips the plasma texture so it churns INSIDE a clean circular
+        # silhouette — the Sun must read as a perfect round disc.
+        '<clipPath id="nye-sun-clip">'
+        '<circle cx="0" cy="0" r="66"></circle>'
+        '</clipPath>'
         # Sun: dark granulation cells stippling the photosphere.
         '<filter id="nye-sun-granule">'
         '<feTurbulence type="fractalNoise" baseFrequency="0.058" '
@@ -1601,20 +1613,25 @@ def _nye_sun(sun_sign_color: str) -> str:
         'opacity="0.66" filter="url(#nye-sun-bloom)"></circle>'
         '<circle cx="0" cy="0" r="84" fill="url(#nye-sun-corona)" '
         'opacity="0.5"></circle>'
-        # the turbulent plasma disc — a centred fiery gradient warped
-        # into churning plasma by the fractal-noise displacement filter
-        '<circle cx="0" cy="0" r="66" fill="url(#nye-sun-core)" '
-        'filter="url(#nye-sun-plasma)"></circle>'
-        # dark granulation cells stippling the photosphere
-        '<circle cx="0" cy="0" r="62" fill="#000000" opacity="0.42" '
+        # the Sun body — a clean ROUND fiery disc. The turbulent plasma
+        # texture churns INSIDE it, clipped to the circle, so the
+        # silhouette always stays a perfect round disc.
+        '<circle cx="0" cy="0" r="66" fill="url(#nye-sun-core)"></circle>'
+        '<g clip-path="url(#nye-sun-clip)">'
+        '<circle cx="0" cy="0" r="96" fill="url(#nye-sun-core)" '
+        'opacity="0.6" filter="url(#nye-sun-plasma)"></circle>'
+        '<circle cx="0" cy="0" r="66" fill="#1a0a00" opacity="0.4" '
         'filter="url(#nye-sun-granule)"></circle>'
+        '</g>'
         # white-hot centred bloom
         '<circle cx="0" cy="0" r="44" fill="url(#nye-sun-inner)" '
         'filter="url(#nye-sun-tight)"></circle>'
-        # the 占星 Sun-sign hue — a soft tint washed into the corona,
-        # not a hard line drawn across the plasma
+        # crisp circular limb — reinforces the clean round edge
+        '<circle cx="0" cy="0" r="66" fill="none" '
+        'stroke="rgba(255,226,150,0.35)" stroke-width="1.4"></circle>'
+        # the 占星 Sun-sign hue — a soft tint washed into the corona
         f'<circle cx="0" cy="0" r="94" fill="none" '
-        f'stroke="{sun_sign_color}" stroke-opacity="0.16" '
+        f'stroke="{sun_sign_color}" stroke-opacity="0.14" '
         f'stroke-width="8" filter="url(#nye-sun-bloom)"></circle>'
         '</g>'
     )
@@ -1628,26 +1645,23 @@ def _nye_earth() -> str:
     onto the orbit."""
     return (
         '<g>'
-        # atmospheric glow halo
-        '<circle r="54" cx="0" cy="0" fill="url(#nye-earth-atmo)" '
-        'opacity="0.72"></circle>'
-        # ocean sphere
+        # a SOLID opaque ocean sphere — lit from the Sun (upper-right)
         '<circle r="39" cx="0" cy="0" fill="url(#nye-earth-ocean)">'
         '</circle>'
-        # fractal-noise continents masked out of a lit green disc
+        # fractal-noise continents masked out of a lit, earthy disc
         '<circle r="39" cx="0" cy="0" fill="url(#nye-earth-land)" '
         'filter="url(#nye-earth-conti)"></circle>'
-        # white cloud wisps
-        '<circle r="39" cx="0" cy="0" fill="#ffffff" opacity="0.6" '
+        # soft white cloud wisps
+        '<circle r="39" cx="0" cy="0" fill="#ffffff" opacity="0.42" '
         'filter="url(#nye-earth-cloud)"></circle>'
-        # day / night terminator + limb highlight
-        '<circle r="39" cx="0" cy="0" fill="url(#nye-earth-term)" '
-        'opacity="0.5"></circle>'
-        '<circle r="39" cx="0" cy="0" fill="url(#nye-earth-limb)" '
-        'opacity="0.5"></circle>'
-        # bright atmospheric rim
+        # day / night terminator — the far side falls into real shadow
+        '<circle r="39" cx="0" cy="0" fill="url(#nye-earth-term)">'
+        '</circle>'
+        # a thin atmosphere rim hugging the limb (no glow halo)
+        '<circle r="44" cx="0" cy="0" fill="url(#nye-earth-atmo)">'
+        '</circle>'
         '<circle r="39" cx="0" cy="0" fill="none" '
-        'stroke="rgba(150,215,255,0.55)" stroke-width="1.2"></circle>'
+        'stroke="rgba(150,205,245,0.4)" stroke-width="0.9"></circle>'
         '</g>'
     )
 
