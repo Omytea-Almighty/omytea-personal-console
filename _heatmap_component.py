@@ -931,14 +931,13 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
     // prediction / idle: a DENSITY-SHADED probability-distribution viz,
     // ported from v10's heatmap. The branches are ordered worst ->
     // realistic -> wishful, then placed as anchor rows on a FINE row
-    // grid (~7 rows per branch). Each time-column renders a smooth
-    // density over that fine grid: a single wide Gaussian at NOW (no
-    // information, mass diffuse) morphing into a Gaussian MIXTURE at the
-    // HORIZON whose bumps sit on the branch anchors weighted by their
-    // calibrated probabilities. The result reads as a probability cloud
-    // — bright mass concentrated + shaped, spreading outward — not a
-    // flat colored matrix. Rendered in ONE colour (v10-style); shape
-    // comes from opacity alone. Many fine columns (24) keep it compact.
+    // grid (~7 rows per branch). The cloud DIFFUSES like v10's heatmap:
+    // a tight bright core at NOW that fans outward, column by column,
+    // into the calibrated spread at the HORIZON — each bump landing on
+    // its branch anchor weighted by that branch's probability. It reads
+    // as a probability cloud — a concentrated core widening into a
+    // broad spread — not a flat colored matrix. Rendered in ONE colour
+    // (v10-style); shape comes from opacity alone. 24 fine columns.
     var branches = orderedBranches(
       BRANCHES.length > 0 ? BRANCHES : idleBranches()
     );
@@ -974,46 +973,46 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
     var g = [];
     for (var ri = 0; ri < fineRows; ri++) g.push(new Array(ncols));
     var gm = 0;
-    var isIdle = BRANCHES.length === 0;
-    // density at NOW: a tight Gaussian on the MODAL branch's anchor —
-    // the near-term read is effectively one point, so the bright mass
-    // starts concentrated where the prediction currently points. The
-    // idle grid (no prediction) has no mode, so its NOW peak sits at
-    // the centre and stays a soft, symmetric, calm glow.
-    var sigmaNow = isIdle ? fineRows * 0.2 : fineRows * 0.075;
-    var muNow = isIdle ? center : anchors[modeBi];
-    // density at the HORIZON: a per-branch Gaussian bump on each
-    // anchor, weighted by that branch's calibrated probability. As a
-    // multi-bump mixture spread across the grid it is naturally WIDER
-    // than the NOW peak — so the cloud fans outward toward the horizon
-    // (v10's "probability widening") while landing on the calibrated
-    // distribution.
-    var sigmaH = ROW_STRIDE * 0.6;
+    var colMax = new Array(ncols);
+    // v10's heatmap is a DIFFUSING cloud — a tight bright core at NOW
+    // that fans outward into a broad spread at the HORIZON. Centroid of
+    // the calibrated distribution = where that core sits: at NOW every
+    // branch bump collapses onto this one point; column by column the
+    // bumps slide back to their own anchors and the cloud fans open.
+    var centroid = 0;
+    for (var ck = 0; ck < n; ck++) centroid += calib[ck] * anchors[ck];
+    // sigma grows with sqrt(t) — v10's exact `sigma30 * sqrt(t)`
+    // diffusion law — so the cloud widens visibly from NOW to HORIZON.
+    var sigmaMin = ROW_STRIDE * 0.34;
+    var sigmaMax = ROW_STRIDE * 0.52;
     for (var cc = 0; cc < ncols; cc++) {{
       var tt = ncols > 1 ? cc / (ncols - 1) : 1;
+      var grow = Math.sqrt(tt);
+      var sigma = sigmaMin + (sigmaMax - sigmaMin) * grow;
+      // collapse = 1 at NOW (every bump on the centroid, one tight
+      // core) -> 0 at the HORIZON (each bump on its calibrated anchor).
+      var collapse = 1 - grow;
       var col = new Array(fineRows);
       var colSum = 0;
       for (var rr = 0; rr < fineRows; rr++) {{
-        var dNow = gaussianDensity(rr, muNow, sigmaNow);
-        var dHor = 0;
+        var d = 0;
         for (var bk = 0; bk < n; bk++) {{
-          dHor += calib[bk] * gaussianDensity(rr, anchors[bk], sigmaH);
+          var eff = anchors[bk] * (1 - collapse) + centroid * collapse;
+          d += calib[bk] * gaussianDensity(rr, eff, sigma);
         }}
-        // morph NOW -> HORIZON; ease so the tight core holds early and
-        // resolves into the calibrated spread over the back half.
-        var ease = Math.pow(tt, 1.8);
-        var d = dNow * (1 - ease) + dHor * ease;
         col[rr] = d;
         colSum += d;
       }}
+      var cMax = 0;
       for (var rw = 0; rw < fineRows; rw++) {{
-        // normalize so each time-column is a real distribution (sums
-        // to 1), then a soft floor keeps low-mass cells faintly lit.
+        // each time-column is normalized to a real distribution (sums
+        // to 1); the pow-gamma opacity shading does the rest.
         var val = colSum > 0 ? col[rw] / colSum : (1 / fineRows);
-        val = 0.05 * (1 / fineRows) + 0.95 * val;
         g[rw][cc] = val;
+        if (val > cMax) cMax = val;
         if (val > gm) gm = val;
       }}
+      colMax[cc] = cMax;
     }}
     // one colour for the whole cloud (v10 renders the grid single-hue;
     // shape reads from opacity). branch_type is surfaced by the legend
@@ -1047,6 +1046,7 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
     }}
     return {{
       rows: fineRows, cols: ncols, grid: g, gmax: gm || 1,
+      colMax: colMax,
       rowColors: colors,
       rowLabels: fullRowLabels,
       rowLabelAt: rowLabelAt,
@@ -1112,12 +1112,18 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
     else if (/year|年|an|año/.test(hz)) unit = "y";
     var mNum = (hz.match(/\d+/) || [])[0];
     var span = mNum ? parseInt(mNum, 10) : (cols - 1);
-    return fracs.map(function (f, ix) {{
+    var labels = fracs.map(function (f, ix) {{
       if (ix === 0) return STR.now;
       if (ix === fracs.length - 1) return STR.horizon;
       var v = Math.round(f * span);
       return unit ? (unit + v) : ("t" + v);
     }});
+    // a short horizon rounds two fracs to the same tick (e.g. mo2 /
+    // mo2) — blank the colliding middle tick so the axis never repeats.
+    for (var li = 1; li < labels.length - 1; li++) {{
+      if (labels[li] === labels[li - 1]) labels[li] = "";
+    }}
+    return labels;
   }}
 
   function renderHeatmap() {{
@@ -1167,11 +1173,17 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
     for (var c = 0; c < cols; c++) {{
       for (var r2 = 0; r2 < rows; r2++) {{
         var p = GD.grid[r2][c];
-        var ratio = GD.gmax > 0 ? (p / GD.gmax) : 0;
-        var op = (0.045 + 0.94 * Math.pow(ratio, 0.65)).toFixed(3);
+        // opacity is a gamma-corrected ratio of the cell's mass to a
+        // NOW-vs-column blended max (v10 shades with pow(p/max, 0.65)).
+        // The 50/50 blend keeps v10's gentle fade — the tight NOW core
+        // stays brightest — without letting the spread-thin HORIZON
+        // cloud wash out to near-black. No floor + no glow => the dark
+        // valleys stay genuinely dark, so the cloud reads high-contrast.
+        var cmx = (GD.colMax && GD.colMax[c]) || GD.gmax;
+        var effMax = 0.5 * GD.gmax + 0.5 * cmx;
+        var ratio = effMax > 0 ? Math.min(1, p / effMax) : 0;
+        var op = Math.pow(ratio, 0.66).toFixed(3);
         var rgb = GD.rowColors[r2];
-        var glow = (c === cols - 1)
-          ? ' filter="url(#heat-glow)"' : "";
         var cx = PADX_L + c * cellW;
         var cy = gy0 + r2 * cellH;
         grid += '<rect class="heatmap-cell" x="' + (cx + gap).toFixed(2) +
@@ -1179,7 +1191,7 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
           (cellW - 2 * gap).toFixed(2) + '" height="' +
           (cellH - 2 * gap).toFixed(2) + '" rx="' + rx + '" fill="rgba(' +
           rgb + "," + op + ')" stroke="#0a0c11" stroke-width="0.3"' +
-          glow + ' data-step="' + c + '" data-row="' + r2 +
+          ' data-step="' + c + '" data-row="' + r2 +
           '" data-prob="' + p.toFixed(4) + '"></rect>';
       }}
     }}
@@ -1192,13 +1204,6 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
       '" x2="' + (PADX_L + cols * cellW).toFixed(1) + '" y2="' +
       midY.toFixed(1) + '" stroke="#76808d" stroke-width="1" ' +
       'stroke-dasharray="3 3" opacity="0.65"></line>';
-    // horizon column highlight
-    var hlx = PADX_L + (cols - 1) * cellW;
-    grid += '<rect x="' + (hlx + 0.4).toFixed(1) + '" y="' +
-      (gy0 - 2.5).toFixed(1) + '" width="' + (cellW - 0.8).toFixed(1) +
-      '" height="' + (gridH + 5).toFixed(1) +
-      '" rx="2" fill="none" stroke="rgba(139,140,255,0.55)" ' +
-      'stroke-width="1.0"></rect>';
     // bottom NOW -> HORIZON axis — mono-font tick labels along the way.
     var axisY = PADY_T + GRID_H + 14;
     axis += '<line x1="' + PADX_L + '" y1="' + (axisY - 8) +
@@ -1222,11 +1227,7 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
         (isEnd ? lab2.toUpperCase() : lab2) + "</text>";
     }}
 
-    $("heat-axis").innerHTML =
-      '<defs><filter id="heat-glow" x="-40%" y="-40%" width="180%" ' +
-      'height="180%"><feGaussianBlur stdDeviation="2.2" result="b"/>' +
-      '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/>' +
-      "</feMerge></filter></defs>" + axis;
+    $("heat-axis").innerHTML = axis;
     $("heat-grid").innerHTML = grid;
     updateModeNotes();
     hideCellPopover();
