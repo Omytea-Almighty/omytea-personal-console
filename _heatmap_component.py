@@ -650,8 +650,11 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
   }}
   /* Mode notes — visibility is JS-driven per heatmap mode
      (idle / prediction / live), see updateModeNotes(). */
+  /* Mode notes share the left edge of the narrative + cell-hint above
+     them — a consistent left rag reads as intentional; the previous
+     centered idle-note broke the column's alignment rhythm. */
   .idle-note, .live-note {{
-    text-align: center; color: var(--ink-2); font-size: 12.5px;
+    text-align: left; color: var(--ink-2); font-size: 12.5px;
     line-height: 1.6; margin: 8px 0 2px; display: none;
   }}
   .idle-note.show, .live-note.show {{ display: block; }}
