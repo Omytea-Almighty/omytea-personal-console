@@ -132,6 +132,21 @@ st.markdown(
         text-decoration-color: rgba(196,197,246,0.7) !important;
     }
 
+    /* st.info alerts — Streamlit tints the info variant with its
+       default sky-blue (#3d9df3), the last bit of blue left in a
+       lavender app; it carries the empty-state notices ("No
+       prediction yet", "No measurement updates recorded yet"). Re-tint
+       to the cosmic lavender so those boxes sit on-palette. Scoped via
+       :has() to the info variant only — success / warning / error keep
+       their semantic colours. */
+    [data-testid="stAlertContainer"]:has([data-testid="stAlertContentInfo"]) {
+        background-color: rgba(139,140,255,0.12) !important;
+        border-color: rgba(139,140,255,0.30) !important;
+    }
+    [data-testid="stAlertContentInfo"] {
+        color: #c3c5f2 !important;
+    }
+
     /* ---- Canvas: flat deep-space ink + one faint nebula bloom.
        A single radial lavender glow drifting up-left of centre —
        the quiet focal light, fixed so it never scrolls. ---- */
