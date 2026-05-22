@@ -565,9 +565,12 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
      every cell. */
   .heat-card {{
     background: var(--surface); border: 1px solid var(--hairline);
-    border-radius: 8px; padding: 14px 16px 10px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.35),
-      0 1px 0 rgba(255,255,255,0.025) inset;
+    /* radius matched to the Console's other cards (12px); the shadow
+       tightened from a 40px-blur slab to a precise, quiet lift —
+       floaty soft shadows read cheap, tight ones read crafted. */
+    border-radius: 12px; padding: 14px 16px 10px;
+    box-shadow: 0 3px 14px rgba(0,0,0,0.22),
+      0 1px 0 rgba(255,255,255,0.03) inset;
   }}
   /* card head — title + reading hint, v10's .heat-card .head */
   .heat-head {{
