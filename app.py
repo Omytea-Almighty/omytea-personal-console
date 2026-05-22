@@ -72,92 +72,74 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    /* Load the console's intended typefaces — Inter (UI sans) and
-       Cormorant Garamond (display serif). They were named in the font
-       stacks but never actually loaded, so most devices silently fell
-       back to a system font. @import must precede all CSS rules. */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:wght@500;600;700&display=swap');
-
     /* ========================================================
-       Omytea Console — deep-space / cosmic theme
-       Restyle-only. Palette + the Nye Clock galaxy accents.
-       Canvas #0a0c11 · surface #11141b · lifted #181c25 ·
-       hairline #232834 · ink f0f2f5/b9bfc8/76808d ·
-       lavender #5e6ad2 · galaxy gold #f7c940 · cyan #44ecff.
-       Sophistication = discipline: limited palette, fine
-       linework, generous space, ONE quiet glow per surface.
-       Easily revertible — delete this block.
+       Omytea Console — precise greyscale product UI
+       Restyle-only. Reference: Linear (near-black canvas, a
+       four-step surface ladder, hairline borders, NO shadows,
+       NO gradients, NO glows). The lavender accent (#5e6ad2) is
+       RARE — it appears only on the one primary CTA, focus
+       rings, and links. Everything else is disciplined grey.
+       Canvas #08090a · surface-1 #0f1011 · surface-2 #141516 ·
+       surface-3 #18191a · hairline #23252a · hairline-strong
+       #34343a · ink f7f8f8/d0d6e0/8a8f98/62666d.
+       Premium = quiet, precise, flat. Easily revertible —
+       delete this block.
        ======================================================== */
 
-    /* ---- Typography ---- */
+    /* ---- Typography — system sans, precise scale ---- */
     html, body, [class*="css"] {
-        font-family: "Inter", -apple-system, system-ui, "Segoe UI",
-                     Helvetica, Arial, sans-serif;
-        letter-spacing: -0.006em;
+        font-family: -apple-system, BlinkMacSystemFont, system-ui,
+                     "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        letter-spacing: -0.005em;
         -webkit-font-smoothing: antialiased;
     }
     h1, h2, h3, h4 {
         font-family: -apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;
         letter-spacing: -0.018em;
         font-weight: 600;
-        color: #f0f2f5;
+        color: #f7f8f8;
     }
-    /* Body copy — lifted from #b9bfc8 to a more legible #c6ccd6 and
-       given a generous line-height; paragraphs the user actually reads
-       should sit toward the brighter end of the ink ramp + breathe. */
-    p, li, label, .stMarkdown { color: #c6ccd6; line-height: 1.62; }
+    /* Body copy — a precise grey, generous line-height. */
+    p, li, label, .stMarkdown { color: #d0d6e0; line-height: 1.6; }
 
-    /* Text links inside markdown. Streamlit auto-derives a link
-       colour from primaryColor — a bright #9fa0ff sitting right next
-       to the reserved accent — and pins it with `a,a:visited{...
-       !important}`. Override it with a muted lavender so footer /
-       disclaimer links stay quiet and on-palette without borrowing
-       the full accent (#5e6ad2 is reserved for the focus ring +
-       primary CTA); a thin low-opacity underline carries the
-       affordance. !important on a higher-specificity selector is
-       required to beat Streamlit's own !important link rule;
-       text-decoration-line longhand survives Streamlit's
-       text-decoration:none shorthand reset. */
+    /* Text links inside markdown. Streamlit auto-derives a bright
+       link colour and pins it with `a,a:visited{...!important}`.
+       Links are one of the few sanctioned uses of the accent — keep
+       a restrained lavender with a thin low-opacity underline.
+       !important + higher specificity is required to beat
+       Streamlit's own !important link rule; text-decoration-line
+       longhand survives Streamlit's text-decoration:none reset. */
     [data-testid="stMarkdownContainer"] a,
     [data-testid="stMarkdownContainer"] a:visited {
-        color: #9da0d8 !important;
+        color: #8a8f98 !important;
         text-decoration-line: underline !important;
-        text-decoration-color: rgba(157,160,216,0.34) !important;
+        text-decoration-color: rgba(138,143,152,0.34) !important;
         text-decoration-thickness: 1px !important;
         text-underline-offset: 0.18em;
         transition: color 0.12s ease, text-decoration-color 0.12s ease;
     }
     [data-testid="stMarkdownContainer"] a:hover {
-        color: #c4c5f6 !important;
-        text-decoration-color: rgba(196,197,246,0.7) !important;
+        color: #5e6ad2 !important;
+        text-decoration-color: rgba(94,106,210,0.6) !important;
     }
 
-    /* st.info alerts — Streamlit tints the info variant with its
-       default sky-blue (#3d9df3), the last bit of blue left in a
-       lavender app; it carries the empty-state notices ("No
-       prediction yet", "No measurement updates recorded yet"). Re-tint
-       to the cosmic lavender so those boxes sit on-palette. Scoped via
-       :has() to the info variant only — success / warning / error keep
-       their semantic colours. */
+    /* st.info alerts — Streamlit tints the info variant sky-blue.
+       Re-tint to a NEUTRAL grey surface, not a coloured fill —
+       these empty-state notices must read as quiet panels, not
+       decoration. Scoped via :has() to the info variant only;
+       success / warning / error keep their semantic colours. */
     [data-testid="stAlertContainer"]:has([data-testid="stAlertContentInfo"]) {
-        background-color: rgba(94,106,210,0.12) !important;
-        border-color: rgba(94,106,210,0.30) !important;
+        background-color: rgba(255,255,255,0.04) !important;
+        border-color: #23252a !important;
     }
     [data-testid="stAlertContentInfo"] {
-        color: #c3c5f2 !important;
+        color: #d0d6e0 !important;
     }
 
-    /* ---- Canvas: flat deep-space ink + one faint nebula bloom.
-       A single radial lavender glow drifting up-left of centre —
-       the quiet focal light, fixed so it never scrolls. ---- */
+    /* ---- Canvas: a flat near-black. No atmospheric gradient —
+       depth comes from the surface ladder + hairlines only. ---- */
     .stApp {
-        background:
-            radial-gradient(900px 620px at 62% -8%,
-                rgba(94,106,210,0.10), rgba(94,106,210,0) 62%),
-            radial-gradient(1100px 800px at 18% 104%,
-                rgba(68,236,255,0.045), rgba(68,236,255,0) 60%),
-            #0a0c11;
-        background-attachment: fixed;
+        background: #08090a;
     }
     /* Streamlit header — kept present so the sidebar collapse / expand
        control is always reachable; just made visually quiet. */
@@ -167,14 +149,11 @@ st.markdown(
     }
     .block-container { padding-top: 2.4rem; }
 
-    /* ---- Sidebar: a clearly lifted surface plane so it reads as its
-       own panel against the deep canvas — a flat #161922 fill that
-       sits unmistakably above the #0a0c11 canvas, and a crisp 1px
-       right hairline. One flat plane, no competing glow: the sidebar
-       must never visually dissolve into the canvas. ---- */
+    /* ---- Sidebar: surface-1 lifted one step off the canvas, a
+       crisp 1px right hairline. One flat plane, no glow. ---- */
     section[data-testid="stSidebar"] {
-        background: #161922;
-        border-right: 1px solid #2b313e;
+        background: #0f1011;
+        border-right: 1px solid #23252a;
     }
     section[data-testid="stSidebar"] > div {
         background: transparent;
@@ -185,129 +164,122 @@ st.markdown(
         padding-right: 1.15rem;
     }
     section[data-testid="stSidebar"] h1 {
-        font-family: "Inter", -apple-system, system-ui, sans-serif;
+        font-family: -apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;
         font-size: 17px !important;
         letter-spacing: -0.015em;
         font-weight: 600;
     }
 
-    /* ---- Buttons — v10 .ctl / .scenario-btn language: a flat
-       surface fill, ONE fine hairline, ~9px radius, calm hover
-       toward lavender. No gradients — v10 buttons are solid
-       planes, restraint over depth. ---- */
+    /* ---- Buttons — quiet by default. A flat surface fill, ONE
+       fine hairline, 8px radius, a restrained GREY hover. No
+       glow, no accent: secondary buttons are disciplined grey. ---- */
     .stButton > button, .stDownloadButton > button,
     .stLinkButton > a {
-        border-radius: 9px;
-        border: 1px solid #232834;
-        background: #11141b;
-        color: #e7e9ee;
+        border-radius: 8px;
+        border: 1px solid #23252a;
+        background: #141516;
+        color: #d0d6e0;
         font-weight: 500;
         font-size: 13.5px;
         letter-spacing: -0.003em;
-        padding: 8px 16px;
+        padding: 9px 14px;
         box-shadow: none;
         transition: border-color 0.15s ease, background 0.15s ease,
                     color 0.15s ease;
     }
     .stButton > button:hover, .stDownloadButton > button:hover,
     .stLinkButton > a:hover {
-        background: #181c25;
-        /* A restrained muted-lavender hover. The full #5e6ad2 accent is
-           reserved for the focus ring + the primary button, so a plain
-           secondary hover acknowledges the control without shouting. */
-        border-color: #6f70b0;
-        color: #f0f2f5;
+        background: #18191a;
+        border-color: #34343a;
+        color: #f7f8f8;
         box-shadow: none;
     }
     .stButton > button:active, .stDownloadButton > button:active {
-        background: #1f2530;
+        background: #1c1d1e;
     }
     .stButton > button:focus-visible, .stDownloadButton > button:focus-visible,
     .stLinkButton > a:focus-visible {
         outline: none;
         border-color: #5e6ad2;
-        box-shadow: 0 0 0 3px rgba(94,106,210,0.15);
+        box-shadow: 0 0 0 2px rgba(94,106,210,0.5);
     }
-    /* Primary — v10's .ask-btn: a solid lavender plane, canvas-dark
-       label. The one assertive control; not a glow slab. */
+    /* Primary — the ONE assertive control. A solid lavender plane,
+       white label, 8px radius. No glow, no inset highlight — just
+       a clean, confident accent fill. */
     .stButton > button[kind="primary"], .stButton > button[data-testid="baseButton-primary"],
     .stButton > button[kind="primaryFormSubmit"],
     .stFormSubmitButton > button {
         background: #5e6ad2;
-        border: 1px solid #9596ff;
-        color: #0a0c11;
+        border: 1px solid #5e6ad2;
+        color: #ffffff;
         font-weight: 600;
-        /* A crisp 1px top-edge highlight — the plane catches light at
-           its top edge like a real key. Not a gradient, not a glow. */
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.22);
+        box-shadow: none;
     }
     .stButton > button[kind="primary"]:hover,
     .stButton > button[kind="primaryFormSubmit"]:hover,
     .stFormSubmitButton > button:hover {
         background: #828fff;
-        border-color: #adadff;
-        color: #0a0c11;
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.28);
+        border-color: #828fff;
+        color: #ffffff;
+        box-shadow: none;
     }
     .stButton > button[kind="primary"]:active,
     .stButton > button[kind="primaryFormSubmit"]:active,
     .stFormSubmitButton > button:active {
-        background: #7e7ff0;
-        box-shadow: inset 0 2px 4px rgba(10,12,17,0.32);
+        background: #5e69d1;
+        box-shadow: none;
     }
     .stFormSubmitButton > button:focus-visible,
     .stButton > button[kind="primary"]:focus-visible {
-        box-shadow: 0 0 0 3px rgba(94,106,210,0.22);
+        box-shadow: 0 0 0 2px rgba(94,106,210,0.5);
     }
 
     /* ---- Sidebar buttons: quieter than the main column. History /
-       nav rows read as a flat rail on the lifted sidebar plane; hover
-       lifts a hair, the active row gets a thin lavender spine. ---- */
+       nav rows read as a flat rail; hover is a subtle grey lift. ---- */
     section[data-testid="stSidebar"] .stButton > button {
         background: transparent;
         border: 1px solid transparent;
         box-shadow: none;
         text-align: left;
         justify-content: flex-start;
-        color: #aab1bc;
+        color: #8a8f98;
         font-weight: 450;
         font-size: 13px;
         padding: 7px 11px;
-        border-radius: 7px;
+        border-radius: 6px;
     }
     section[data-testid="stSidebar"] .stButton > button:hover {
-        background: rgba(94,106,210,0.08);
+        background: rgba(255,255,255,0.05);
         border-color: transparent;
-        color: #f0f2f5;
+        color: #f7f8f8;
         box-shadow: none;
     }
-    /* The "✦ New prediction" button — v10 solid-lavender plane,
-       matching the main-column primary. The one assertive control
+    /* The "New prediction" button — the one accent-filled control
        in the rail; every other sidebar button stays a quiet row.
        NB: scope to [kind="primary"] — NOT :first-of-type, which
        matches every .stButton (each sits alone in its own element
        container) and would paint the whole nav rail solid. */
     section[data-testid="stSidebar"] .stButton > button[kind="primary"] {
         background: #5e6ad2;
-        border: 1px solid #9596ff;
-        border-radius: 9px;
-        color: #0a0c11;
+        border: 1px solid #5e6ad2;
+        border-radius: 8px;
+        color: #ffffff;
         font-weight: 600;
         font-size: 13.5px;
         text-align: center;
         justify-content: center;
-        padding: 10px 12px;
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.22);
+        padding: 9px 12px;
+        box-shadow: none;
     }
     section[data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {
         background: #828fff;
-        border-color: #adadff;
-        color: #0a0c11;
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.28);
+        border-color: #828fff;
+        color: #ffffff;
+        box-shadow: none;
     }
     section[data-testid="stSidebar"] .stButton > button[kind="primary"]:active {
-        background: #7e7ff0;
-        box-shadow: inset 0 2px 4px rgba(10,12,17,0.32);
+        background: #5e69d1;
+        box-shadow: none;
     }
 
     /* ---- Account + footer bottom-pin: these rules, placed mid-way
@@ -316,22 +288,21 @@ st.markdown(
        now ships as the dedicated _SIDEBAR_PIN_CSS <style> injected by
        render_sidebar(). ---- */
 
-    /* ---- Text inputs / textareas / selects — v10 input-field
-       language: a flat #11141b fill, ONE 1px #232834 hairline,
-       ~10px radius, comfortable padding, a clean lavender focus
-       border. BaseWeb wraps the field in nested nodes; the outer
-       wrapper carries the border, the inner nodes go transparent
-       so there is exactly one visible line. ---- */
+    /* ---- Text inputs / textareas / selects — a flat surface-1
+       fill, ONE 1px hairline, 8px radius, comfortable padding, a
+       clean accent focus ring. BaseWeb wraps the field in nested
+       nodes; the outer wrapper carries the border, the inner nodes
+       go transparent so there is exactly one visible line. ---- */
     .stTextInput div[data-baseweb="base-input"],
     .stTextArea div[data-baseweb="base-input"],
     div[data-baseweb="textarea"],
     .stNumberInput div[data-baseweb="base-input"],
     .stSelectbox div[data-baseweb="select"] > div,
     div[data-baseweb="select"] > div {
-        background: #11141b !important;
-        border: 1px solid #232834 !important;
-        border-radius: 10px !important;
-        color: #e7e9ee !important;
+        background: #0f1011 !important;
+        border: 1px solid #23252a !important;
+        border-radius: 8px !important;
+        color: #f7f8f8 !important;
         transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
     /* Inner BaseWeb nodes — keep them clear so the wrapper's
@@ -344,35 +315,34 @@ st.markdown(
     div[data-baseweb="textarea"] textarea {
         background: transparent !important;
         border: none !important;
-        color: #e7e9ee !important;
+        color: #f7f8f8 !important;
         font-size: 14px !important;
         padding: 9px 12px !important;
-        -webkit-text-fill-color: #e7e9ee;
+        -webkit-text-fill-color: #f7f8f8;
     }
     [data-testid="stTextInput"] input::placeholder,
     [data-testid="stTextArea"] textarea::placeholder,
     .stTextInput input::placeholder, .stTextArea textarea::placeholder {
-        /* Placeholders carry real guidance ("e.g., final-year CS
-           Master's student...") — lifted from a near-invisible #4b525d
-           to a legible #5c6573, still clearly dimmer than typed input. */
-        color: #5c6573 !important;
-        -webkit-text-fill-color: #5c6573;
+        /* Placeholders carry real guidance — a legible tertiary
+           grey, clearly dimmer than typed input. */
+        color: #62666d !important;
+        -webkit-text-fill-color: #62666d;
     }
-    /* Focus — v10 lavender border, a soft halo, no glow slab. */
+    /* Focus — a 2px accent ring, no glow. */
     .stTextInput div[data-baseweb="base-input"]:focus-within,
     .stTextArea div[data-baseweb="base-input"]:focus-within,
     div[data-baseweb="textarea"]:focus-within,
     .stNumberInput div[data-baseweb="base-input"]:focus-within,
     div[data-baseweb="select"]:focus-within > div {
         border-color: #5e6ad2 !important;
-        box-shadow: 0 0 0 3px rgba(94,106,210,0.15) !important;
+        box-shadow: 0 0 0 2px rgba(94,106,210,0.5) !important;
     }
-    /* Hover — a quiet brightening of the hairline (v10 .ctl:hover). */
+    /* Hover — a quiet brightening of the hairline. */
     .stTextInput div[data-baseweb="base-input"]:hover,
     .stTextArea div[data-baseweb="base-input"]:hover,
     div[data-baseweb="textarea"]:hover,
     div[data-baseweb="select"]:hover > div {
-        border-color: #2f3542 !important;
+        border-color: #34343a !important;
     }
     /* Suppress BaseWeb's own focus outline on the inner field. */
     [data-testid="stTextArea"] textarea:focus,
@@ -382,34 +352,35 @@ st.markdown(
         outline: none !important;
         box-shadow: none !important;
     }
-    /* Selectbox + popover dropdown panels — v10 surface-3 card,
-       a fine hairline, restrained shadow. */
+    /* Selectbox + popover dropdown panels — a surface-3 card with
+       a fine hairline. A modest shadow is acceptable on a true
+       floating menu (depth, not decoration). */
     div[data-baseweb="popover"] [role="listbox"],
     div[data-baseweb="menu"] {
-        background: #181c25 !important;
-        border: 1px solid #232834 !important;
-        border-radius: 10px !important;
-        box-shadow: 0 12px 34px rgba(0,0,0,0.55) !important;
+        background: #18191a !important;
+        border: 1px solid #23252a !important;
+        border-radius: 8px !important;
+        box-shadow: 0 12px 34px rgba(0,0,0,0.6) !important;
     }
     li[role="option"], div[data-baseweb="menu"] li {
         font-size: 13.5px !important;
-        color: #b9bfc8 !important;
+        color: #d0d6e0 !important;
     }
     li[role="option"]:hover, div[data-baseweb="menu"] li:hover {
-        background: rgba(94,106,210,0.12) !important;
-        color: #f0f2f5 !important;
+        background: rgba(255,255,255,0.05) !important;
+        color: #f7f8f8 !important;
     }
     li[role="option"][aria-selected="true"] {
-        background: rgba(94,106,210,0.15) !important;
-        color: #f0f2f5 !important;
+        background: rgba(255,255,255,0.07) !important;
+        color: #f7f8f8 !important;
     }
 
-    /* ---- Labels above widgets — v10 field-label tone: a quiet
-       --ink-2 grey, light weight, just enough presence. ---- */
+    /* ---- Labels above widgets — a quiet subtle grey, light
+       weight, just enough presence. ---- */
     .stTextInput label, .stTextArea label, .stSelectbox label,
     .stNumberInput label, .stRadio label, .stFileUploader label,
     .stCheckbox label, .stToggle label {
-        color: #76808d !important;
+        color: #8a8f98 !important;
         font-size: 12.5px !important;
         font-weight: 500 !important;
         letter-spacing: 0.004em;
@@ -417,68 +388,68 @@ st.markdown(
     /* Toggle / checkbox inline labels read at body size — they
        are statements, not field captions. */
     .stToggle label p, .stCheckbox label p {
-        color: #b9bfc8 !important;
+        color: #d0d6e0 !important;
         font-size: 13.5px !important;
     }
 
-    /* ---- Expanders — v10 card language: a flat #11141b plane,
-       ONE 1px #232834 hairline, 12px radius. The "More details"
-       composer expander reads as a quiet card you can open. ---- */
+    /* ---- Expanders — card language: a flat surface-1 plane,
+       ONE 1px hairline, 12px radius. The "More details" composer
+       expander reads as a quiet card you can open. ---- */
     [data-testid="stExpander"] {
-        border: 1px solid #232834;
+        border: 1px solid #23252a;
         border-radius: 12px;
-        background: #11141b;
+        background: #0f1011;
         overflow: hidden;
     }
     section[data-testid="stSidebar"] [data-testid="stExpander"] {
         margin-bottom: 7px;
-        border-radius: 9px;
-        border-color: #2b313e;
-        background: #1d212b;
+        border-radius: 8px;
+        border-color: #23252a;
+        background: #141516;
     }
     section[data-testid="stSidebar"] [data-testid="stExpander"] summary {
-        background: #1d212b;
+        background: #141516;
         padding: 9px 12px;
         font-size: 12.5px;
     }
     section[data-testid="stSidebar"] [data-testid="stExpander"] summary:hover {
-        background: #232834;
+        background: #18191a;
     }
     section[data-testid="stSidebar"]
         [data-testid="stExpander"] [data-testid="stExpanderDetails"] {
-        background: #1d212b;
+        background: #141516;
     }
     [data-testid="stExpander"] summary,
     [data-testid="stExpander"] details > summary {
-        background: #11141b;
+        background: #0f1011;
         border: none;
         border-radius: 0;
         padding: 11px 15px;
-        color: #b9bfc8;
+        color: #d0d6e0;
         font-weight: 500;
         font-size: 13px;
         transition: background 0.15s ease, color 0.15s ease;
     }
     [data-testid="stExpander"] summary:hover {
-        background: #181c25;
-        color: #f0f2f5;
+        background: #141516;
+        color: #f7f8f8;
     }
-    /* Expander chevron — quiet --ink-2, brightens with the row. */
-    [data-testid="stExpander"] summary svg { fill: #76808d; }
-    [data-testid="stExpander"] summary:hover svg { fill: #b9bfc8; }
+    /* Expander chevron — a quiet subtle grey, brightens with the row. */
+    [data-testid="stExpander"] summary svg { fill: #8a8f98; }
+    [data-testid="stExpander"] summary:hover svg { fill: #d0d6e0; }
     [data-testid="stExpander"] [data-testid="stExpanderDetails"] {
-        background: #11141b;
+        background: #0f1011;
         padding: 6px 15px 14px;
     }
 
     /* ---- Toggles — the live-video / 玄学-lens switches. Off:
-       a v10 surface-3 track with a fine hairline + a pale knob.
-       On: a solid lavender track, canvas-dark knob — the v10
-       accent applied with restraint, no glow slab. ---- */
+       a surface-3 track with a fine hairline + a pale knob.
+       On: a solid accent track, white knob — a genuine toggle,
+       one of the few sanctioned accent surfaces. No glow. ---- */
     .stToggle [data-baseweb="checkbox"] [role="checkbox"],
     div[data-baseweb="toggle"] {
-        background: #1f2530 !important;
-        border: 1px solid #232834 !important;
+        background: #18191a !important;
+        border: 1px solid #23252a !important;
     }
     .stToggle [data-baseweb="checkbox"] [role="checkbox"][aria-checked="true"],
     div[data-baseweb="toggle"][aria-checked="true"],
@@ -487,20 +458,20 @@ st.markdown(
         border-color: #5e6ad2 !important;
         box-shadow: none !important;
     }
-    /* The knob — a clean disc; rides dark on the lavender track. */
+    /* The knob — a clean disc. */
     .stToggle [data-baseweb="checkbox"] [role="checkbox"] > div,
     div[data-baseweb="toggle"] > div {
-        background: #b9bfc8 !important;
+        background: #d0d6e0 !important;
     }
     .stToggle [data-baseweb="checkbox"] [role="checkbox"][aria-checked="true"] > div,
     div[data-baseweb="toggle"][aria-checked="true"] > div {
-        background: #0a0c11 !important;
+        background: #ffffff !important;
     }
-    /* Plain checkbox (owner-bias flag) — v10 hairline box,
-       lavender when checked. */
+    /* Plain checkbox (owner-bias flag) — a hairline box, accent
+       when checked. */
     .stCheckbox [data-baseweb="checkbox"] [role="checkbox"] {
-        background: #11141b !important;
-        border: 1px solid #232834 !important;
+        background: #0f1011 !important;
+        border: 1px solid #23252a !important;
         border-radius: 4px !important;
     }
     .stCheckbox [data-baseweb="checkbox"] [role="checkbox"][aria-checked="true"] {
@@ -508,92 +479,90 @@ st.markdown(
         border-color: #5e6ad2 !important;
     }
 
-    /* ---- Popover panel (the "+ Attach" control) — a v10 card:
-       #181c25 surface, 1px #232834 hairline, 12px radius. The
-       trigger button inherits the secondary-button language
-       above. ---- */
+    /* ---- Popover panel (the "+ Attach" control) — a surface-3
+       card: a fine hairline, 12px radius. The trigger button
+       inherits the secondary-button language above. ---- */
     div[data-baseweb="popover"] > div {
-        background: #181c25 !important;
-        border: 1px solid #232834 !important;
+        background: #18191a !important;
+        border: 1px solid #23252a !important;
         border-radius: 12px !important;
-        box-shadow: 0 16px 40px rgba(0,0,0,0.55) !important;
+        box-shadow: 0 16px 40px rgba(0,0,0,0.6) !important;
     }
     [data-testid="stPopoverBody"] {
-        background: #181c25 !important;
+        background: #18191a !important;
         padding: 16px !important;
     }
 
-    /* ---- File uploader dropzone — v10 input-card look, a dashed
-       hairline that turns lavender on hover. ---- */
+    /* ---- File uploader dropzone — input-card look, a dashed
+       hairline that brightens on hover. ---- */
     [data-testid="stFileUploaderDropzone"] {
-        background: #11141b !important;
-        border: 1px dashed #2c3340 !important;
-        border-radius: 10px !important;
+        background: #0f1011 !important;
+        border: 1px dashed #34343a !important;
+        border-radius: 8px !important;
         transition: border-color 0.15s ease, background 0.15s ease;
     }
     [data-testid="stFileUploaderDropzone"]:hover {
-        border-color: #5e6ad2 !important;
-        background: #181c25 !important;
+        border-color: #3e3e44 !important;
+        background: #141516 !important;
     }
 
-    /* ---- Sliders ---- */
+    /* ---- Sliders — the accent track is a sanctioned use; no glow. ---- */
     .stSlider [role="slider"] {
         background: #5e6ad2;
-        box-shadow: 0 0 10px rgba(94,106,210,0.45);
+        box-shadow: none;
     }
     .stSlider [data-baseweb="slider"] div[data-testid] { background: #5e6ad2; }
 
     /* ---- Radio (Settings language picker) ---- */
     .stRadio div[role="radiogroup"] label {
-        background: #14171f;
-        border: 1px solid #242935;
+        background: #0f1011;
+        border: 1px solid #23252a;
         border-radius: 6px;
         padding: 3px 10px;
         transition: border-color 0.14s ease;
     }
     .stRadio div[role="radiogroup"] label:hover {
-        border-color: rgba(94,106,210,0.5);
+        border-color: #34343a;
     }
 
-    /* ---- Dividers — a faint hairline, not a hard rule ---- */
+    /* ---- Dividers — a flat hairline, not a fading rule ---- */
     hr {
         border: none !important;
         height: 1px !important;
-        background: linear-gradient(90deg,
-            rgba(35,40,52,0), #232834 18%, #232834 82%,
-            rgba(35,40,52,0)) !important;
-        opacity: 0.85;
+        background: #23252a !important;
+        opacity: 1;
     }
 
     /* ---- Captions ---- */
     .stCaption, [data-testid="stCaptionContainer"] {
-        color: #6a7280 !important;
+        color: #62666d !important;
         letter-spacing: 0.004em;
     }
 
-    /* ---- Links — lavender, quiet underline on hover ---- */
+    /* ---- Links — quiet grey, accent only on hover ---- */
     a, a:visited {
-        color: #9fa0ff !important;
+        color: #8a8f98 !important;
         text-decoration: none !important;
         transition: color 0.14s ease;
     }
     a:hover {
-        color: #b9baff !important;
+        color: #5e6ad2 !important;
         text-decoration: underline !important;
         text-underline-offset: 2px;
     }
 
-    /* ---- Code / inline code ---- */
+    /* ---- Code / inline code — a neutral surface, not an
+       accent-tinted block ---- */
     code {
-        background: rgba(94,106,210,0.08) !important;
-        color: #c3b9ff !important;
+        background: rgba(255,255,255,0.05) !important;
+        color: #d0d6e0 !important;
         padding: 1px 5px !important;
-        border-radius: 3px !important;
+        border-radius: 4px !important;
         font-size: 0.86em !important;
     }
     pre, [data-testid="stCodeBlock"] {
-        background: #0d0f16 !important;
-        border: 1px solid #1f2430 !important;
+        background: #0f1011 !important;
+        border: 1px solid #23252a !important;
         border-radius: 8px !important;
     }
 
@@ -601,98 +570,99 @@ st.markdown(
     footer { visibility: hidden; }
     #MainMenu { visibility: hidden; }
 
-    /* ---- Metrics: serif value, the one accent number; the
-       container reads as a quiet card. ---- */
+    /* ---- Metrics: a large precise value; the container reads as
+       a quiet card. ---- */
     [data-testid="stMetric"] {
-        background: #11141b;
-        border: 1px solid #1f2430;
-        border-radius: 10px;
+        background: #0f1011;
+        border: 1px solid #23252a;
+        border-radius: 12px;
         padding: 14px 16px;
     }
     [data-testid="stMetricValue"] {
         font-family: -apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;
-        font-size: 34px;
-        color: #f0f2f5;
-        letter-spacing: -0.01em;
+        font-size: 32px;
+        font-weight: 600;
+        color: #f7f8f8;
+        letter-spacing: -0.02em;
     }
     [data-testid="stMetricLabel"] {
-        color: #76808d;
+        color: #8a8f98;
         font-size: 11.5px;
         letter-spacing: 0.06em;
         text-transform: uppercase;
     }
 
     /* ---- Bordered containers — the composer card + embedded
-       panels. v10 .preview-card / .cf-card language: a flat
-       #11141b plane, ONE 1px #232834 hairline, 13px radius,
-       generous padding. Restraint over depth — no gradient,
-       no heavy drop shadow. ---- */
+       panels. A flat surface-1 plane, ONE 1px hairline, 12px
+       radius. No gradient, no shadow — depth via the surface
+       ladder. ---- */
     [data-testid="stContainer"][data-border="true"],
     div[data-testid="stVerticalBlockBorderWrapper"],
     div[data-testid="stContainer"]:has(> div[data-testid="stContainerBorder"]) {
-        background: #11141b;
-        border: 1px solid #232834 !important;
-        border-radius: 13px;
+        background: #0f1011;
+        border: 1px solid #23252a !important;
+        border-radius: 12px;
         box-shadow: none;
     }
 
     /* ---- Tabs ---- */
     .stTabs [data-baseweb="tab-list"] {
-        border-bottom: 1px solid #20242f;
+        border-bottom: 1px solid #23252a;
         gap: 4px;
     }
     .stTabs [data-baseweb="tab"] {
-        color: #76808d;
+        color: #8a8f98;
         font-weight: 500;
     }
     .stTabs [aria-selected="true"] {
-        color: #f0f2f5 !important;
+        color: #f7f8f8 !important;
     }
     .stTabs [data-baseweb="tab-highlight"] { background: #5e6ad2 !important; }
 
-    /* ---- Alerts — calm, fine-bordered, not loud blocks. v10
-       semantics: teal = ready/wired, red = error, amber =
-       caution — applied as a tinted surface + hairline. ---- */
+    /* ---- Alerts — calm, fine-bordered, not loud blocks. The
+       neutral base is a quiet surface; semantic variants get a
+       restrained hairline tint only (success / error / warning
+       keep their meaning without shouting). ---- */
     [data-testid="stAlert"] {
         border-radius: 10px;
-        border: 1px solid #232834;
-        background: #11141b;
+        border: 1px solid #23252a;
+        background: rgba(255,255,255,0.04);
     }
-    [data-testid="stAlert"] p { color: #b9bfc8 !important; }
-    /* Success — v10 teal "wired/ready" tone (the attach confirms). */
+    [data-testid="stAlert"] p { color: #d0d6e0 !important; }
+    /* Success — a restrained green hairline. */
     [data-testid="stAlert"]:has([data-testid="stAlertContentSuccess"]),
     div[data-baseweb="notification"][kind="positive"] {
-        border-color: rgba(88,197,180,0.35);
-        background: rgba(88,197,180,0.07);
+        border-color: rgba(39,166,68,0.4);
+        background: rgba(39,166,68,0.06);
     }
-    /* Error — v10 red. */
+    /* Error — a restrained red hairline. */
     [data-testid="stAlert"]:has([data-testid="stAlertContentError"]),
     div[data-baseweb="notification"][kind="negative"] {
-        border-color: rgba(255,94,110,0.35);
-        background: rgba(255,94,110,0.07);
+        border-color: rgba(220,76,90,0.4);
+        background: rgba(220,76,90,0.06);
     }
-    /* Warning — v10 amber. */
+    /* Warning — a restrained amber hairline. */
     [data-testid="stAlert"]:has([data-testid="stAlertContentWarning"]),
     div[data-baseweb="notification"][kind="warning"] {
-        border-color: rgba(216,166,87,0.32);
-        background: rgba(216,166,87,0.07);
+        border-color: rgba(190,150,70,0.4);
+        background: rgba(190,150,70,0.06);
     }
 
     /* ---- Tables / dataframes ---- */
     [data-testid="stTable"], .stDataFrame {
-        border: 1px solid #20242f;
-        border-radius: 9px;
+        border: 1px solid #23252a;
+        border-radius: 8px;
     }
 
-    /* ---- Scrollbar — thin, deep-space ---- */
+    /* ---- Scrollbar — thin, near-black ---- */
     ::-webkit-scrollbar { width: 9px; height: 9px; }
-    ::-webkit-scrollbar-track { background: #0a0c11; }
+    ::-webkit-scrollbar-track { background: #08090a; }
     ::-webkit-scrollbar-thumb {
-        background: #232834;
+        background: #23252a;
         border-radius: 6px;
-        border: 2px solid #0a0c11;
+        border: 2px solid #08090a;
     }
-    ::-webkit-scrollbar-thumb:hover { background: #2f3542; }
+    ::-webkit-scrollbar-thumb:hover { background: #34343a; }
 
     /* ========================================================
        Spacing rhythm + composer polish — premium through
@@ -764,34 +734,35 @@ st.markdown(
         line-height: 1.5;
     }
 
-    /* Segmented control (the output-view switch) — same calm dark
-       system: a flat surface track, one hairline, lavender on the
-       selected segment. No loud pill. */
+    /* Segmented control (the output-view switch) — a flat surface
+       track, one hairline; the selected segment lifts onto a
+       neutral grey surface (surface lift = selected, the Linear
+       pattern). No accent fill, no loud pill. */
     [data-testid="stSegmentedControl"] [role="radiogroup"] {
-        background: #11141b;
-        border: 1px solid #232834;
-        border-radius: 9px;
+        background: #0f1011;
+        border: 1px solid #23252a;
+        border-radius: 8px;
         padding: 2px;
         gap: 2px;
     }
     [data-testid="stSegmentedControl"] [role="radio"] {
         border: none !important;
         background: transparent !important;
-        color: #76808d !important;
-        border-radius: 7px !important;
+        color: #8a8f98 !important;
+        border-radius: 6px !important;
         font-size: 12.5px !important;
         font-weight: 500 !important;
     }
     [data-testid="stSegmentedControl"] [role="radio"]:hover {
-        color: #b9bfc8 !important;
-        background: rgba(94,106,210,0.06) !important;
+        color: #d0d6e0 !important;
+        background: rgba(255,255,255,0.04) !important;
     }
     [data-testid="stSegmentedControl"] [role="radio"][aria-checked="true"] {
-        background: rgba(94,106,210,0.14) !important;
-        color: #f0f2f5 !important;
+        background: rgba(255,255,255,0.07) !important;
+        color: #f7f8f8 !important;
     }
 
-    /* Spinner accent — the one lavender thread, not Streamlit red. */
+    /* Spinner accent — the accent thread, not Streamlit red. */
     [data-testid="stSpinner"] svg { color: #5e6ad2 !important; }
     [data-testid="stSpinner"] i {
         border-top-color: #5e6ad2 !important;
@@ -1004,7 +975,7 @@ def _render_history_rail(route: tuple[str, Any]) -> tuple[str, Any]:
             else T("nav.history.empty")
         )
         st.sidebar.markdown(
-            f"<div style='color:#4b525d;font-size:12px;line-height:1.5;"
+            f"<div style='color:#62666d;font-size:12px;line-height:1.5;"
             f"padding:4px 0 2px;'>{msg}</div>",
             unsafe_allow_html=True,
         )
@@ -1036,10 +1007,10 @@ def _render_history_rail(route: tuple[str, Any]) -> tuple[str, Any]:
                 p for p in predictions if p.category_id == cat.category_id
             ]
             st.sidebar.markdown(
-                f"<div style='color:#5e6ad2;font-size:10.5px;"
+                f"<div style='color:#8a8f98;font-size:10.5px;"
                 f"letter-spacing:0.04em;margin:12px 0 2px;"
-                f"font-weight:600;'>▸ {_esc_html(cat.name)} "
-                f"<span style='color:#4b525d;font-weight:400;'>"
+                f"font-weight:600;'>{_esc_html(cat.name)} "
+                f"<span style='color:#62666d;font-weight:400;'>"
                 f"({len(members)})</span></div>",
                 unsafe_allow_html=True,
             )
@@ -1052,10 +1023,10 @@ def _render_history_rail(route: tuple[str, Any]) -> tuple[str, Any]:
         ]
         if loose:
             st.sidebar.markdown(
-                f"<div style='color:#5a626e;font-size:10.5px;"
+                f"<div style='color:#62666d;font-size:10.5px;"
                 f"letter-spacing:0.04em;margin:12px 0 2px;'>"
-                f"▸ {T('history.uncategorized')} "
-                f"<span style='color:#4b525d;'>({len(loose)})</span>"
+                f"{T('history.uncategorized')} "
+                f"<span style='color:#62666d;'>({len(loose)})</span>"
                 f"</div>",
                 unsafe_allow_html=True,
             )
@@ -1068,7 +1039,7 @@ def _render_history_rail(route: tuple[str, Any]) -> tuple[str, Any]:
             bucket = _date_bucket(rec.created_at)
             if bucket != last_bucket:
                 st.sidebar.markdown(
-                    f"<div style='color:#5a626e;font-size:10px;"
+                    f"<div style='color:#62666d;font-size:10px;"
                     f"letter-spacing:0.04em;margin:10px 0 2px;'>"
                     f"{bucket}</div>",
                     unsafe_allow_html=True,
@@ -1122,7 +1093,7 @@ def _render_account_area() -> None:
 
     st.sidebar.markdown(
         "<div style='margin-top:20px;padding-top:14px;"
-        "border-top:1px solid #232834;'></div>",
+        "border-top:1px solid #23252a;'></div>",
         unsafe_allow_html=True,
     )
 
@@ -1148,14 +1119,14 @@ def _render_account_area() -> None:
                     f"<div style='display:flex;align-items:center;gap:10px;"
                     f"margin:2px 0 8px;'>"
                     f"<div style='width:36px;height:36px;border-radius:50%;"
-                    f"flex:none;background:linear-gradient(135deg,#5e6ad2,"
-                    f"#6b6cff);color:#fff;font-weight:700;font-size:16px;"
+                    f"flex:none;background:#18191a;border:1px solid #34343a;"
+                    f"color:#d0d6e0;font-weight:600;font-size:15px;"
                     f"display:flex;align-items:center;justify-content:center;'>"
                     f"{_html.escape(initial)}</div>"
                     f"<div style='line-height:1.35;min-width:0;'>"
-                    f"<div style='color:#f0f2f5;font-size:13.5px;"
+                    f"<div style='color:#f7f8f8;font-size:13.5px;"
                     f"font-weight:600;'>{_html.escape(name)}</div>"
-                    f"<div style='color:#76808d;font-size:11.5px;'>"
+                    f"<div style='color:#8a8f98;font-size:11.5px;'>"
                     f"{_html.escape(email)}</div></div></div>",
                     unsafe_allow_html=True,
                 )
@@ -1237,17 +1208,20 @@ def render_sidebar() -> tuple[str, Any]:
     st.markdown(_SIDEBAR_PIN_CSS, unsafe_allow_html=True)
 
     # ---- Brand wordmark ----
+    # A precise wordmark with a small accent dot as the brand mark
+    # (the accent on the brand mark is a sanctioned use). No
+    # sparkle, no glow.
     st.sidebar.markdown(
-        f"<div style='display:flex;align-items:baseline;gap:8px;"
+        f"<div style='display:flex;align-items:center;gap:8px;"
         f"margin:2px 0 3px;'>"
+        f"<span style='width:7px;height:7px;border-radius:50%;"
+        f"flex:none;background:#5e6ad2;'></span>"
         f"<span style='font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;"
-        f"font-size:23px;font-weight:600;letter-spacing:-0.015em;"
-        f"color:#f0f2f5;'>"
+        f"font-size:22px;font-weight:600;letter-spacing:-0.018em;"
+        f"color:#f7f8f8;'>"
         f"{_brand.BRAND_NAME_SHORT}</span>"
-        f"<span style='color:#5e6ad2;font-size:11px;"
-        f"text-shadow:0 0 8px rgba(94,106,210,0.7);'>✦</span>"
         f"</div>"
-        f"<div style='color:#6a7280;font-size:11.5px;letter-spacing:0.012em;"
+        f"<div style='color:#62666d;font-size:11.5px;letter-spacing:0.012em;"
         f"line-height:1.45;margin-bottom:16px;'>"
         f"{T('brand.tagline')}"
         f"</div>",
@@ -1275,11 +1249,10 @@ def render_sidebar() -> tuple[str, Any]:
     st.sidebar.markdown(
         f"<div style='display:flex;align-items:center;gap:8px;"
         f"margin:20px 0 6px;'>"
-        f"<span style='color:#76808d;font-size:10.5px;letter-spacing:0.13em;"
+        f"<span style='color:#8a8f98;font-size:10.5px;letter-spacing:0.13em;"
         f"text-transform:uppercase;font-weight:600;'>"
         f"{T('nav.history')}</span>"
-        f"<span style='flex:1;height:1px;background:linear-gradient(90deg,"
-        f"#1f2430,rgba(31,36,48,0));'></span>"
+        f"<span style='flex:1;height:1px;background:#23252a;'></span>"
         f"</div>",
         unsafe_allow_html=True,
     )
@@ -1308,12 +1281,12 @@ def render_sidebar() -> tuple[str, Any]:
     # CSS rule, so the footer + account chip sit flush at the bottom
     # (Claude / ChatGPT style) instead of floating with dead space. ----
     st.sidebar.markdown(
-        f"<div class='omy-foot-anchor' style='color:#4b525d;"
+        f"<div class='omy-foot-anchor' style='color:#62666d;"
         f"font-size:11px;line-height:1.5;margin-top:24px;"
-        f"padding-top:16px;border-top:1px solid #232834;'>"
+        f"padding-top:16px;border-top:1px solid #23252a;'>"
         f"{T('brand.disclaimer')}"
         f"</div>"
-        f"<div style='color:#76808d;font-size:11px;margin-top:12px;'>"
+        f"<div style='color:#8a8f98;font-size:11px;margin-top:12px;'>"
         f"{_brand.footer_html()}"
         f"</div>",
         unsafe_allow_html=True,
@@ -1395,12 +1368,12 @@ def _render_settings_about() -> None:
         f"{_brand.BRAND_NAME_SHORT}  ·  v{_brand.BRAND_VERSION}",
     )
     st.markdown(
-        f"<div style='background:#11141b;border:1px solid #232834;"
-        f"border-radius:12px;padding:18px 20px;color:#c6ccd6;"
+        f"<div style='background:#0f1011;border:1px solid #23252a;"
+        f"border-radius:12px;padding:18px 20px;color:#d0d6e0;"
         f"font-size:13.5px;line-height:1.62;'>"
         f"{T('settings.about.what')}"
         f"</div>"
-        f"<div style='color:#76808d;font-size:12px;line-height:1.6;"
+        f"<div style='color:#8a8f98;font-size:12px;line-height:1.6;"
         f"margin-top:14px;'>{T('brand.disclaimer')}</div>",
         unsafe_allow_html=True,
     )
@@ -1422,14 +1395,14 @@ def _render_settings_planned(cat: str) -> None:
     )
     _settings_section_header(T(tkey), T(dkey))
     st.markdown(
-        f"<div style='background:#11141b;border:1px solid #232834;"
+        f"<div style='background:#0f1011;border:1px solid #23252a;"
         f"border-radius:12px;padding:20px;'>"
         f"<span style='display:inline-block;"
-        f"background:rgba(94,106,210,0.14);color:#9da0d8;font-size:10px;"
+        f"background:rgba(255,255,255,0.05);color:#8a8f98;font-size:10px;"
         f"font-weight:700;letter-spacing:0.09em;text-transform:uppercase;"
-        f"padding:3px 9px;border-radius:5px;'>"
+        f"padding:3px 9px;border-radius:5px;border:1px solid #23252a;'>"
         f"{T('settings.planned.badge')}</span>"
-        f"<div style='color:#8a93a3;font-size:12.5px;line-height:1.62;"
+        f"<div style='color:#8a8f98;font-size:12.5px;line-height:1.62;"
         f"margin-top:12px;'>{T('settings.planned.note')}</div>"
         f"</div>",
         unsafe_allow_html=True,
@@ -1504,7 +1477,7 @@ def _render_settings_data() -> None:
     )
 
     _label = (
-        "color:#d0d6e0;font-size:13px;font-weight:600;margin:2px 0 3px;"
+        "color:#f7f8f8;font-size:13px;font-weight:600;margin:2px 0 3px;"
     )
     _help = (
         "color:#8a8f98;font-size:12px;line-height:1.5;margin-bottom:9px;"
@@ -1607,7 +1580,7 @@ def _render_settings_data() -> None:
 
     # ---- Honest storage note ----
     st.markdown(
-        f"<div style='background:#11141b;border:1px solid #232834;"
+        f"<div style='background:#0f1011;border:1px solid #23252a;"
         f"border-radius:12px;padding:14px 16px;color:#8a8f98;"
         f"font-size:12px;line-height:1.62;'>{T('settings.data.note')}</div>",
         unsafe_allow_html=True,
@@ -1618,36 +1591,39 @@ _SETTINGS_CSS = (
     "<style>"
     ".omy-set-head{margin:4px 0 22px;}"
     ".omy-set-title{font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;"
-    "font-size:33px;font-weight:600;letter-spacing:-0.015em;"
-    "color:#f0f2f5;line-height:1.12;}"
-    ".omy-set-sub{color:#8a93a3;font-size:13px;line-height:1.55;"
+    "font-size:32px;font-weight:600;letter-spacing:-0.02em;"
+    "color:#f7f8f8;line-height:1.12;}"
+    ".omy-set-sub{color:#8a8f98;font-size:13px;line-height:1.55;"
     "margin-top:3px;}"
     ".omy-set-section{margin:2px 0 18px;padding-bottom:13px;"
-    "border-bottom:1px solid #1e2330;}"
+    "border-bottom:1px solid #23252a;}"
     ".omy-set-section-t{font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;"
-    "font-size:23px;font-weight:600;color:#f0f2f5;"
+    "font-size:22px;font-weight:600;color:#f7f8f8;"
     "letter-spacing:-0.01em;line-height:1.15;}"
-    ".omy-set-section-d{color:#8a93a3;font-size:12.5px;"
+    ".omy-set-section-d{color:#8a8f98;font-size:12.5px;"
     "line-height:1.5;margin-top:4px;}"
     '[data-testid="stColumn"]:has(.omy-pane-marker){'
-    "border-left:1px solid #1e2330;padding-left:26px!important;}"
+    "border-left:1px solid #23252a;padding-left:26px!important;}"
     '[class*="st-key-_setcat_"] button{'
     "justify-content:flex-start!important;text-align:left!important;"
     "border:none!important;background:transparent!important;"
-    "color:#9aa3b2!important;font-weight:500!important;"
+    "color:#8a8f98!important;font-weight:500!important;"
     "font-size:13.5px!important;padding:8px 12px!important;"
-    "border-radius:8px!important;box-shadow:none!important;"
+    "border-radius:6px!important;box-shadow:none!important;"
     "min-height:0!important;}"
     '[class*="st-key-_setcat_"] button:hover{'
-    "background:rgba(255,255,255,0.045)!important;"
-    "color:#d4d8e0!important;}"
+    "background:rgba(255,255,255,0.05)!important;"
+    "color:#d0d6e0!important;}"
+    # Active category row — a subtle GREY surface lift + the accent
+    # only as a thin 2px left bar (the brand mark of the active row,
+    # not a coloured fill).
     '[class*="st-key-_setcat_"] button[kind="primary"]{'
-    "background:rgba(94,106,210,0.13)!important;"
-    "color:#c7c9f0!important;font-weight:600!important;"
+    "background:rgba(255,255,255,0.06)!important;"
+    "color:#f7f8f8!important;font-weight:600!important;"
     "box-shadow:inset 2px 0 0 0 #5e6ad2!important;}"
     '[class*="st-key-_setcat_"] button[kind="primary"]:hover{'
-    "background:rgba(94,106,210,0.17)!important;"
-    "color:#d6d8f8!important;}"
+    "background:rgba(255,255,255,0.08)!important;"
+    "color:#f7f8f8!important;}"
     "</style>"
 )
 
@@ -1920,16 +1896,14 @@ def _render_workspace_output() -> None:
             st.markdown(
                 "<div style='display:flex;align-items:center;gap:9px;"
                 "margin:6px 0 8px;'>"
-                "<span style='width:4px;height:4px;border-radius:50%;"
-                "background:#58c5b4;"
-                "box-shadow:0 0 7px rgba(88,197,180,0.8);'>"
+                "<span style='width:5px;height:5px;border-radius:50%;"
+                "background:#8a8f98;'>"
                 "</span>"
-                "<span style='color:#8b93a0;font-size:11px;"
+                "<span style='color:#8a8f98;font-size:11px;"
                 "letter-spacing:0.14em;text-transform:uppercase;"
                 "font-weight:600;'>Live video</span>"
                 "<span style='flex:1;height:1px;"
-                "background:linear-gradient(90deg,"
-                "#232834,rgba(35,40,52,0));'></span>"
+                "background:#23252a;'></span>"
                 "</div>",
                 unsafe_allow_html=True,
             )
@@ -1952,17 +1926,15 @@ def _render_workspace_output() -> None:
             st.markdown(
                 "<div style='display:flex;align-items:center;gap:9px;"
                 "margin:6px 0 4px;'>"
-                "<span style='width:4px;height:4px;border-radius:50%;"
-                "background:#5e6ad2;"
-                "box-shadow:0 0 6px rgba(94,106,210,0.55);'>"
+                "<span style='width:5px;height:5px;border-radius:50%;"
+                "background:#8a8f98;'>"
                 "</span>"
-                "<span style='color:#7f8a99;font-size:10.5px;"
+                "<span style='color:#8a8f98;font-size:10.5px;"
                 "letter-spacing:0.15em;"
                 "text-transform:uppercase;font-weight:600;'>"
                 "Prediction space</span>"
                 "<span style='flex:1;height:1px;"
-                "background:linear-gradient(90deg,"
-                "#232834,rgba(35,40,52,0));'></span>"
+                "background:#23252a;'></span>"
                 "</div>",
                 unsafe_allow_html=True,
             )
@@ -2409,10 +2381,9 @@ def _render_traditional_lens(
         center_meta=f"八字 ⊕ 占星 · {alpha_tag}",
     )
     st.markdown(
-        f"<div style='background:#11141b;border:1px solid #232834;"
+        f"<div style='background:#0f1011;border:1px solid #23252a;"
         f"border-radius:12px;padding:20px 16px;margin:18px auto 10px;"
-        f"max-width:560px;box-shadow:0 12px 50px rgba(0,0,0,0.4),"
-        f"0 1px 0 rgba(255,255,255,0.025) inset;'>"
+        f"max-width:560px;'>"
         f"{astrolabe_svg}</div>",
         unsafe_allow_html=True,
     )
@@ -2430,9 +2401,9 @@ def _render_traditional_lens(
             center_meta=f"{label} · {alpha_tag}",
         )
         st.markdown(
-            f"<div style='background:#11141b;border:1px solid #232834;"
+            f"<div style='background:#0f1011;border:1px solid #23252a;"
             f"border-radius:12px;padding:16px 14px;margin:10px auto;"
-            f"max-width:560px;box-shadow:0 10px 40px rgba(0,0,0,0.35);'>"
+            f"max-width:560px;'>"
             f"{panel_svg}</div>",
             unsafe_allow_html=True,
         )
@@ -2446,30 +2417,33 @@ def _render_traditional_lens(
              'justify-content:center;margin:16px auto 2px;max-width:560px;">']
     for sysk in _mp.SYSTEMS:
         ausp = readings[sysk].auspice
-        col = ("#58c5b4" if ausp >= 0.56
-               else "#ff5e6e" if ausp <= 0.44 else "#5e6ad2")
+        # Favourability — a restrained semantic green / red, with a
+        # neutral grey for the unremarkable middle. No accent as a
+        # data-viz fill.
+        col = ("#27a644" if ausp >= 0.56
+               else "#dc4c5a" if ausp <= 0.44 else "#8a8f98")
         pct = ausp * 100.0
         chips.append(
-            f'<div style="flex:1;min-width:112px;background:#11141b;'
-            f'border:1px solid #232834;border-radius:8px;'
+            f'<div style="flex:1;min-width:112px;background:#0f1011;'
+            f'border:1px solid #23252a;border-radius:8px;'
             f'padding:9px 11px 10px;">'
             f'<div style="display:flex;justify-content:space-between;'
             f'align-items:baseline;">'
-            f'<span style="color:#76808d;font-size:8.5px;'
+            f'<span style="color:#8a8f98;font-size:8.5px;'
             f'letter-spacing:0.12em;text-transform:uppercase;">'
             f'{_html.escape(str(T(f"trad.system.{sysk}")))}</span>'
             f'<span style="color:{col};font-size:15px;font-weight:600;'
             f"font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;\">"
             f'{pct:.0f}%</span></div>'
             f'<div style="margin-top:6px;height:4px;border-radius:2px;'
-            f'background:#232834;overflow:hidden;">'
+            f'background:#23252a;overflow:hidden;">'
             f'<div style="height:100%;width:{pct:.0f}%;background:{col};'
             f'border-radius:2px;"></div></div></div>'
         )
     chips.append('</div>')
     st.markdown("".join(chips), unsafe_allow_html=True)
     st.markdown(
-        "<div style='color:#76808d;font-size:11px;text-align:center;"
+        "<div style='color:#8a8f98;font-size:11px;text-align:center;"
         "margin:0 auto 4px;max-width:560px;'>Each tradition's "
         "favourability — the 玄学 consensus is their equal-weight mean.</div>",
         unsafe_allow_html=True,
@@ -2486,7 +2460,7 @@ def _render_traditional_lens(
 
     # ---- Always-visible disclaimer (integrity gate per spec §7) ----
     st.markdown(
-        f"<div style='color:#76808d;font-size:11.5px;line-height:1.55;"
+        f"<div style='color:#8a8f98;font-size:11.5px;line-height:1.55;"
         f"max-width:560px;margin:16px auto 4px;letter-spacing:0.005em;'>"
         f"{T('trad.disclaimer')}</div>",
         unsafe_allow_html=True,
@@ -2516,11 +2490,11 @@ def render_traditional_view() -> None:
         f"""
         <div style='text-align:center;padding:40px 24px 28px;'>
           <h1 style='font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;
-                     font-size:52px;font-weight:600;letter-spacing:-0.02em;
-                     margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
+                     font-size:38px;font-weight:600;letter-spacing:-0.028em;
+                     margin:0 0 14px;color:#f7f8f8;line-height:1.1;'>
             {T("trad.hero.title")}
           </h1>
-          <p style='max-width:600px;margin:0 auto;color:#c6ccd6;
+          <p style='max-width:600px;margin:0 auto;color:#8a8f98;
                     font-size:16px;line-height:1.55;letter-spacing:0.005em;'>
             {T("trad.hero.subtitle")}
           </p>
@@ -3073,14 +3047,13 @@ def _render_result(
     st.markdown(
         "<div style='display:flex;align-items:center;gap:9px;"
         "margin:6px 0 4px;'>"
-        "<span style='width:4px;height:4px;border-radius:50%;"
-        "background:#58c5b4;box-shadow:0 0 7px rgba(88,197,180,0.8);'>"
+        "<span style='width:5px;height:5px;border-radius:50%;"
+        "background:#8a8f98;'>"
         "</span>"
-        "<span style='color:#8b93a0;font-size:11px;letter-spacing:0.14em;"
+        "<span style='color:#8a8f98;font-size:11px;letter-spacing:0.14em;"
         "text-transform:uppercase;font-weight:600;'>"
         "Resolved prediction</span>"
-        "<span style='flex:1;height:1px;background:linear-gradient(90deg,"
-        "#232834,rgba(35,40,52,0));'></span>"
+        "<span style='flex:1;height:1px;background:#23252a;'></span>"
         "</div>",
         unsafe_allow_html=True,
     )
@@ -3162,9 +3135,9 @@ def _render_result(
     lens_on = bool(st.session_state.get("_xuanxue_lens_on", False))
     st.markdown(
         "<div style='margin:24px 0 -8px;text-align:center;'>"
-        f"<span style='color:#76808d;font-size:11.5px;"
+        f"<span style='color:#8a8f98;font-size:11.5px;"
         f"letter-spacing:0.18em;text-transform:uppercase;'>"
-        f"✦ {T('trad.lens.invite_chip')}</span>"
+        f"{T('trad.lens.invite_chip')}</span>"
         "</div>",
         unsafe_allow_html=True,
     )
@@ -3349,11 +3322,11 @@ def render_measurement_update(
         f"""
         <div style='text-align:center;padding:40px 24px 28px;'>
           <h1 style='font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;
-                     font-size:52px;font-weight:600;letter-spacing:-0.02em;
-                     margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
+                     font-size:38px;font-weight:600;letter-spacing:-0.028em;
+                     margin:0 0 14px;color:#f7f8f8;line-height:1.1;'>
             {T("measurement.hero.title")}
           </h1>
-          <p style='max-width:600px;margin:0 auto;color:#c6ccd6;
+          <p style='max-width:600px;margin:0 auto;color:#8a8f98;
                     font-size:16px;line-height:1.55;letter-spacing:0.005em;'>
             {T("measurement.hero.subtitle")}
           </p>
@@ -3530,11 +3503,11 @@ def render_calibration_history() -> None:
         f"""
         <div style='text-align:center;padding:40px 24px 28px;'>
           <h1 style='font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;
-                     font-size:52px;font-weight:600;letter-spacing:-0.02em;
-                     margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
+                     font-size:38px;font-weight:600;letter-spacing:-0.028em;
+                     margin:0 0 14px;color:#f7f8f8;line-height:1.1;'>
             {T("calibration.hero.title")}
           </h1>
-          <p style='max-width:600px;margin:0 auto;color:#c6ccd6;
+          <p style='max-width:600px;margin:0 auto;color:#8a8f98;
                     font-size:16px;line-height:1.55;letter-spacing:0.005em;'>
             {T("calibration.hero.subtitle")}
           </p>
@@ -3628,11 +3601,11 @@ def render_pricing_and_preorder() -> None:
         f"""
         <div style='text-align:center;padding:40px 24px 28px;'>
           <h1 style='font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;
-                     font-size:52px;font-weight:600;letter-spacing:-0.02em;
-                     margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
+                     font-size:38px;font-weight:600;letter-spacing:-0.028em;
+                     margin:0 0 14px;color:#f7f8f8;line-height:1.1;'>
             {T("pricing.hero.title")}
           </h1>
-          <p style='max-width:600px;margin:0 auto;color:#c6ccd6;
+          <p style='max-width:600px;margin:0 auto;color:#8a8f98;
                     font-size:16px;line-height:1.55;letter-spacing:0.005em;'>
             {T("pricing.hero.subtitle")}
           </p>
@@ -3796,11 +3769,11 @@ def render_video_query(embedded: bool = False) -> None:
             f"""
             <div style='text-align:center;padding:40px 24px 28px;'>
               <h1 style='font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;
-                         font-size:52px;font-weight:600;letter-spacing:-0.02em;
-                         margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
+                         font-size:38px;font-weight:600;letter-spacing:-0.028em;
+                         margin:0 0 14px;color:#f7f8f8;line-height:1.1;'>
                 {T("video.hero.title")}
               </h1>
-              <p style='max-width:600px;margin:0 auto;color:#c6ccd6;
+              <p style='max-width:600px;margin:0 auto;color:#8a8f98;
                         font-size:16px;line-height:1.55;
                         letter-spacing:0.005em;'>
                 {T("video.hero.subtitle")}
@@ -4243,11 +4216,11 @@ def render_live_webcam(embedded: bool = False) -> None:
             f"""
             <div style='text-align:center;padding:40px 24px 28px;'>
               <h1 style='font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;
-                         font-size:52px;font-weight:600;letter-spacing:-0.02em;
-                         margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
+                         font-size:38px;font-weight:600;letter-spacing:-0.028em;
+                         margin:0 0 14px;color:#f7f8f8;line-height:1.1;'>
                 {T("webcam.title")}
               </h1>
-              <p style='max-width:600px;margin:0 auto;color:#c6ccd6;
+              <p style='max-width:600px;margin:0 auto;color:#8a8f98;
                         font-size:16px;line-height:1.55;
                         letter-spacing:0.005em;'>
                 {T("webcam.subtitle")}
