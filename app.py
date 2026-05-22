@@ -2101,7 +2101,7 @@ def _render_workspace_composer_body() -> None:
                 "can see the entire prediction flow in one click."
             ),
             use_container_width=True,
-            type="primary",
+            type="secondary",
         ):
             for field in AVAILABLE_SCENARIOS[scenario]["input_fields"]:
                 if field.example_value:
