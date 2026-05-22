@@ -3100,7 +3100,7 @@ def render_calibration_history() -> None:
     )
 
     st.divider()
-    st.subheader("Owner-bias breakdown (v4.16 P8)")
+    st.subheader("Owner-bias breakdown")
     st.caption(
         "Some predictions are flagged as project-owner self-tests. The "
         "founder explicitly noted that owner data points may carry "
