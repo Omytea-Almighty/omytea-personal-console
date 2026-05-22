@@ -310,8 +310,11 @@ st.markdown(
     [data-testid="stTextInput"] input::placeholder,
     [data-testid="stTextArea"] textarea::placeholder,
     .stTextInput input::placeholder, .stTextArea textarea::placeholder {
-        color: #4b525d !important;
-        -webkit-text-fill-color: #4b525d;
+        /* Placeholders carry real guidance ("e.g., final-year CS
+           Master's student...") — lifted from a near-invisible #4b525d
+           to a legible #5c6573, still clearly dimmer than typed input. */
+        color: #5c6573 !important;
+        -webkit-text-fill-color: #5c6573;
     }
     /* Focus — v10 lavender border, a soft halo, no glow slab. */
     .stTextInput div[data-baseweb="base-input"]:focus-within,
