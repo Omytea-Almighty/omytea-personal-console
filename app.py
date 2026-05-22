@@ -1606,7 +1606,12 @@ def _render_composer_field(field: Any) -> Any:
     """
     field_key = f"input_{field.key}"
     if field.key == "user_id" and not st.session_state.get(field_key):
-        st.session_state[field_key] = st.session_state._default_user_id
+        # session_user_id() resolves to the signed-in email or the
+        # anonymous tester-XXXX handle — and, unlike a raw
+        # st.session_state._default_user_id read, it never AttributeErrors
+        # when the user is logged in (that key is only set on the
+        # signed-out path).
+        st.session_state[field_key] = session_user_id()
     placeholder = getattr(field, "placeholder", "") or ""
     if field.field_type == "textarea":
         return st.text_area(
@@ -1717,9 +1722,7 @@ def _render_workspace_composer_body() -> None:
                     st.session_state[f"input_{field.key}"] = field.example_value
             handle_field_key = "input_user_id"
             if not st.session_state.get(handle_field_key):
-                st.session_state[handle_field_key] = (
-                    st.session_state._default_user_id
-                )
+                st.session_state[handle_field_key] = session_user_id()
             st.rerun()
     with col_b:
         if st.button(
