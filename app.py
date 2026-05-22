@@ -61,7 +61,7 @@ st.set_page_config(
 
 # ============================================================
 # Visual polish — CSS injection matching the v10 marketing
-# design language (dark canvas, lavender accent #8b8cff, teal
+# design language (dark canvas, lavender accent #5e6ad2, teal
 # success #58c5b4, Inter sans, refined hairlines and spacing).
 # Kept additive: Streamlit's default widgets still work; we just
 # soften the corners, tighten the contrast, and de-emoji the
@@ -83,7 +83,7 @@ st.markdown(
        Restyle-only. Palette + the Nye Clock galaxy accents.
        Canvas #0a0c11 · surface #11141b · lifted #181c25 ·
        hairline #232834 · ink f0f2f5/b9bfc8/76808d ·
-       lavender #8b8cff · galaxy gold #f7c940 · cyan #44ecff.
+       lavender #5e6ad2 · galaxy gold #f7c940 · cyan #44ecff.
        Sophistication = discipline: limited palette, fine
        linework, generous space, ONE quiet glow per surface.
        Easily revertible — delete this block.
@@ -97,7 +97,7 @@ st.markdown(
         -webkit-font-smoothing: antialiased;
     }
     h1, h2, h3, h4 {
-        font-family: "Cormorant Garamond", "Iowan Old Style", Georgia, serif;
+        font-family: -apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;
         letter-spacing: -0.018em;
         font-weight: 600;
         color: #f0f2f5;
@@ -112,7 +112,7 @@ st.markdown(
        to the reserved accent — and pins it with `a,a:visited{...
        !important}`. Override it with a muted lavender so footer /
        disclaimer links stay quiet and on-palette without borrowing
-       the full accent (#8b8cff is reserved for the focus ring +
+       the full accent (#5e6ad2 is reserved for the focus ring +
        primary CTA); a thin low-opacity underline carries the
        affordance. !important on a higher-specificity selector is
        required to beat Streamlit's own !important link rule;
@@ -140,8 +140,8 @@ st.markdown(
        :has() to the info variant only — success / warning / error keep
        their semantic colours. */
     [data-testid="stAlertContainer"]:has([data-testid="stAlertContentInfo"]) {
-        background-color: rgba(139,140,255,0.12) !important;
-        border-color: rgba(139,140,255,0.30) !important;
+        background-color: rgba(94,106,210,0.12) !important;
+        border-color: rgba(94,106,210,0.30) !important;
     }
     [data-testid="stAlertContentInfo"] {
         color: #c3c5f2 !important;
@@ -153,7 +153,7 @@ st.markdown(
     .stApp {
         background:
             radial-gradient(900px 620px at 62% -8%,
-                rgba(139,140,255,0.10), rgba(139,140,255,0) 62%),
+                rgba(94,106,210,0.10), rgba(94,106,210,0) 62%),
             radial-gradient(1100px 800px at 18% 104%,
                 rgba(68,236,255,0.045), rgba(68,236,255,0) 60%),
             #0a0c11;
@@ -212,7 +212,7 @@ st.markdown(
     .stButton > button:hover, .stDownloadButton > button:hover,
     .stLinkButton > a:hover {
         background: #181c25;
-        /* A restrained muted-lavender hover. The full #8b8cff accent is
+        /* A restrained muted-lavender hover. The full #5e6ad2 accent is
            reserved for the focus ring + the primary button, so a plain
            secondary hover acknowledges the control without shouting. */
         border-color: #6f70b0;
@@ -225,15 +225,15 @@ st.markdown(
     .stButton > button:focus-visible, .stDownloadButton > button:focus-visible,
     .stLinkButton > a:focus-visible {
         outline: none;
-        border-color: #8b8cff;
-        box-shadow: 0 0 0 3px rgba(139,140,255,0.15);
+        border-color: #5e6ad2;
+        box-shadow: 0 0 0 3px rgba(94,106,210,0.15);
     }
     /* Primary — v10's .ask-btn: a solid lavender plane, canvas-dark
        label. The one assertive control; not a glow slab. */
     .stButton > button[kind="primary"], .stButton > button[data-testid="baseButton-primary"],
     .stButton > button[kind="primaryFormSubmit"],
     .stFormSubmitButton > button {
-        background: #8b8cff;
+        background: #5e6ad2;
         border: 1px solid #9596ff;
         color: #0a0c11;
         font-weight: 600;
@@ -244,7 +244,7 @@ st.markdown(
     .stButton > button[kind="primary"]:hover,
     .stButton > button[kind="primaryFormSubmit"]:hover,
     .stFormSubmitButton > button:hover {
-        background: #9d9eff;
+        background: #828fff;
         border-color: #adadff;
         color: #0a0c11;
         box-shadow: inset 0 1px 0 rgba(255,255,255,0.28);
@@ -257,7 +257,7 @@ st.markdown(
     }
     .stFormSubmitButton > button:focus-visible,
     .stButton > button[kind="primary"]:focus-visible {
-        box-shadow: 0 0 0 3px rgba(139,140,255,0.22);
+        box-shadow: 0 0 0 3px rgba(94,106,210,0.22);
     }
 
     /* ---- Sidebar buttons: quieter than the main column. History /
@@ -276,7 +276,7 @@ st.markdown(
         border-radius: 7px;
     }
     section[data-testid="stSidebar"] .stButton > button:hover {
-        background: rgba(139,140,255,0.08);
+        background: rgba(94,106,210,0.08);
         border-color: transparent;
         color: #f0f2f5;
         box-shadow: none;
@@ -288,7 +288,7 @@ st.markdown(
        matches every .stButton (each sits alone in its own element
        container) and would paint the whole nav rail solid. */
     section[data-testid="stSidebar"] .stButton > button[kind="primary"] {
-        background: #8b8cff;
+        background: #5e6ad2;
         border: 1px solid #9596ff;
         border-radius: 9px;
         color: #0a0c11;
@@ -300,7 +300,7 @@ st.markdown(
         box-shadow: inset 0 1px 0 rgba(255,255,255,0.22);
     }
     section[data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {
-        background: #9d9eff;
+        background: #828fff;
         border-color: #adadff;
         color: #0a0c11;
         box-shadow: inset 0 1px 0 rgba(255,255,255,0.28);
@@ -364,8 +364,8 @@ st.markdown(
     div[data-baseweb="textarea"]:focus-within,
     .stNumberInput div[data-baseweb="base-input"]:focus-within,
     div[data-baseweb="select"]:focus-within > div {
-        border-color: #8b8cff !important;
-        box-shadow: 0 0 0 3px rgba(139,140,255,0.15) !important;
+        border-color: #5e6ad2 !important;
+        box-shadow: 0 0 0 3px rgba(94,106,210,0.15) !important;
     }
     /* Hover — a quiet brightening of the hairline (v10 .ctl:hover). */
     .stTextInput div[data-baseweb="base-input"]:hover,
@@ -396,11 +396,11 @@ st.markdown(
         color: #b9bfc8 !important;
     }
     li[role="option"]:hover, div[data-baseweb="menu"] li:hover {
-        background: rgba(139,140,255,0.12) !important;
+        background: rgba(94,106,210,0.12) !important;
         color: #f0f2f5 !important;
     }
     li[role="option"][aria-selected="true"] {
-        background: rgba(139,140,255,0.15) !important;
+        background: rgba(94,106,210,0.15) !important;
         color: #f0f2f5 !important;
     }
 
@@ -483,8 +483,8 @@ st.markdown(
     .stToggle [data-baseweb="checkbox"] [role="checkbox"][aria-checked="true"],
     div[data-baseweb="toggle"][aria-checked="true"],
     button[role="switch"][aria-checked="true"] {
-        background: #8b8cff !important;
-        border-color: #8b8cff !important;
+        background: #5e6ad2 !important;
+        border-color: #5e6ad2 !important;
         box-shadow: none !important;
     }
     /* The knob — a clean disc; rides dark on the lavender track. */
@@ -504,8 +504,8 @@ st.markdown(
         border-radius: 4px !important;
     }
     .stCheckbox [data-baseweb="checkbox"] [role="checkbox"][aria-checked="true"] {
-        background: #8b8cff !important;
-        border-color: #8b8cff !important;
+        background: #5e6ad2 !important;
+        border-color: #5e6ad2 !important;
     }
 
     /* ---- Popover panel (the "+ Attach" control) — a v10 card:
@@ -532,16 +532,16 @@ st.markdown(
         transition: border-color 0.15s ease, background 0.15s ease;
     }
     [data-testid="stFileUploaderDropzone"]:hover {
-        border-color: #8b8cff !important;
+        border-color: #5e6ad2 !important;
         background: #181c25 !important;
     }
 
     /* ---- Sliders ---- */
     .stSlider [role="slider"] {
-        background: #8b8cff;
-        box-shadow: 0 0 10px rgba(139,140,255,0.45);
+        background: #5e6ad2;
+        box-shadow: 0 0 10px rgba(94,106,210,0.45);
     }
-    .stSlider [data-baseweb="slider"] div[data-testid] { background: #8b8cff; }
+    .stSlider [data-baseweb="slider"] div[data-testid] { background: #5e6ad2; }
 
     /* ---- Radio (Settings language picker) ---- */
     .stRadio div[role="radiogroup"] label {
@@ -552,7 +552,7 @@ st.markdown(
         transition: border-color 0.14s ease;
     }
     .stRadio div[role="radiogroup"] label:hover {
-        border-color: rgba(139,140,255,0.5);
+        border-color: rgba(94,106,210,0.5);
     }
 
     /* ---- Dividers — a faint hairline, not a hard rule ---- */
@@ -585,7 +585,7 @@ st.markdown(
 
     /* ---- Code / inline code ---- */
     code {
-        background: rgba(139,140,255,0.08) !important;
+        background: rgba(94,106,210,0.08) !important;
         color: #c3b9ff !important;
         padding: 1px 5px !important;
         border-radius: 3px !important;
@@ -610,7 +610,7 @@ st.markdown(
         padding: 14px 16px;
     }
     [data-testid="stMetricValue"] {
-        font-family: "Cormorant Garamond", Georgia, serif;
+        font-family: -apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;
         font-size: 34px;
         color: #f0f2f5;
         letter-spacing: -0.01em;
@@ -648,7 +648,7 @@ st.markdown(
     .stTabs [aria-selected="true"] {
         color: #f0f2f5 !important;
     }
-    .stTabs [data-baseweb="tab-highlight"] { background: #8b8cff !important; }
+    .stTabs [data-baseweb="tab-highlight"] { background: #5e6ad2 !important; }
 
     /* ---- Alerts — calm, fine-bordered, not loud blocks. v10
        semantics: teal = ready/wired, red = error, amber =
@@ -784,17 +784,17 @@ st.markdown(
     }
     [data-testid="stSegmentedControl"] [role="radio"]:hover {
         color: #b9bfc8 !important;
-        background: rgba(139,140,255,0.06) !important;
+        background: rgba(94,106,210,0.06) !important;
     }
     [data-testid="stSegmentedControl"] [role="radio"][aria-checked="true"] {
-        background: rgba(139,140,255,0.14) !important;
+        background: rgba(94,106,210,0.14) !important;
         color: #f0f2f5 !important;
     }
 
     /* Spinner accent — the one lavender thread, not Streamlit red. */
-    [data-testid="stSpinner"] svg { color: #8b8cff !important; }
+    [data-testid="stSpinner"] svg { color: #5e6ad2 !important; }
     [data-testid="stSpinner"] i {
-        border-top-color: #8b8cff !important;
+        border-top-color: #5e6ad2 !important;
     }
     </style>
     """,
@@ -1036,7 +1036,7 @@ def _render_history_rail(route: tuple[str, Any]) -> tuple[str, Any]:
                 p for p in predictions if p.category_id == cat.category_id
             ]
             st.sidebar.markdown(
-                f"<div style='color:#8b8cff;font-size:10.5px;"
+                f"<div style='color:#5e6ad2;font-size:10.5px;"
                 f"letter-spacing:0.04em;margin:12px 0 2px;"
                 f"font-weight:600;'>▸ {_esc_html(cat.name)} "
                 f"<span style='color:#4b525d;font-weight:400;'>"
@@ -1148,7 +1148,7 @@ def _render_account_area() -> None:
                     f"<div style='display:flex;align-items:center;gap:10px;"
                     f"margin:2px 0 8px;'>"
                     f"<div style='width:36px;height:36px;border-radius:50%;"
-                    f"flex:none;background:linear-gradient(135deg,#8b8cff,"
+                    f"flex:none;background:linear-gradient(135deg,#5e6ad2,"
                     f"#6b6cff);color:#fff;font-weight:700;font-size:16px;"
                     f"display:flex;align-items:center;justify-content:center;'>"
                     f"{_html.escape(initial)}</div>"
@@ -1240,12 +1240,12 @@ def render_sidebar() -> tuple[str, Any]:
     st.sidebar.markdown(
         f"<div style='display:flex;align-items:baseline;gap:8px;"
         f"margin:2px 0 3px;'>"
-        f"<span style='font-family:\"Cormorant Garamond\",Georgia,serif;"
+        f"<span style='font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;"
         f"font-size:23px;font-weight:600;letter-spacing:-0.015em;"
         f"color:#f0f2f5;'>"
         f"{_brand.BRAND_NAME_SHORT}</span>"
-        f"<span style='color:#8b8cff;font-size:11px;"
-        f"text-shadow:0 0 8px rgba(139,140,255,0.7);'>✦</span>"
+        f"<span style='color:#5e6ad2;font-size:11px;"
+        f"text-shadow:0 0 8px rgba(94,106,210,0.7);'>✦</span>"
         f"</div>"
         f"<div style='color:#6a7280;font-size:11.5px;letter-spacing:0.012em;"
         f"line-height:1.45;margin-bottom:16px;'>"
@@ -1426,7 +1426,7 @@ def _render_settings_planned(cat: str) -> None:
         f"<div style='background:#11141b;border:1px solid #232834;"
         f"border-radius:12px;padding:20px;'>"
         f"<span style='display:inline-block;"
-        f"background:rgba(139,140,255,0.14);color:#9da0d8;font-size:10px;"
+        f"background:rgba(94,106,210,0.14);color:#9da0d8;font-size:10px;"
         f"font-weight:700;letter-spacing:0.09em;text-transform:uppercase;"
         f"padding:3px 9px;border-radius:5px;'>"
         f"{T('settings.planned.badge')}</span>"
@@ -1492,14 +1492,14 @@ def _render_settings_prediction() -> None:
 _SETTINGS_CSS = (
     "<style>"
     ".omy-set-head{margin:4px 0 22px;}"
-    ".omy-set-title{font-family:'Cormorant Garamond',Georgia,serif;"
+    ".omy-set-title{font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;"
     "font-size:33px;font-weight:600;letter-spacing:-0.015em;"
     "color:#f0f2f5;line-height:1.12;}"
     ".omy-set-sub{color:#8a93a3;font-size:13px;line-height:1.55;"
     "margin-top:3px;}"
     ".omy-set-section{margin:2px 0 18px;padding-bottom:13px;"
     "border-bottom:1px solid #1e2330;}"
-    ".omy-set-section-t{font-family:'Cormorant Garamond',Georgia,serif;"
+    ".omy-set-section-t{font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;"
     "font-size:23px;font-weight:600;color:#f0f2f5;"
     "letter-spacing:-0.01em;line-height:1.15;}"
     ".omy-set-section-d{color:#8a93a3;font-size:12.5px;"
@@ -1517,11 +1517,11 @@ _SETTINGS_CSS = (
     "background:rgba(255,255,255,0.045)!important;"
     "color:#d4d8e0!important;}"
     '[class*="st-key-_setcat_"] button[kind="primary"]{'
-    "background:rgba(139,140,255,0.13)!important;"
+    "background:rgba(94,106,210,0.13)!important;"
     "color:#c7c9f0!important;font-weight:600!important;"
-    "box-shadow:inset 2px 0 0 0 #8b8cff!important;}"
+    "box-shadow:inset 2px 0 0 0 #5e6ad2!important;}"
     '[class*="st-key-_setcat_"] button[kind="primary"]:hover{'
-    "background:rgba(139,140,255,0.17)!important;"
+    "background:rgba(94,106,210,0.17)!important;"
     "color:#d6d8f8!important;}"
     "</style>"
 )
@@ -1826,8 +1826,8 @@ def _render_workspace_output() -> None:
                 "<div style='display:flex;align-items:center;gap:9px;"
                 "margin:6px 0 4px;'>"
                 "<span style='width:4px;height:4px;border-radius:50%;"
-                "background:#8b8cff;"
-                "box-shadow:0 0 6px rgba(139,140,255,0.55);'>"
+                "background:#5e6ad2;"
+                "box-shadow:0 0 6px rgba(94,106,210,0.55);'>"
                 "</span>"
                 "<span style='color:#7f8a99;font-size:10.5px;"
                 "letter-spacing:0.15em;"
@@ -2320,7 +2320,7 @@ def _render_traditional_lens(
     for sysk in _mp.SYSTEMS:
         ausp = readings[sysk].auspice
         col = ("#58c5b4" if ausp >= 0.56
-               else "#ff5e6e" if ausp <= 0.44 else "#8b8cff")
+               else "#ff5e6e" if ausp <= 0.44 else "#5e6ad2")
         pct = ausp * 100.0
         chips.append(
             f'<div style="flex:1;min-width:112px;background:#11141b;'
@@ -2332,7 +2332,7 @@ def _render_traditional_lens(
             f'letter-spacing:0.12em;text-transform:uppercase;">'
             f'{_html.escape(str(T(f"trad.system.{sysk}")))}</span>'
             f'<span style="color:{col};font-size:15px;font-weight:600;'
-            f"font-family:'Cormorant Garamond',Georgia,serif;\">"
+            f"font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;\">"
             f'{pct:.0f}%</span></div>'
             f'<div style="margin-top:6px;height:4px;border-radius:2px;'
             f'background:#232834;overflow:hidden;">'
@@ -2388,7 +2388,7 @@ def render_traditional_view() -> None:
     st.markdown(
         f"""
         <div style='text-align:center;padding:40px 24px 28px;'>
-          <h1 style='font-family:"Cormorant Garamond",Georgia,serif;
+          <h1 style='font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;
                      font-size:52px;font-weight:600;letter-spacing:-0.02em;
                      margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
             {T("trad.hero.title")}
@@ -3221,7 +3221,7 @@ def render_measurement_update(
     st.markdown(
         f"""
         <div style='text-align:center;padding:40px 24px 28px;'>
-          <h1 style='font-family:"Cormorant Garamond",Georgia,serif;
+          <h1 style='font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;
                      font-size:52px;font-weight:600;letter-spacing:-0.02em;
                      margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
             {T("measurement.hero.title")}
@@ -3402,7 +3402,7 @@ def render_calibration_history() -> None:
     st.markdown(
         f"""
         <div style='text-align:center;padding:40px 24px 28px;'>
-          <h1 style='font-family:"Cormorant Garamond",Georgia,serif;
+          <h1 style='font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;
                      font-size:52px;font-weight:600;letter-spacing:-0.02em;
                      margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
             {T("calibration.hero.title")}
@@ -3500,7 +3500,7 @@ def render_pricing_and_preorder() -> None:
     st.markdown(
         f"""
         <div style='text-align:center;padding:40px 24px 28px;'>
-          <h1 style='font-family:"Cormorant Garamond",Georgia,serif;
+          <h1 style='font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;
                      font-size:52px;font-weight:600;letter-spacing:-0.02em;
                      margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
             {T("pricing.hero.title")}
@@ -3668,7 +3668,7 @@ def render_video_query(embedded: bool = False) -> None:
         st.markdown(
             f"""
             <div style='text-align:center;padding:40px 24px 28px;'>
-              <h1 style='font-family:"Cormorant Garamond",Georgia,serif;
+              <h1 style='font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;
                          font-size:52px;font-weight:600;letter-spacing:-0.02em;
                          margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
                 {T("video.hero.title")}
@@ -4115,7 +4115,7 @@ def render_live_webcam(embedded: bool = False) -> None:
         st.markdown(
             f"""
             <div style='text-align:center;padding:40px 24px 28px;'>
-              <h1 style='font-family:"Cormorant Garamond",Georgia,serif;
+              <h1 style='font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;
                          font-size:52px;font-weight:600;letter-spacing:-0.02em;
                          margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
                 {T("webcam.title")}
