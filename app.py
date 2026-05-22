@@ -106,25 +106,29 @@ st.markdown(
        should sit toward the brighter end of the ink ramp + breathe. */
     p, li, label, .stMarkdown { color: #c6ccd6; line-height: 1.62; }
 
-    /* Text links inside markdown — Streamlit's default sky-blue
-       (#3d9df3) is the one off-palette accent left in the app and it
-       fights the cosmic dark theme. A muted lavender keeps links
-       on-palette without borrowing the full accent (#8b8cff stays
-       reserved for the focus ring + primary CTA); a thin, low-opacity
-       underline carries the affordance now that the colour alone sits
-       close to the body ink. */
+    /* Text links inside markdown. Streamlit auto-derives a link
+       colour from primaryColor — a bright #9fa0ff sitting right next
+       to the reserved accent — and pins it with `a,a:visited{...
+       !important}`. Override it with a muted lavender so footer /
+       disclaimer links stay quiet and on-palette without borrowing
+       the full accent (#8b8cff is reserved for the focus ring +
+       primary CTA); a thin low-opacity underline carries the
+       affordance. !important on a higher-specificity selector is
+       required to beat Streamlit's own !important link rule;
+       text-decoration-line longhand survives Streamlit's
+       text-decoration:none shorthand reset. */
     [data-testid="stMarkdownContainer"] a,
     [data-testid="stMarkdownContainer"] a:visited {
-        color: #9da0d8;
-        text-decoration: underline;
-        text-decoration-color: rgba(157,160,216,0.32);
-        text-decoration-thickness: 1px;
+        color: #9da0d8 !important;
+        text-decoration-line: underline !important;
+        text-decoration-color: rgba(157,160,216,0.34) !important;
+        text-decoration-thickness: 1px !important;
         text-underline-offset: 0.18em;
         transition: color 0.12s ease, text-decoration-color 0.12s ease;
     }
     [data-testid="stMarkdownContainer"] a:hover {
-        color: #c4c5f6;
-        text-decoration-color: rgba(196,197,246,0.7);
+        color: #c4c5f6 !important;
+        text-decoration-color: rgba(196,197,246,0.7) !important;
     }
 
     /* ---- Canvas: flat deep-space ink + one faint nebula bloom.
