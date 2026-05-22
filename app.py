@@ -3228,7 +3228,20 @@ def render_pricing_and_preorder() -> None:
     )
 
     locale = st.session_state.get("user_locale", currency.DEFAULT_LOCALE)
-    st.caption(f"Prices shown in: **{locale}** (canonical billing is USD)")
+    # Show the human-readable currency, never the raw locale code — a
+    # bare "en_US" is a technical token a user should not see.
+    _cur = currency.CURRENCY_BY_LOCALE.get(
+        locale, currency.CURRENCY_BY_LOCALE[currency.DEFAULT_LOCALE]
+    )
+    if _cur.code == "USD":
+        st.caption(
+            "Prices shown in **US Dollars** — the canonical billing currency."
+        )
+    else:
+        st.caption(
+            f"Prices shown in **{_cur.name_en} ({_cur.code})** — an "
+            f"approximate conversion; canonical billing is USD."
+        )
 
     # --- Tier comparison cards ---
     st.subheader("Tier comparison")
