@@ -310,6 +310,24 @@ st.markdown(
         box-shadow: inset 0 2px 4px rgba(10,12,17,0.32);
     }
 
+    /* ---- Account + footer pinned to the sidebar's bottom edge,
+       Claude / ChatGPT style. Streamlit's sidebar vertical block is
+       already a flex column — stretch it to the full sidebar height
+       and give the footer block margin-top:auto, so the footer +
+       account chip sit flush at the bottom with no dead space. The
+       ~96px default bottom padding is trimmed to a slim margin. ---- */
+    section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
+        padding-bottom: 18px;
+    }
+    section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"]
+        > div > [data-testid="stVerticalBlock"] {
+        min-height: calc(100vh - 94px);
+    }
+    section[data-testid="stSidebar"]
+        [data-testid="stElementContainer"]:has(.omy-foot-anchor) {
+        margin-top: auto;
+    }
+
     /* ---- Text inputs / textareas / selects — v10 input-field
        language: a flat #11141b fill, ONE 1px #232834 hairline,
        ~10px radius, comfortable padding, a clean lavender focus
@@ -1278,13 +1296,15 @@ def render_sidebar() -> tuple[str, Any]:
         )
         st.session_state.user_locale = chosen
 
-    # ---- Account — Claude-style sign-in pinned to the bottom-left ----
-    _render_account_area()
-
-    # ---- Footer: thin muted disclaimer + brand links ----
+    # ---- Footer + account, pinned flush to the sidebar's bottom edge.
+    # The footer markdown is the bottom block's first element; its
+    # element-container gets margin-top:auto via the .omy-foot-anchor
+    # CSS rule, so the footer + account chip sit flush at the bottom
+    # (Claude / ChatGPT style) instead of floating with dead space. ----
     st.sidebar.markdown(
-        f"<div style='color:#4b525d;font-size:11px;line-height:1.5;"
-        f"margin-top:24px;padding-top:16px;border-top:1px solid #232834;'>"
+        f"<div class='omy-foot-anchor' style='color:#4b525d;"
+        f"font-size:11px;line-height:1.5;margin-top:24px;"
+        f"padding-top:16px;border-top:1px solid #232834;'>"
         f"{T('brand.disclaimer')}"
         f"</div>"
         f"<div style='color:#76808d;font-size:11px;margin-top:12px;'>"
@@ -1292,6 +1312,9 @@ def render_sidebar() -> tuple[str, Any]:
         f"</div>",
         unsafe_allow_html=True,
     )
+
+    # ---- Account — Claude-style sign-in at the very bottom-left ----
+    _render_account_area()
 
     st.session_state._route = route
     return route
