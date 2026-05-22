@@ -254,10 +254,34 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_FR: "Langue d'affichage, région et présentation des prix dans la console.",
     },
     "settings.prediction.desc": {
-        LANG_EN: "Default scenario, time horizon and branch count — set once, reused on every new prediction.",
-        LANG_ZH: "默认场景、时间跨度与分支数量 —— 设置一次，每次新预测自动沿用。",
-        LANG_ES: "Escenario, horizonte y número de ramas por defecto, reutilizados en cada nueva predicción.",
-        LANG_FR: "Scénario, horizon et nombre de branches par défaut, réutilisés à chaque nouvelle prédiction.",
+        LANG_EN: "Defaults the composer starts from on every new prediction — set them once, reuse them every time.",
+        LANG_ZH: "撰写新预测时编排器默认采用的初始值 —— 设一次，之后每次复用。",
+        LANG_ES: "Valores con los que el compositor arranca en cada nueva predicción: configúralos una vez.",
+        LANG_FR: "Les valeurs de départ du compositeur à chaque nouvelle prédiction — réglez-les une fois.",
+    },
+    "settings.prediction.horizon": {
+        LANG_EN: "Default time horizon",
+        LANG_ZH: "默认时间跨度",
+        LANG_ES: "Horizonte temporal por defecto",
+        LANG_FR: "Horizon temporel par défaut",
+    },
+    "settings.prediction.horizon.help": {
+        LANG_EN: "Seeds the composer's time-horizon field. You can still change it on any individual prediction.",
+        LANG_ZH: "为编排器的时间跨度字段设定初始值。单次预测仍可随时更改。",
+        LANG_ES: "Define el valor inicial del horizonte en el compositor. Puedes cambiarlo en cada predicción.",
+        LANG_FR: "Initialise le champ d'horizon du compositeur. Vous pouvez le modifier sur chaque prédiction.",
+    },
+    "settings.prediction.lens": {
+        LANG_EN: "Start with the 玄学 lens on",
+        LANG_ZH: "默认开启玄学透镜",
+        LANG_ES: "Empezar con la lente 玄学 activada",
+        LANG_FR: "Démarrer avec la loupe 玄学 activée",
+    },
+    "settings.prediction.lens.help": {
+        LANG_EN: "When on, every new prediction opens with the 玄学 lens already enabled in the composer.",
+        LANG_ZH: "开启后，每次新预测都会在编排器中默认启用玄学透镜。",
+        LANG_ES: "Si está activado, cada predicción se abre con la lente 玄学 ya activada en el compositor.",
+        LANG_FR: "Si activé, chaque prédiction s'ouvre avec la loupe 玄学 déjà activée dans le compositeur.",
     },
     "settings.model.desc": {
         LANG_EN: "Choose the LLM backend and supply your own API keys for power-user models.",

@@ -69,7 +69,7 @@ actions are visually separated and confirmed.
 | Category | What it holds |
 |---|---|
 | **General** | Display language; region & currency; timezone; number / date format. |
-| **Prediction defaults** | Default scenario; default horizon ("score this in…"); outcome-branch count; 玄学 lens on-by-default; calibrated-vs-raw probability display. |
+| **Prediction defaults** | Default time horizon (the composer's 3 / 6 / 12 / 24-month select); 玄学 lens on-by-default. |
 | **Model & API** | Active LLM backend (Mock / Gemini / Groq / Anthropic / OpenAI); user-supplied API keys (password field, session-scoped, never committed); model choice. |
 | **Personalization** | Display name / handle; a standing "about you" decision context the model reuses (so the user never retypes "F-1 student, ML focus"); readout tone (concise / detailed). |
 | **Data & privacy** | Export prediction history (CSV / JSON); clear history; the honest note that Streamlit Cloud storage is ephemeral. |
@@ -85,12 +85,15 @@ composer inputs into persistent preferences. That is the difference between
 
 ## 5. Implementation roadmap (loop iterations)
 
-- **R1 — Relocate.** Drop the Settings expander; add the gear beside the
+- **R1 — Relocate.** ✅ Drop the Settings expander; add the gear beside the
   account; add a `ROUTE_SETTINGS` view with a category rail + back-bar;
   migrate Language + Currency into **General**. Pure relocation, no
   behaviour change. Ship + verify.
-- **R2 — Prediction defaults.** Scenario / horizon / branch-count defaults,
-  persisted to session, wired into the composer's initial values.
+- **R2 — Prediction defaults.** ✅ Default time horizon + 玄学 lens
+  on-by-default, persisted to session, wired into the composer's initial
+  values. Scenario is not a real lever (one scenario ships) and branch
+  count is fixed in the substrate, not a composer input — both dropped
+  from R2's honest scope.
 - **R3 — Model & API.** Backend selector + API-key fields (session-scoped,
   password input) wired to the existing multi-backend layer.
 - **R4 — Personalization.** Handle + standing "about you" context + readout

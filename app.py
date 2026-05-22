@@ -1396,7 +1396,6 @@ def _render_settings_planned(cat: str) -> None:
     the roadmap — the category name + a one-line description of what it
     will hold, plus a "Planned" badge. No fake controls (roadmap §5)."""
     meta = {
-        "prediction": ("settings.cat.prediction", "settings.prediction.desc"),
         "model": ("settings.cat.model", "settings.model.desc"),
         "personalization": (
             "settings.cat.personalization",
@@ -1420,6 +1419,58 @@ def _render_settings_planned(cat: str) -> None:
         f"margin-top:12px;'>{T('settings.planned.note')}</div>"
         f"</div>",
         unsafe_allow_html=True,
+    )
+
+
+def _render_settings_prediction() -> None:
+    """Prediction defaults — the composer's starting values, set once and
+    reused on every new prediction (roadmap R2).
+
+    The default time horizon seeds the composer's time-horizon select on
+    first render; the 玄学-lens default seeds the composer's lens toggle.
+    Both stay editable per prediction — these only set the start point.
+    Scenario is not a lever (one scenario ships) and branch count is
+    fixed in the substrate, not a composer input — so neither is here.
+    """
+    _settings_section_header(
+        T("settings.cat.prediction"), T("settings.prediction.desc")
+    )
+
+    # Keep the horizon options in lockstep with the composer's
+    # time_horizon field so the default is always a valid choice.
+    _scenario = next(iter(AVAILABLE_SCENARIOS))
+    _hfield = next(
+        (
+            f
+            for f in AVAILABLE_SCENARIOS[_scenario]["input_fields"]
+            if f.key == "time_horizon"
+        ),
+        None,
+    )
+    horizons = tuple(getattr(_hfield, "options", ()) or ()) or (
+        "3 months",
+        "6 months",
+        "12 months",
+        "24 months",
+    )
+    fallback_h = "6 months" if "6 months" in horizons else horizons[0]
+    if st.session_state.get("settings_default_horizon") not in horizons:
+        st.session_state["settings_default_horizon"] = fallback_h
+    st.selectbox(
+        T("settings.prediction.horizon"),
+        options=horizons,
+        key="settings_default_horizon",
+        help=T("settings.prediction.horizon.help"),
+    )
+
+    st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
+
+    if "settings_default_lens" not in st.session_state:
+        st.session_state["settings_default_lens"] = False
+    st.toggle(
+        T("settings.prediction.lens"),
+        key="settings_default_lens",
+        help=T("settings.prediction.lens.help"),
     )
 
 
@@ -1478,6 +1529,8 @@ def render_settings() -> None:
     with pane:
         if active == "general":
             _render_settings_general()
+        elif active == "prediction":
+            _render_settings_prediction()
         elif active == "about":
             _render_settings_about()
         else:
@@ -1776,6 +1829,18 @@ def _render_composer_field(field: Any) -> Any:
         # when the user is logged in (that key is only set on the
         # signed-out path).
         st.session_state[field_key] = session_user_id()
+    if (
+        field.key == "time_horizon"
+        and not st.session_state.get(field_key)
+        and st.session_state.get("settings_default_horizon")
+        in (getattr(field, "options", ()) or ())
+    ):
+        # Seed the composer's horizon select from the user's
+        # Prediction-defaults setting on first render (roadmap R2). The
+        # user can still change it per prediction; "Clear form" re-seeds.
+        st.session_state[field_key] = st.session_state[
+            "settings_default_horizon"
+        ]
     placeholder = getattr(field, "placeholder", "") or ""
     if field.field_type == "textarea":
         return st.text_area(
@@ -1844,7 +1909,10 @@ def _render_workspace_composer_body() -> None:
         lens_on = st.toggle(
             T("composer.lens"),
             key="_composer_lens_toggle",
-            value=st.session_state.get("_composer_lens_toggle", False),
+            value=st.session_state.get(
+                "_composer_lens_toggle",
+                bool(st.session_state.get("settings_default_lens", False)),
+            ),
             help=T("composer.lens.hint"),
         )
     # The lens toggle is consumed downstream by _render_result.
