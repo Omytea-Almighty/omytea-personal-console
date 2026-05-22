@@ -1,4 +1,12 @@
-streamlit>=1.42,<2.0
+# Pinned to 1.56.0 on purpose — do NOT bump without re-testing st.login().
+# Streamlit 1.57.0 has a regression (streamlit/streamlit#14991): the
+# Tornado->Starlette server swap moved the OAuth `state` into a module-level
+# in-memory cache that is lost whenever the cloud container restarts between
+# the login redirect and /oauth2callback, producing a hard
+# `authlib...MismatchingStateError` on every sign-in. 1.56.0 is the last
+# release before that rewrite and is confirmed working. Revisit once 1.58+
+# ships the fix.
+streamlit==1.56.0
 pydantic>=2.5,<3.0
 numpy>=1.24
 
