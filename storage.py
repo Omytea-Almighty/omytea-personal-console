@@ -465,6 +465,25 @@ def list_user_predictions(
     return out
 
 
+def delete_user_predictions(
+    user_id: str, db_path: Path | None = None,
+) -> int:
+    """Delete every prediction belonging to ``user_id``; return the row
+    count removed.
+
+    Wired to Settings -> Data & privacy "clear history". Streamlit
+    Cloud's filesystem is ephemeral, so the prediction DB does not
+    survive a container restart regardless — this clears the live
+    session's rows on demand.
+    """
+    with db_connect(db_path) as conn:
+        cur = conn.execute(
+            "DELETE FROM predictions WHERE user_id = ?", (user_id,)
+        )
+        conn.commit()
+        return int(cur.rowcount)
+
+
 def get_calibration_aggregate(
     user_id: str | None = None,
     db_path: Path | None = None,

@@ -1416,7 +1416,6 @@ def _render_settings_planned(cat: str) -> None:
             "settings.cat.personalization",
             "settings.personalization.desc",
         ),
-        "data": ("settings.cat.data", "settings.data.desc"),
     }
     tkey, dkey = meta.get(
         cat, ("settings.cat.general", "settings.general.desc")
@@ -1486,6 +1485,132 @@ def _render_settings_prediction() -> None:
         T("settings.prediction.lens"),
         key="settings_default_lens",
         help=T("settings.prediction.lens.help"),
+    )
+
+
+def _render_settings_data() -> None:
+    """Data & privacy — export or clear your prediction history, plus an
+    honest note on how (and how briefly) it is stored. Roadmap R5 — a
+    real, wired surface: every control acts on storage, none decorative.
+    """
+    import csv as _csv
+    import datetime as _dt
+    import io as _io
+    import json as _json
+    from dataclasses import asdict as _asdict
+
+    _settings_section_header(
+        T("settings.cat.data"), T("settings.data.desc")
+    )
+
+    _label = (
+        "color:#d0d6e0;font-size:13px;font-weight:600;margin:2px 0 3px;"
+    )
+    _help = (
+        "color:#8a8f98;font-size:12px;line-height:1.5;margin-bottom:9px;"
+    )
+
+    cleared = st.session_state.pop("_data_cleared_n", None)
+    if cleared is not None:
+        st.success(T("settings.data.clear.done").format(n=cleared))
+
+    uid = session_user_id()
+    records = storage.list_user_predictions(uid)
+    n = len(records)
+
+    # ---- Export — CSV summary + full-fidelity JSON ----
+    st.markdown(
+        f"<div style='{_label}'>{T('settings.data.export.title')}</div>"
+        f"<div style='{_help}'>{T('settings.data.export.help')}</div>",
+        unsafe_allow_html=True,
+    )
+    if n == 0:
+        st.caption(T("settings.data.empty"))
+    else:
+        json_blob = _json.dumps(
+            [_asdict(r) for r in records],
+            ensure_ascii=False, indent=2, default=str,
+        )
+        buf = _io.StringIO()
+        writer = _csv.writer(buf)
+        writer.writerow(
+            ["prediction_id", "created_at", "scenario",
+             "owner_flagged", "notes"]
+        )
+        for r in records:
+            iso = _dt.datetime.fromtimestamp(
+                r.created_at
+            ).isoformat(timespec="seconds")
+            writer.writerow(
+                [r.prediction_id, iso, r.scenario,
+                 r.is_owner_bias_flagged, r.notes]
+            )
+        exp_csv, exp_json = st.columns(2)
+        with exp_csv:
+            st.download_button(
+                T("settings.data.export.csv"),
+                data=buf.getvalue(),
+                file_name="omytea_predictions.csv",
+                mime="text/csv",
+                use_container_width=True,
+            )
+        with exp_json:
+            st.download_button(
+                T("settings.data.export.json"),
+                data=json_blob,
+                file_name="omytea_predictions.json",
+                mime="application/json",
+                use_container_width=True,
+            )
+
+    st.markdown("<div style='height:16px;'></div>", unsafe_allow_html=True)
+
+    # ---- Clear history — destructive, two-step confirmed ----
+    st.markdown(
+        f"<div style='{_label}'>{T('settings.data.clear.title')}</div>"
+        f"<div style='{_help}'>{T('settings.data.clear.help')}</div>",
+        unsafe_allow_html=True,
+    )
+    if st.session_state.get("_data_clear_armed"):
+        st.warning(T("settings.data.clear.confirm").format(n=n))
+        yes_col, no_col = st.columns(2)
+        with yes_col:
+            if st.button(
+                T("settings.data.clear.yes"),
+                key="_data_clear_yes",
+                type="primary",
+                use_container_width=True,
+            ):
+                removed = storage.delete_user_predictions(uid)
+                st.session_state._data_clear_armed = False
+                st.session_state._data_cleared_n = removed
+                st.session_state.pop("current_prediction", None)
+                st.rerun()
+        with no_col:
+            if st.button(
+                T("settings.data.clear.cancel"),
+                key="_data_clear_cancel",
+                use_container_width=True,
+            ):
+                st.session_state._data_clear_armed = False
+                st.rerun()
+    else:
+        if st.button(
+            T("settings.data.clear.btn"),
+            key="_data_clear_btn",
+            disabled=(n == 0),
+        ):
+            st.session_state._data_clear_armed = True
+            st.rerun()
+
+    st.markdown("<div style='height:16px;'></div>", unsafe_allow_html=True)
+
+    # ---- Honest storage note ----
+    st.markdown(
+        f"<div style='background:#11141b;border:1px solid #232834;"
+        f"border-radius:12px;padding:14px 16px;color:#8a8f98;"
+        f"font-size:12px;line-height:1.62;'>{T('settings.data.note')}</div>",
+        unsafe_allow_html=True,
     )
 
 
@@ -1586,6 +1711,8 @@ def render_settings() -> None:
             _render_settings_general()
         elif active == "prediction":
             _render_settings_prediction()
+        elif active == "data":
+            _render_settings_data()
         elif active == "about":
             _render_settings_about()
         else:
