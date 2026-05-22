@@ -106,6 +106,27 @@ st.markdown(
        should sit toward the brighter end of the ink ramp + breathe. */
     p, li, label, .stMarkdown { color: #c6ccd6; line-height: 1.62; }
 
+    /* Text links inside markdown — Streamlit's default sky-blue
+       (#3d9df3) is the one off-palette accent left in the app and it
+       fights the cosmic dark theme. A muted lavender keeps links
+       on-palette without borrowing the full accent (#8b8cff stays
+       reserved for the focus ring + primary CTA); a thin, low-opacity
+       underline carries the affordance now that the colour alone sits
+       close to the body ink. */
+    [data-testid="stMarkdownContainer"] a,
+    [data-testid="stMarkdownContainer"] a:visited {
+        color: #9da0d8;
+        text-decoration: underline;
+        text-decoration-color: rgba(157,160,216,0.32);
+        text-decoration-thickness: 1px;
+        text-underline-offset: 0.18em;
+        transition: color 0.12s ease, text-decoration-color 0.12s ease;
+    }
+    [data-testid="stMarkdownContainer"] a:hover {
+        color: #c4c5f6;
+        text-decoration-color: rgba(196,197,246,0.7);
+    }
+
     /* ---- Canvas: flat deep-space ink + one faint nebula bloom.
        A single radial lavender glow drifting up-left of centre —
        the quiet focal light, fixed so it never scrolls. ---- */
