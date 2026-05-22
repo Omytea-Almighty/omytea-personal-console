@@ -1273,12 +1273,7 @@ def render_sidebar() -> tuple[str, Any]:
         f"</div>"
         f"<div style='color:#76808d;font-size:11px;margin-top:12px;'>"
         f"{_brand.footer_html()}"
-        f"</div>"
-        # Tiny build marker — lets the user confirm which build the
-        # Streamlit Cloud worker is actually serving.
-        f"<div style='color:#3a3f49;font-size:9.5px;margin-top:10px;"
-        f"letter-spacing:0.15em;text-transform:uppercase;'>"
-        f"build · v4.19.0 · cosmic theme</div>",
+        f"</div>",
         unsafe_allow_html=True,
     )
 
