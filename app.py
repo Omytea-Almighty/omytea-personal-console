@@ -71,6 +71,12 @@ st.set_page_config(
 st.markdown(
     """
     <style>
+    /* Load the console's intended typefaces — Inter (UI sans) and
+       Cormorant Garamond (display serif). They were named in the font
+       stacks but never actually loaded, so most devices silently fell
+       back to a system font. @import must precede all CSS rules. */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:wght@500;600;700&display=swap');
+
     /* ========================================================
        Omytea Console — deep-space / cosmic theme
        Restyle-only. Palette + the Nye Clock galaxy accents.
@@ -84,7 +90,7 @@ st.markdown(
 
     /* ---- Typography ---- */
     html, body, [class*="css"] {
-        font-family: -apple-system, "Inter", system-ui, "Segoe UI",
+        font-family: "Inter", -apple-system, system-ui, "Segoe UI",
                      Helvetica, Arial, sans-serif;
         letter-spacing: -0.006em;
         -webkit-font-smoothing: antialiased;
@@ -135,7 +141,7 @@ st.markdown(
         padding-right: 1.15rem;
     }
     section[data-testid="stSidebar"] h1 {
-        font-family: -apple-system, "Inter", system-ui, sans-serif;
+        font-family: "Inter", -apple-system, system-ui, sans-serif;
         font-size: 17px !important;
         letter-spacing: -0.015em;
         font-weight: 600;
