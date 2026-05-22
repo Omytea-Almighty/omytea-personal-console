@@ -181,18 +181,26 @@ st.markdown(
     .stButton > button[kind="primaryFormSubmit"],
     .stFormSubmitButton > button {
         background: #8b8cff;
-        border: 1px solid #8b8cff;
+        border: 1px solid #9596ff;
         color: #0a0c11;
         font-weight: 600;
-        box-shadow: none;
+        /* A crisp 1px top-edge highlight — the plane catches light at
+           its top edge like a real key. Not a gradient, not a glow. */
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.22);
     }
     .stButton > button[kind="primary"]:hover,
     .stButton > button[kind="primaryFormSubmit"]:hover,
     .stFormSubmitButton > button:hover {
         background: #9d9eff;
-        border-color: #9d9eff;
+        border-color: #adadff;
         color: #0a0c11;
-        box-shadow: 0 0 0 3px rgba(139,140,255,0.15);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.28);
+    }
+    .stButton > button[kind="primary"]:active,
+    .stButton > button[kind="primaryFormSubmit"]:active,
+    .stFormSubmitButton > button:active {
+        background: #7e7ff0;
+        box-shadow: inset 0 2px 4px rgba(10,12,17,0.32);
     }
     .stFormSubmitButton > button:focus-visible,
     .stButton > button[kind="primary"]:focus-visible {
@@ -233,21 +241,25 @@ st.markdown(
        control in the rail. */
     section[data-testid="stSidebar"] .stButton:first-of-type > button {
         background: #8b8cff;
-        border: 1px solid #8b8cff;
+        border: 1px solid #9596ff;
         border-radius: 9px;
         color: #0a0c11;
         font-weight: 600;
         font-size: 13.5px;
         text-align: center;
         justify-content: center;
-        padding: 9px 12px;
-        box-shadow: none;
+        padding: 10px 12px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.22);
     }
     section[data-testid="stSidebar"] .stButton:first-of-type > button:hover {
         background: #9d9eff;
-        border-color: #9d9eff;
+        border-color: #adadff;
         color: #0a0c11;
-        box-shadow: 0 0 0 3px rgba(139,140,255,0.15);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.28);
+    }
+    section[data-testid="stSidebar"] .stButton:first-of-type > button:active {
+        background: #7e7ff0;
+        box-shadow: inset 0 2px 4px rgba(10,12,17,0.32);
     }
 
     /* ---- Text inputs / textareas / selects — v10 input-field
