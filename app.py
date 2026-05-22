@@ -310,23 +310,11 @@ st.markdown(
         box-shadow: inset 0 2px 4px rgba(10,12,17,0.32);
     }
 
-    /* ---- Account + footer pinned to the sidebar's bottom edge,
-       Claude / ChatGPT style. Streamlit's sidebar vertical block is
-       already a flex column — stretch it to the full sidebar height
-       and give the footer block margin-top:auto, so the footer +
-       account chip sit flush at the bottom with no dead space. The
-       ~96px default bottom padding is trimmed to a slim margin. ---- */
-    section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
-        padding-bottom: 18px;
-    }
-    section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"]
-        > div > [data-testid="stVerticalBlock"] {
-        min-height: calc(100vh - 94px);
-    }
-    section[data-testid="stSidebar"]
-        [data-testid="stElementContainer"]:has(.omy-foot-anchor) {
-        margin-top: auto;
-    }
+    /* ---- Account + footer bottom-pin: these rules, placed mid-way
+       through this big <style>, silently never reached the CSSOM
+       (bug-034 — confirmed live: footRulesInCSSOM=0). The working pin
+       now ships as the dedicated _SIDEBAR_PIN_CSS <style> injected by
+       render_sidebar(). ---- */
 
     /* ---- Text inputs / textareas / selects — v10 input-field
        language: a flat #11141b fill, ONE 1px #232834 hairline,
@@ -1199,6 +1187,32 @@ def _render_account_area() -> None:
             st.rerun()
 
 
+# Pins the footer + account chip to the sidebar's bottom edge (Claude /
+# ChatGPT style): a flex chain — sidebar content → user-content →
+# wrapper → vertical block all stretch — then the footer
+# element-container takes margin-top:auto. Injected as its OWN <style>
+# by render_sidebar(): the same rules placed mid-way through the big
+# global <style> silently never reached the CSSOM (bug-034). The ~96px
+# default sidebar bottom padding is trimmed so the chip sits flush.
+_SIDEBAR_PIN_CSS = (
+    "<style>"
+    'section[data-testid="stSidebar"] [data-testid="stSidebarContent"]'
+    "{display:flex;flex-direction:column;}"
+    'section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"]'
+    "{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;"
+    "padding-bottom:16px!important;}"
+    'section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"]'
+    " > div{flex:1 1 auto;min-height:0;display:flex;"
+    "flex-direction:column;}"
+    'section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"]'
+    ' > div > [data-testid="stVerticalBlock"]{flex:1 1 auto;}'
+    'section[data-testid="stSidebar"] '
+    '[data-testid="stElementContainer"]:has(.omy-foot-anchor)'
+    "{margin-top:auto;}"
+    "</style>"
+)
+
+
 def render_sidebar() -> tuple[str, Any]:
     """Sidebar — ChatGPT-shaped navigation: brand → New prediction →
     a date-grouped history of past predictions → a transitional "More"
@@ -1218,6 +1232,9 @@ def render_sidebar() -> tuple[str, Any]:
     # surface) so price displays resolve even before Settings is opened.
     if "user_locale" not in st.session_state:
         st.session_state.user_locale = currency.detect_locale()
+
+    # Pin the footer + account chip to the sidebar's bottom edge.
+    st.markdown(_SIDEBAR_PIN_CSS, unsafe_allow_html=True)
 
     # ---- Brand wordmark ----
     st.sidebar.markdown(
@@ -1318,15 +1335,13 @@ def _settings_section_header(title: str, desc: str) -> None:
 
     Implements the redesign's per-setting anatomy (docs/SETTINGS_
     REDESIGN.md §3.4): every surface self-explains — a clear title and a
-    short helper line, never a bare control.
+    short helper line, never a bare control. A hairline rule separates
+    the header from the controls below. Styled by _SETTINGS_CSS.
     """
     st.markdown(
-        f"<div style='margin:0 0 18px;'>"
-        f"<div style='font-family:\"Cormorant Garamond\",Georgia,serif;"
-        f"font-size:28px;font-weight:600;color:#f0f2f5;"
-        f"letter-spacing:-0.01em;line-height:1.15;'>{title}</div>"
-        f"<div style='color:#8a93a3;font-size:13px;line-height:1.55;"
-        f"margin-top:5px;'>{desc}</div>"
+        f"<div class='omy-set-section'>"
+        f"<div class='omy-set-section-t'>{title}</div>"
+        f"<div class='omy-set-section-d'>{desc}</div>"
         f"</div>",
         unsafe_allow_html=True,
     )
@@ -1474,31 +1489,66 @@ def _render_settings_prediction() -> None:
     )
 
 
+_SETTINGS_CSS = (
+    "<style>"
+    ".omy-set-head{margin:4px 0 22px;}"
+    ".omy-set-title{font-family:'Cormorant Garamond',Georgia,serif;"
+    "font-size:33px;font-weight:600;letter-spacing:-0.015em;"
+    "color:#f0f2f5;line-height:1.12;}"
+    ".omy-set-sub{color:#8a93a3;font-size:13px;line-height:1.55;"
+    "margin-top:3px;}"
+    ".omy-set-section{margin:2px 0 18px;padding-bottom:13px;"
+    "border-bottom:1px solid #1e2330;}"
+    ".omy-set-section-t{font-family:'Cormorant Garamond',Georgia,serif;"
+    "font-size:23px;font-weight:600;color:#f0f2f5;"
+    "letter-spacing:-0.01em;line-height:1.15;}"
+    ".omy-set-section-d{color:#8a93a3;font-size:12.5px;"
+    "line-height:1.5;margin-top:4px;}"
+    '[data-testid="stColumn"]:has(.omy-pane-marker){'
+    "border-left:1px solid #1e2330;padding-left:26px!important;}"
+    '[class*="st-key-_setcat_"] button{'
+    "justify-content:flex-start!important;text-align:left!important;"
+    "border:none!important;background:transparent!important;"
+    "color:#9aa3b2!important;font-weight:500!important;"
+    "font-size:13.5px!important;padding:8px 12px!important;"
+    "border-radius:8px!important;box-shadow:none!important;"
+    "min-height:0!important;}"
+    '[class*="st-key-_setcat_"] button:hover{'
+    "background:rgba(255,255,255,0.045)!important;"
+    "color:#d4d8e0!important;}"
+    '[class*="st-key-_setcat_"] button[kind="primary"]{'
+    "background:rgba(139,140,255,0.13)!important;"
+    "color:#c7c9f0!important;font-weight:600!important;"
+    "box-shadow:inset 2px 0 0 0 #8b8cff!important;}"
+    '[class*="st-key-_setcat_"] button[kind="primary"]:hover{'
+    "background:rgba(139,140,255,0.17)!important;"
+    "color:#d6d8f8!important;}"
+    "</style>"
+)
+
+
 def render_settings() -> None:
-    """The Settings surface — a routed two-pane page (category rail +
-    content pane) reached from the gear beside the account chip.
+    """The Settings surface — a routed two-pane page: a left category
+    rail + the selected category's controls, reached from the gear
+    beside the account chip.
 
     Mirrors the settings shape shared by ChatGPT, Claude, macOS System
     Settings and the Google Account page: a left rail of grouped
-    categories, the selected category's controls on the right. See
-    docs/SETTINGS_REDESIGN.md for the platform research behind this and
-    the R1–R5 roadmap that fills the categories in.
+    categories, the selected category's controls on the right. The page
+    header is a modest left-aligned title (a configuration surface, not
+    a centered marketing hero); the rail is a flat list with a
+    soft-lavender active row; a hairline divides the two panes. See
+    docs/SETTINGS_REDESIGN.md for the platform research + R1–R5 roadmap.
     """
     _render_back_bar()
+    st.markdown(_SETTINGS_CSS, unsafe_allow_html=True)
+
+    # Modest, left-aligned page header — not a centered marketing hero.
     st.markdown(
-        f"""
-        <div style='text-align:center;padding:34px 24px 22px;'>
-          <h1 style='font-family:"Cormorant Garamond",Georgia,serif;
-                     font-size:46px;font-weight:600;letter-spacing:-0.02em;
-                     margin:0 0 12px;color:#f0f2f5;line-height:1.06;'>
-            {T("nav.settings")}
-          </h1>
-          <p style='max-width:560px;margin:0 auto;color:#c6ccd6;
-                    font-size:15px;line-height:1.55;'>
-            {T("settings.subtitle")}
-          </p>
-        </div>
-        """,
+        f"<div class='omy-set-head'>"
+        f"<div class='omy-set-title'>{T('nav.settings')}</div>"
+        f"<div class='omy-set-sub'>{T('settings.subtitle')}</div>"
+        f"</div>",
         unsafe_allow_html=True,
     )
 
@@ -1515,7 +1565,7 @@ def render_settings() -> None:
         st.session_state._settings_cat = "general"
     active = st.session_state._settings_cat
 
-    rail, pane = st.columns([1, 2.6], gap="large")
+    rail, pane = st.columns([1, 2.8], gap="large")
     with rail:
         for key, label in categories:
             if st.button(
@@ -1527,6 +1577,11 @@ def render_settings() -> None:
                 st.session_state._settings_cat = key
                 st.rerun()
     with pane:
+        # Marker → the content column picks up the two-pane divider rule.
+        st.markdown(
+            "<div class='omy-pane-marker' style='display:none'></div>",
+            unsafe_allow_html=True,
+        )
         if active == "general":
             _render_settings_general()
         elif active == "prediction":
