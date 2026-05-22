@@ -168,7 +168,10 @@ st.markdown(
     .stButton > button:hover, .stDownloadButton > button:hover,
     .stLinkButton > a:hover {
         background: #181c25;
-        border-color: #8b8cff;
+        /* A restrained muted-lavender hover. The full #8b8cff accent is
+           reserved for the focus ring + the primary button, so a plain
+           secondary hover acknowledges the control without shouting. */
+        border-color: #6f70b0;
         color: #f0f2f5;
         box-shadow: none;
     }
