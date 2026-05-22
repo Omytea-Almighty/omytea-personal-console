@@ -823,9 +823,11 @@ st.markdown(
 #   ("workspace", None)              — the default new-prediction composer
 #   ("history", prediction_id:str)   — open a past prediction (viewer)
 #   ("secondary", mode_key:str)      — a transitional secondary surface
+#   ("settings", None)               — the routed Settings surface
 ROUTE_WORKSPACE = "workspace"
 ROUTE_HISTORY = "history"
 ROUTE_SECONDARY = "secondary"
+ROUTE_SETTINGS = "settings"
 
 # Secondary surfaces — genuinely standalone pages with no home in the
 # unified composer. The 玄学 lens, video query, and live webcam used to
@@ -1117,12 +1119,16 @@ def _account_state() -> tuple[str, Any]:
 
 
 def _render_account_area() -> None:
-    """Claude-style account control pinned to the sidebar bottom-left.
+    """Account control + Settings gear, pinned to the sidebar's
+    bottom-left corner.
 
-    Signed out → a "Log in / Sign up" button (Google OIDC via
-    ``st.login``). Signed in → an account chip whose popover menu
-    carries "Log out". Before the OIDC secrets are configured the
-    button explains how to enable sign-in rather than raising.
+    A thin separator, then a row: the account control on the left (an
+    account chip with a popover menu when signed in, a "Log in / Sign
+    up" button when signed out) and a small gear button on the right
+    that opens the routed Settings surface. This mirrors the
+    account-corner pattern shared by Claude, ChatGPT, VS Code and Slack
+    — the settings entry point lives beside the account, one click away,
+    never hunted for. See docs/SETTINGS_REDESIGN.md.
     """
     state, user = _account_state()
 
@@ -1132,54 +1138,73 @@ def _render_account_area() -> None:
         unsafe_allow_html=True,
     )
 
-    if state == "in":
-        name = (
-            (getattr(user, "name", None) or "").strip()
-            or (getattr(user, "email", None) or "").strip()
-            or "Account"
-        )
-        email = (getattr(user, "email", None) or "").strip()
-        initial = (name[:1] or "·").upper()
-        chip = name if len(name) <= 22 else name[:21] + "…"
-        with st.sidebar.popover(chip, use_container_width=True):
-            st.markdown(
-                f"<div style='display:flex;align-items:center;gap:10px;"
-                f"margin:2px 0 8px;'>"
-                f"<div style='width:36px;height:36px;border-radius:50%;"
-                f"flex:none;background:linear-gradient(135deg,#8b8cff,"
-                f"#6b6cff);color:#fff;font-weight:700;font-size:16px;"
-                f"display:flex;align-items:center;justify-content:center;'>"
-                f"{_html.escape(initial)}</div>"
-                f"<div style='line-height:1.35;min-width:0;'>"
-                f"<div style='color:#f0f2f5;font-size:13.5px;"
-                f"font-weight:600;'>{_html.escape(name)}</div>"
-                f"<div style='color:#76808d;font-size:11.5px;'>"
-                f"{_html.escape(email)}</div></div></div>",
-                unsafe_allow_html=True,
+    # Signed-out hint sits full-width above the row so the login button
+    # and the gear share one clean baseline.
+    if state != "in":
+        st.sidebar.caption(T("account.login_hint"))
+
+    acct_col, gear_col = st.sidebar.columns([5, 1], gap="small")
+
+    with acct_col:
+        if state == "in":
+            name = (
+                (getattr(user, "name", None) or "").strip()
+                or (getattr(user, "email", None) or "").strip()
+                or "Account"
             )
+            email = (getattr(user, "email", None) or "").strip()
+            initial = (name[:1] or "·").upper()
+            chip = name if len(name) <= 18 else name[:17] + "…"
+            with st.popover(chip, use_container_width=True):
+                st.markdown(
+                    f"<div style='display:flex;align-items:center;gap:10px;"
+                    f"margin:2px 0 8px;'>"
+                    f"<div style='width:36px;height:36px;border-radius:50%;"
+                    f"flex:none;background:linear-gradient(135deg,#8b8cff,"
+                    f"#6b6cff);color:#fff;font-weight:700;font-size:16px;"
+                    f"display:flex;align-items:center;justify-content:center;'>"
+                    f"{_html.escape(initial)}</div>"
+                    f"<div style='line-height:1.35;min-width:0;'>"
+                    f"<div style='color:#f0f2f5;font-size:13.5px;"
+                    f"font-weight:600;'>{_html.escape(name)}</div>"
+                    f"<div style='color:#76808d;font-size:11.5px;'>"
+                    f"{_html.escape(email)}</div></div></div>",
+                    unsafe_allow_html=True,
+                )
+                if st.button(
+                    T("account.logout"),
+                    key="_acct_logout",
+                    use_container_width=True,
+                ):
+                    st.logout()
+        else:
             if st.button(
-                T("account.logout"),
-                key="_acct_logout",
+                T("account.login"),
+                key="_acct_login",
                 use_container_width=True,
             ):
-                st.logout()
-    else:
-        st.sidebar.caption(T("account.login_hint"))
-        if st.sidebar.button(
-            T("account.login"),
-            key="_acct_login",
+                if state == "disabled":
+                    st.warning(T("account.not_configured"))
+                else:
+                    st.login()
+
+    with gear_col:
+        if st.button(
+            "⚙",
+            key="_acct_settings_gear",
+            help=T("nav.settings"),
             use_container_width=True,
         ):
-            if state == "disabled":
-                st.sidebar.warning(T("account.not_configured"))
-            else:
-                st.login()
+            st.session_state._route = (ROUTE_SETTINGS, None)
+            st.rerun()
 
 
 def render_sidebar() -> tuple[str, Any]:
     """Sidebar — ChatGPT-shaped navigation: brand → New prediction →
     a date-grouped history of past predictions → a transitional "More"
-    expander for the secondary surfaces → a Settings expander → footer.
+    expander for the secondary surfaces → footer → account chip + a
+    Settings gear. Settings is a routed two-pane surface now, not an
+    expander — reached from the gear beside the account chip.
 
     Returns a route tuple consumed by ``main()``. See ROUTE_* constants.
 
@@ -1189,6 +1214,10 @@ def render_sidebar() -> tuple[str, Any]:
     """
     if "ui_lang" not in st.session_state:
         st.session_state.ui_lang = _i18n.DEFAULT_LANG
+    # user_locale is initialised here (not only inside the Settings
+    # surface) so price displays resolve even before Settings is opened.
+    if "user_locale" not in st.session_state:
+        st.session_state.user_locale = currency.detect_locale()
 
     # ---- Brand wordmark ----
     st.sidebar.markdown(
@@ -1256,46 +1285,6 @@ def render_sidebar() -> tuple[str, Any]:
                 st.session_state._route = route
                 st.rerun()
 
-    # ---- Settings expander — language + currency, out of the main flow ----
-    with st.sidebar.expander(T("nav.settings"), expanded=False):
-        chosen_lang = st.radio(
-            T("settings.language"),
-            options=list(_i18n.SUPPORTED_LANGS),
-            format_func=lambda k: _i18n.LANG_LABEL.get(k, k),
-            horizontal=True,
-            index=list(_i18n.SUPPORTED_LANGS).index(
-                st.session_state.ui_lang
-            ),
-            key="_lang_radio",
-        )
-        if chosen_lang != st.session_state.ui_lang:
-            st.session_state.ui_lang = chosen_lang
-            st.rerun()
-
-        detected = currency.detect_locale()
-        if "user_locale" not in st.session_state:
-            st.session_state.user_locale = detected
-        locale_labels = {
-            currency.LOCALE_US: "US · USD",
-            currency.LOCALE_CN: "中国 · CNY",
-            currency.LOCALE_EU: "EU · EUR",
-            currency.LOCALE_GB: "UK · GBP",
-            currency.LOCALE_JP: "日本 · JPY",
-        }
-        chosen = st.selectbox(
-            T("settings.currency"),
-            options=list(currency.SUPPORTED_LOCALES),
-            format_func=lambda k: locale_labels.get(k, k),
-            index=list(currency.SUPPORTED_LOCALES).index(
-                st.session_state.user_locale
-            ),
-            help=(
-                "Affects price displays in the Pricing surface. Billing "
-                "currency remains USD; non-USD displays are approximate."
-            ),
-        )
-        st.session_state.user_locale = chosen
-
     # ---- Footer + account, pinned flush to the sidebar's bottom edge.
     # The footer markdown is the bottom block's first element; its
     # element-container gets margin-top:auto via the .omy-foot-anchor
@@ -1318,6 +1307,181 @@ def render_sidebar() -> tuple[str, Any]:
 
     st.session_state._route = route
     return route
+
+
+# ============================================================
+# Settings — routed two-pane surface (category rail + content)
+# ============================================================
+
+def _settings_section_header(title: str, desc: str) -> None:
+    """Heading + one-line description for a Settings content section.
+
+    Implements the redesign's per-setting anatomy (docs/SETTINGS_
+    REDESIGN.md §3.4): every surface self-explains — a clear title and a
+    short helper line, never a bare control.
+    """
+    st.markdown(
+        f"<div style='margin:0 0 18px;'>"
+        f"<div style='font-family:\"Cormorant Garamond\",Georgia,serif;"
+        f"font-size:28px;font-weight:600;color:#f0f2f5;"
+        f"letter-spacing:-0.01em;line-height:1.15;'>{title}</div>"
+        f"<div style='color:#8a93a3;font-size:13px;line-height:1.55;"
+        f"margin-top:5px;'>{desc}</div>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _render_settings_general() -> None:
+    """General — display language + region/currency. Migrated verbatim
+    from the old mid-sidebar Settings expander (roadmap R1)."""
+    _settings_section_header(
+        T("settings.cat.general"), T("settings.general.desc")
+    )
+
+    chosen_lang = st.radio(
+        T("settings.language"),
+        options=list(_i18n.SUPPORTED_LANGS),
+        format_func=lambda k: _i18n.LANG_LABEL.get(k, k),
+        horizontal=True,
+        index=list(_i18n.SUPPORTED_LANGS).index(st.session_state.ui_lang),
+        key="_lang_radio",
+    )
+    if chosen_lang != st.session_state.ui_lang:
+        st.session_state.ui_lang = chosen_lang
+        st.rerun()
+
+    st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
+
+    locale_labels = {
+        currency.LOCALE_US: "US · USD",
+        currency.LOCALE_CN: "中国 · CNY",
+        currency.LOCALE_EU: "EU · EUR",
+        currency.LOCALE_GB: "UK · GBP",
+        currency.LOCALE_JP: "日本 · JPY",
+    }
+    chosen = st.selectbox(
+        T("settings.currency"),
+        options=list(currency.SUPPORTED_LOCALES),
+        format_func=lambda k: locale_labels.get(k, k),
+        index=list(currency.SUPPORTED_LOCALES).index(
+            st.session_state.user_locale
+        ),
+        help=T("settings.currency.help"),
+    )
+    st.session_state.user_locale = chosen
+
+
+def _render_settings_about() -> None:
+    """About — version, the not-a-deterministic-system disclaimer, and a
+    plain statement of what the console is and is not."""
+    _settings_section_header(
+        T("settings.cat.about"),
+        f"{_brand.BRAND_NAME_SHORT}  ·  v{_brand.BRAND_VERSION}",
+    )
+    st.markdown(
+        f"<div style='background:#11141b;border:1px solid #232834;"
+        f"border-radius:12px;padding:18px 20px;color:#c6ccd6;"
+        f"font-size:13.5px;line-height:1.62;'>"
+        f"{T('settings.about.what')}"
+        f"</div>"
+        f"<div style='color:#76808d;font-size:12px;line-height:1.6;"
+        f"margin-top:14px;'>{T('brand.disclaimer')}</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _render_settings_planned(cat: str) -> None:
+    """An honest preview panel for a category whose controls are still on
+    the roadmap — the category name + a one-line description of what it
+    will hold, plus a "Planned" badge. No fake controls (roadmap §5)."""
+    meta = {
+        "prediction": ("settings.cat.prediction", "settings.prediction.desc"),
+        "model": ("settings.cat.model", "settings.model.desc"),
+        "personalization": (
+            "settings.cat.personalization",
+            "settings.personalization.desc",
+        ),
+        "data": ("settings.cat.data", "settings.data.desc"),
+    }
+    tkey, dkey = meta.get(
+        cat, ("settings.cat.general", "settings.general.desc")
+    )
+    _settings_section_header(T(tkey), T(dkey))
+    st.markdown(
+        f"<div style='background:#11141b;border:1px solid #232834;"
+        f"border-radius:12px;padding:20px;'>"
+        f"<span style='display:inline-block;"
+        f"background:rgba(139,140,255,0.14);color:#9da0d8;font-size:10px;"
+        f"font-weight:700;letter-spacing:0.09em;text-transform:uppercase;"
+        f"padding:3px 9px;border-radius:5px;'>"
+        f"{T('settings.planned.badge')}</span>"
+        f"<div style='color:#8a93a3;font-size:12.5px;line-height:1.62;"
+        f"margin-top:12px;'>{T('settings.planned.note')}</div>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def render_settings() -> None:
+    """The Settings surface — a routed two-pane page (category rail +
+    content pane) reached from the gear beside the account chip.
+
+    Mirrors the settings shape shared by ChatGPT, Claude, macOS System
+    Settings and the Google Account page: a left rail of grouped
+    categories, the selected category's controls on the right. See
+    docs/SETTINGS_REDESIGN.md for the platform research behind this and
+    the R1–R5 roadmap that fills the categories in.
+    """
+    _render_back_bar()
+    st.markdown(
+        f"""
+        <div style='text-align:center;padding:34px 24px 22px;'>
+          <h1 style='font-family:"Cormorant Garamond",Georgia,serif;
+                     font-size:46px;font-weight:600;letter-spacing:-0.02em;
+                     margin:0 0 12px;color:#f0f2f5;line-height:1.06;'>
+            {T("nav.settings")}
+          </h1>
+          <p style='max-width:560px;margin:0 auto;color:#c6ccd6;
+                    font-size:15px;line-height:1.55;'>
+            {T("settings.subtitle")}
+          </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    categories = (
+        ("general", T("settings.cat.general")),
+        ("prediction", T("settings.cat.prediction")),
+        ("model", T("settings.cat.model")),
+        ("personalization", T("settings.cat.personalization")),
+        ("data", T("settings.cat.data")),
+        ("about", T("settings.cat.about")),
+    )
+    valid = {c[0] for c in categories}
+    if st.session_state.get("_settings_cat") not in valid:
+        st.session_state._settings_cat = "general"
+    active = st.session_state._settings_cat
+
+    rail, pane = st.columns([1, 2.6], gap="large")
+    with rail:
+        for key, label in categories:
+            if st.button(
+                label,
+                key=f"_setcat_{key}",
+                use_container_width=True,
+                type="primary" if key == active else "secondary",
+            ):
+                st.session_state._settings_cat = key
+                st.rerun()
+    with pane:
+        if active == "general":
+            _render_settings_general()
+        elif active == "about":
+            _render_settings_about()
+        else:
+            _render_settings_planned(active)
 
 
 # ============================================================
@@ -4210,6 +4374,10 @@ def main() -> None:
             render_pricing_and_preorder()
         else:
             render_new_prediction()
+    elif kind == ROUTE_SETTINGS:
+        # The routed Settings surface — opened from the gear beside the
+        # account chip (see docs/SETTINGS_REDESIGN.md).
+        render_settings()
     else:
         # ROUTE_WORKSPACE — the default new-prediction composer.
         render_new_prediction()
