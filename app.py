@@ -101,7 +101,10 @@ st.markdown(
         font-weight: 600;
         color: #f0f2f5;
     }
-    p, li, label, .stMarkdown { color: #b9bfc8; }
+    /* Body copy — lifted from #b9bfc8 to a more legible #c6ccd6 and
+       given a generous line-height; paragraphs the user actually reads
+       should sit toward the brighter end of the ink ramp + breathe. */
+    p, li, label, .stMarkdown { color: #c6ccd6; line-height: 1.62; }
 
     /* ---- Canvas: flat deep-space ink + one faint nebula bloom.
        A single radial lavender glow drifting up-left of centre —
