@@ -11,6 +11,7 @@ Mock mode (no API key needed):
 
 from __future__ import annotations
 
+import html as _html
 import json
 import os
 from typing import Any
