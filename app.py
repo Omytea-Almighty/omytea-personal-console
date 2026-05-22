@@ -240,18 +240,13 @@ st.markdown(
         color: #f0f2f5;
         box-shadow: none;
     }
-    section[data-testid="stSidebar"] .stButton > button[kind="primary"] {
-        background: rgba(139,140,255,0.13);
-        border: 1px solid transparent;
-        border-left: 2px solid #8b8cff;
-        border-radius: 7px;
-        color: #f0f2f5;
-        box-shadow: none;
-    }
     /* The "✦ New prediction" button — v10 solid-lavender plane,
-       matching the main-column primary. The one assertive
-       control in the rail. */
-    section[data-testid="stSidebar"] .stButton:first-of-type > button {
+       matching the main-column primary. The one assertive control
+       in the rail; every other sidebar button stays a quiet row.
+       NB: scope to [kind="primary"] — NOT :first-of-type, which
+       matches every .stButton (each sits alone in its own element
+       container) and would paint the whole nav rail solid. */
+    section[data-testid="stSidebar"] .stButton > button[kind="primary"] {
         background: #8b8cff;
         border: 1px solid #9596ff;
         border-radius: 9px;
@@ -263,13 +258,13 @@ st.markdown(
         padding: 10px 12px;
         box-shadow: inset 0 1px 0 rgba(255,255,255,0.22);
     }
-    section[data-testid="stSidebar"] .stButton:first-of-type > button:hover {
+    section[data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {
         background: #9d9eff;
         border-color: #adadff;
         color: #0a0c11;
         box-shadow: inset 0 1px 0 rgba(255,255,255,0.28);
     }
-    section[data-testid="stSidebar"] .stButton:first-of-type > button:active {
+    section[data-testid="stSidebar"] .stButton > button[kind="primary"]:active {
         background: #7e7ff0;
         box-shadow: inset 0 2px 4px rgba(10,12,17,0.32);
     }
