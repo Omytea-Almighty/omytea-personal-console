@@ -2049,7 +2049,7 @@ def render_traditional_view() -> None:
                      margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
             {T("trad.hero.title")}
           </h1>
-          <p style='max-width:600px;margin:0 auto;color:#b9bfc8;
+          <p style='max-width:600px;margin:0 auto;color:#c6ccd6;
                     font-size:16px;line-height:1.55;letter-spacing:0.005em;'>
             {T("trad.hero.subtitle")}
           </p>
@@ -2882,7 +2882,7 @@ def render_measurement_update(
                      margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
             {T("measurement.hero.title")}
           </h1>
-          <p style='max-width:600px;margin:0 auto;color:#b9bfc8;
+          <p style='max-width:600px;margin:0 auto;color:#c6ccd6;
                     font-size:16px;line-height:1.55;letter-spacing:0.005em;'>
             {T("measurement.hero.subtitle")}
           </p>
@@ -3063,7 +3063,7 @@ def render_calibration_history() -> None:
                      margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
             {T("calibration.hero.title")}
           </h1>
-          <p style='max-width:600px;margin:0 auto;color:#b9bfc8;
+          <p style='max-width:600px;margin:0 auto;color:#c6ccd6;
                     font-size:16px;line-height:1.55;letter-spacing:0.005em;'>
             {T("calibration.hero.subtitle")}
           </p>
@@ -3161,7 +3161,7 @@ def render_pricing_and_preorder() -> None:
                      margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
             {T("pricing.hero.title")}
           </h1>
-          <p style='max-width:600px;margin:0 auto;color:#b9bfc8;
+          <p style='max-width:600px;margin:0 auto;color:#c6ccd6;
                     font-size:16px;line-height:1.55;letter-spacing:0.005em;'>
             {T("pricing.hero.subtitle")}
           </p>
@@ -3316,7 +3316,7 @@ def render_video_query(embedded: bool = False) -> None:
                          margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
                 {T("video.hero.title")}
               </h1>
-              <p style='max-width:600px;margin:0 auto;color:#b9bfc8;
+              <p style='max-width:600px;margin:0 auto;color:#c6ccd6;
                         font-size:16px;line-height:1.55;
                         letter-spacing:0.005em;'>
                 {T("video.hero.subtitle")}
@@ -3763,7 +3763,7 @@ def render_live_webcam(embedded: bool = False) -> None:
                          margin:0 0 14px;color:#f0f2f5;line-height:1.05;'>
                 {T("webcam.title")}
               </h1>
-              <p style='max-width:600px;margin:0 auto;color:#b9bfc8;
+              <p style='max-width:600px;margin:0 auto;color:#c6ccd6;
                         font-size:16px;line-height:1.55;
                         letter-spacing:0.005em;'>
                 {T("webcam.subtitle")}
