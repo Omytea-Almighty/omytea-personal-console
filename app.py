@@ -254,16 +254,18 @@ st.markdown(
         color: #f7f8f8;
         box-shadow: none;
     }
-    /* The "New prediction" button — the one accent-filled control
-       in the rail; every other sidebar button stays a quiet row.
-       NB: scope to [kind="primary"] — NOT :first-of-type, which
-       matches every .stButton (each sits alone in its own element
-       container) and would paint the whole nav rail solid. */
+    /* The "New prediction" button — the rail's primary action. The
+       Linear / ChatGPT new-action pattern: NOT a loud accent fill — a
+       quiet surface lift (lifted dark plane, a stronger hairline,
+       bright ink). It reads as primary through elevation + a bright
+       label, never through colour. Every other sidebar button stays a
+       flat quiet row. NB: scope to [kind="primary"] — NOT
+       :first-of-type, which would paint the whole nav rail. */
     section[data-testid="stSidebar"] .stButton > button[kind="primary"] {
-        background: #5e6ad2;
-        border: 1px solid #5e6ad2;
+        background: #1b1d22;
+        border: 1px solid #34343a;
         border-radius: 8px;
-        color: #ffffff;
+        color: #f7f8f8;
         font-weight: 600;
         font-size: 13.5px;
         text-align: center;
@@ -272,13 +274,13 @@ st.markdown(
         box-shadow: none;
     }
     section[data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {
-        background: #828fff;
-        border-color: #828fff;
+        background: #22242a;
+        border-color: #3e3e44;
         color: #ffffff;
         box-shadow: none;
     }
     section[data-testid="stSidebar"] .stButton > button[kind="primary"]:active {
-        background: #5e69d1;
+        background: #18191d;
         box-shadow: none;
     }
 

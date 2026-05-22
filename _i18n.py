@@ -126,10 +126,10 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
     },
     # -----  Sidebar navigation (history-rail shell)  -----
     "nav.new_prediction": {
-        LANG_EN: "✦  New prediction",
-        LANG_ZH: "✦  新预测",
-        LANG_ES: "✦  Nueva predicción",
-        LANG_FR: "✦  Nouvelle prédiction",
+        LANG_EN: "New prediction",
+        LANG_ZH: "新预测",
+        LANG_ES: "Nueva predicción",
+        LANG_FR: "Nouvelle prédiction",
     },
     "nav.history": {
         LANG_EN: "History",
