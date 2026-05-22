@@ -466,9 +466,13 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
     line-height: 1.5; -webkit-font-smoothing: antialiased;
   }}
   .wrap {{ padding: 2px; }}
+  /* Section heading — promoted from a third stacked all-caps eyebrow
+     to a proper mixed-case title, so the page hierarchy reads
+     eyebrow -> title -> card-label instead of three caps labels
+     stuttering down the column. */
   .sect-label {{
-    color: var(--ink-2); font-size: 11px; text-transform: uppercase;
-    letter-spacing: 0.12em; font-weight: 600; margin: 0 0 8px;
+    color: var(--ink-0); font-size: 16px; font-weight: 600;
+    letter-spacing: -0.01em; margin: 1px 0 11px;
   }}
   /* layout: stacks by default, side-by-side when video is active */
   .stage {{ display: block; }}
