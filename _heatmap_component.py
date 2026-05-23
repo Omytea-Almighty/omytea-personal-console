@@ -455,7 +455,7 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
     --canvas: #0a0c11; --surface: #11141b; --surface-2: #181c25;
     --hairline: #232834; --ink-0: #f0f2f5; --ink-1: #b9bfc8;
     --ink-2: #76808d; --ink-3: #4b525d;
-    --accent: #8b8cff; --teal: #58c5b4; --red: #ff5e6e; --amber: #d8a657;
+    --accent: #5e6ad2; --teal: #58c5b4; --red: #ff5e6e; --amber: #d8a657;
     --mono: ui-monospace, "SF Mono", Menlo, monospace;
     --sans: -apple-system, "Inter", system-ui, sans-serif;
   }}
@@ -1290,7 +1290,7 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
       var anchor = ti === 0 ? "start"
         : (ti === ticks.length - 1 ? "end" : "middle");
       var isEnd = ti === 0 || ti === ticks.length - 1;
-      var fill = ti === ticks.length - 1 ? "#8b8cff" : "#76808d";
+      var fill = ti === ticks.length - 1 ? "#5e6ad2" : "#76808d";
       var lab2 = (ticks[ti] || "")
         .replace(/&/g, "&amp;").replace(/</g, "&lt;");
       axis += '<text x="' + tx.toFixed(1) + '" y="' + (axisY + 4) +
