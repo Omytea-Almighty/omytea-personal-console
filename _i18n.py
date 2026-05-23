@@ -272,16 +272,16 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_FR: "Initialise le champ d'horizon du compositeur. Vous pouvez le modifier sur chaque prédiction.",
     },
     "settings.prediction.lens": {
-        LANG_EN: "Start with the 玄学 lens on",
+        LANG_EN: "Start with the Metaphysics lens on",
         LANG_ZH: "默认开启玄学透镜",
-        LANG_ES: "Empezar con la lente 玄学 activada",
-        LANG_FR: "Démarrer avec la loupe 玄学 activée",
+        LANG_ES: "Empezar con la lente metafísica activada",
+        LANG_FR: "Démarrer avec la loupe métaphysique activée",
     },
     "settings.prediction.lens.help": {
-        LANG_EN: "When on, every new prediction opens with the 玄学 lens already enabled in the composer.",
+        LANG_EN: "When on, every new prediction opens with the Metaphysics lens already enabled in the composer.",
         LANG_ZH: "开启后，每次新预测都会在编排器中默认启用玄学透镜。",
-        LANG_ES: "Si está activado, cada predicción se abre con la lente 玄学 ya activada en el compositor.",
-        LANG_FR: "Si activé, chaque prédiction s'ouvre avec la loupe 玄学 déjà activée dans le compositeur.",
+        LANG_ES: "Si está activado, cada predicción se abre con la lente metafísica ya activada en el compositor.",
+        LANG_FR: "Si activé, chaque prédiction s'ouvre avec la loupe métaphysique déjà activée dans le compositeur.",
     },
     "settings.model.desc": {
         LANG_EN: "Choose the LLM backend and supply your own API keys for power-user models.",
@@ -578,10 +578,10 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         ),
     },
     "composer.lens": {
-        LANG_EN: "玄学 lens",
+        LANG_EN: "Metaphysics lens",
         LANG_ZH: "玄学透镜",
-        LANG_ES: "Lente 玄学",
-        LANG_FR: "Lentille 玄学",
+        LANG_ES: "Lente metafísica",
+        LANG_FR: "Loupe métaphysique",
     },
     "composer.more_fields": {
         LANG_EN: "More details (optional)",
