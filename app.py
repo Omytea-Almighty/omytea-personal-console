@@ -262,26 +262,26 @@ st.markdown(
        flat quiet row. NB: scope to [kind="primary"] — NOT
        :first-of-type, which would paint the whole nav rail. */
     section[data-testid="stSidebar"] .stButton > button[kind="primary"] {
-        background: #1b1d22;
-        border: 1px solid #34343a;
-        border-radius: 8px;
-        color: #f7f8f8;
+        background: #1b1d22 !important;
+        border: 1px solid #34343a !important;
+        border-radius: 8px !important;
+        color: #f7f8f8 !important;
         font-weight: 600;
         font-size: 13.5px;
         text-align: center;
         justify-content: center;
         padding: 9px 12px;
-        box-shadow: none;
+        box-shadow: none !important;
     }
     section[data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {
-        background: #22242a;
-        border-color: #3e3e44;
-        color: #ffffff;
-        box-shadow: none;
+        background: #22242a !important;
+        border-color: #3e3e44 !important;
+        color: #ffffff !important;
+        box-shadow: none !important;
     }
     section[data-testid="stSidebar"] .stButton > button[kind="primary"]:active {
-        background: #18191d;
-        box-shadow: none;
+        background: #18191d !important;
+        box-shadow: none !important;
     }
 
     /* ---- Account + footer bottom-pin: these rules, placed mid-way

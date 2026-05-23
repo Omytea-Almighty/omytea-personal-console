@@ -20,13 +20,19 @@ enableStaticServing = true
 gatherUsageStats = false
 
 [theme]
-# Omytea Console v10 design language: dark-mode-first, minimal, scientific.
-# Palette ported from marketing/console/Omytea Console v10 — see both at once.html.
+# Omytea Console — Linear-grade dark theme.
+# bug-035: the founder repeatedly flagged the UI as "toy-like" / "no
+# visible change" despite many CSS commits. ROOT CAUSE was THIS block:
+# Streamlit injects these values as authoritative CSS variables; custom
+# <style> rules cannot override them without !important + sufficient
+# specificity. Every previous "recolor" was patched over the theme,
+# never re-rooting it. Retuned to Linear's documented palette so the
+# theme is coherent at the source.
 base = "dark"
-primaryColor = "#8b8cff"          # lavender accent (matches v10 --accent)
-backgroundColor = "#0a0c11"        # v10 --canvas (very dark blue-grey, near-black)
-secondaryBackgroundColor = "#11141b"  # v10 --surface (sidebar + container fills)
-textColor = "#f0f2f5"              # v10 --ink-0 (brightest readable foreground)
+primaryColor = "#5e6ad2"            # Linear lavender-blue (was #8b8cff bright lavender)
+backgroundColor = "#08090a"          # Linear-grade near-black canvas (was #0a0c11)
+secondaryBackgroundColor = "#0f1011"  # Linear surface-1 (was #11141b)
+textColor = "#f7f8f8"                # Linear ink-0 (was #f0f2f5)
 font = "sans serif"
 
 [client]
