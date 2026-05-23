@@ -283,6 +283,37 @@ st.markdown(
         background: #18191d !important;
         box-shadow: none !important;
     }
+    /* bug-035 follow-up: force-dark the "New prediction" button. The
+       previous sidebar [kind="primary"] rule (above) lost to Streamlit's
+       higher-specificity / inline primary-color injection. This rule
+       scopes by the unique st-key class — adds an attribute selector of
+       higher specificity — and stacks !important on EVERY colour-bearing
+       property (including background-color separately from background)
+       so any inline style or theme variable is overridden. */
+    section[data-testid="stSidebar"] [class*="st-key-_nav_new_prediction"] button,
+    section[data-testid="stSidebar"] [class*="st-key-_nav_new_prediction"] button[kind="primary"],
+    section[data-testid="stSidebar"] div[class*="st-key-_nav_new_prediction"] button {
+        background: #1b1d22 !important;
+        background-color: #1b1d22 !important;
+        border: 1px solid #34343a !important;
+        border-color: #34343a !important;
+        color: #f7f8f8 !important;
+        box-shadow: none !important;
+    }
+    section[data-testid="stSidebar"] [class*="st-key-_nav_new_prediction"] button:hover,
+    section[data-testid="stSidebar"] [class*="st-key-_nav_new_prediction"] button[kind="primary"]:hover {
+        background: #22242a !important;
+        background-color: #22242a !important;
+        border-color: #3e3e44 !important;
+        color: #ffffff !important;
+        box-shadow: none !important;
+    }
+    section[data-testid="stSidebar"] [class*="st-key-_nav_new_prediction"] button:active,
+    section[data-testid="stSidebar"] [class*="st-key-_nav_new_prediction"] button[kind="primary"]:active {
+        background: #15161a !important;
+        background-color: #15161a !important;
+        box-shadow: none !important;
+    }
 
     /* ---- Account + footer bottom-pin: these rules, placed mid-way
        through this big <style>, silently never reached the CSSOM
