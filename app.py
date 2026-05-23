@@ -1424,10 +1424,6 @@ def _render_settings_planned(cat: str) -> None:
     will hold, plus a "Planned" badge. No fake controls (roadmap §5)."""
     meta = {
         "model": ("settings.cat.model", "settings.model.desc"),
-        "personalization": (
-            "settings.cat.personalization",
-            "settings.personalization.desc",
-        ),
     }
     tkey, dkey = meta.get(
         cat, ("settings.cat.general", "settings.general.desc")
@@ -1446,6 +1442,153 @@ def _render_settings_planned(cat: str) -> None:
         f"</div>",
         unsafe_allow_html=True,
     )
+
+
+def _render_settings_personalization() -> None:
+    """Personalization (R4) — display name, standing 'about you' context,
+    readout tone, plus birth date / time / city for the Metaphysics-lens
+    math.
+
+    Per XUANXUE_REDESIGN.md L2: personal data (birth especially) is user
+    info, not per-prediction. It belongs once, here, and the Metaphysics
+    lens reads it from session_state — the composer no longer asks.
+
+    All fields persist in ``st.session_state`` and stay browser-session-
+    scoped. Nothing here is written to disk, logged, or sent off-device.
+    """
+    _settings_section_header(
+        T("settings.cat.personalization"),
+        T("settings.personalization.desc"),
+    )
+
+    _eyebrow = (
+        "color:#f7f8f8;font-size:11px;font-weight:700;"
+        "letter-spacing:0.09em;text-transform:uppercase;"
+        "margin:4px 0 9px;"
+    )
+
+    # --- Section: PROFILE -------------------------------------------------
+    st.markdown(
+        f"<div style='{_eyebrow}'>"
+        f"{T('settings.personalization.section.profile')}</div>",
+        unsafe_allow_html=True,
+    )
+    st.text_input(
+        T("settings.personalization.display_name"),
+        key="personalization_display_name",
+        max_chars=60,
+        placeholder=T("settings.personalization.display_name.placeholder"),
+        help=T("settings.personalization.display_name.help"),
+    )
+    st.text_area(
+        T("settings.personalization.about_you"),
+        key="personalization_about_you",
+        max_chars=600,
+        height=110,
+        placeholder=T("settings.personalization.about_you.placeholder"),
+        help=T("settings.personalization.about_you.help"),
+    )
+
+    st.markdown(
+        "<div style='height:14px;'></div>", unsafe_allow_html=True
+    )
+
+    # --- Section: READOUT TONE -------------------------------------------
+    st.markdown(
+        f"<div style='{_eyebrow}'>"
+        f"{T('settings.personalization.section.tone')}</div>",
+        unsafe_allow_html=True,
+    )
+    _tone_options = ("plain", "calibrated", "warm")
+    if st.session_state.get("personalization_tone") not in _tone_options:
+        st.session_state["personalization_tone"] = "calibrated"
+    st.selectbox(
+        T("settings.personalization.tone"),
+        options=_tone_options,
+        format_func=lambda k: T(f"settings.personalization.tone.{k}"),
+        key="personalization_tone",
+        help=T("settings.personalization.tone.help"),
+    )
+
+    st.markdown(
+        "<div style='height:14px;'></div>", unsafe_allow_html=True
+    )
+
+    # --- Section: BIRTH DATA ---------------------------------------------
+    st.markdown(
+        f"<div style='{_eyebrow}'>"
+        f"{T('settings.personalization.section.birth')}</div>",
+        unsafe_allow_html=True,
+    )
+    if "personalization_birth_enabled" not in st.session_state:
+        st.session_state["personalization_birth_enabled"] = False
+    st.toggle(
+        T("settings.personalization.birth.toggle"),
+        key="personalization_birth_enabled",
+        help=T("settings.personalization.birth.toggle.help"),
+    )
+
+    if st.session_state.get("personalization_birth_enabled"):
+        # Initialize sentinels once (Streamlit number_input requires a
+        # concrete value to render — we use a neutral midpoint, not 1900,
+        # so the field reads "needs your edit" rather than "wrong year").
+        for _k, _default in (
+            ("personalization_birth_year", 1990),
+            ("personalization_birth_month", 1),
+            ("personalization_birth_day", 1),
+            ("personalization_birth_hour", 12),
+        ):
+            if _k not in st.session_state:
+                st.session_state[_k] = _default
+
+        bc1, bc2, bc3, bc4 = st.columns(4)
+        with bc1:
+            st.number_input(
+                T("trad.birth.year"),
+                min_value=1900,
+                max_value=2100,
+                step=1,
+                key="personalization_birth_year",
+            )
+        with bc2:
+            st.number_input(
+                T("trad.birth.month"),
+                min_value=1,
+                max_value=12,
+                step=1,
+                key="personalization_birth_month",
+            )
+        with bc3:
+            st.number_input(
+                T("trad.birth.day"),
+                min_value=1,
+                max_value=31,
+                step=1,
+                key="personalization_birth_day",
+            )
+        with bc4:
+            st.number_input(
+                T("trad.birth.hour"),
+                min_value=0,
+                max_value=23,
+                step=1,
+                key="personalization_birth_hour",
+            )
+
+        st.text_input(
+            T("settings.personalization.birth.city"),
+            key="personalization_birth_city",
+            max_chars=80,
+            placeholder=T(
+                "settings.personalization.birth.city.placeholder"
+            ),
+            help=T("settings.personalization.birth.city.help"),
+        )
+
+    st.markdown(
+        "<div style='height:6px;'></div>", unsafe_allow_html=True
+    )
+    st.caption(T("settings.personalization.birth.privacy"))
 
 
 def _render_settings_prediction() -> None:
@@ -1726,6 +1869,8 @@ def render_settings() -> None:
             _render_settings_general()
         elif active == "prediction":
             _render_settings_prediction()
+        elif active == "personalization":
+            _render_settings_personalization()
         elif active == "data":
             _render_settings_data()
         elif active == "about":
@@ -2311,26 +2456,51 @@ def _render_traditional_lens(
     import _metaphysics as _mp
     from _clock import render_celestial_svg, render_reading_svg
 
-    # ---- Birth-data row (八字 + 占星 are both read off it) ----
-    sy, sm, sd, sh = sample_birth
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        b_year = st.number_input(
-            T("trad.birth.year"), min_value=1900, max_value=2100,
-            value=sy, step=1, key=f"{key_prefix}_y")
-    with c2:
-        b_month = st.number_input(
-            T("trad.birth.month"), min_value=1, max_value=12,
-            value=sm, step=1, key=f"{key_prefix}_m")
-    with c3:
-        b_day = st.number_input(
-            T("trad.birth.day"), min_value=1, max_value=31,
-            value=sd, step=1, key=f"{key_prefix}_d")
-    with c4:
-        b_hour = st.number_input(
-            T("trad.birth.hour"), min_value=0, max_value=23,
-            value=sh, step=1, key=f"{key_prefix}_h")
-    st.caption(T("trad.birth.hint"))
+    # ---- Birth data — read from Settings → Personalization (R4) ----
+    # XUANXUE_REDESIGN.md L2: personal data is not per-prediction. The
+    # composer no longer asks. When the user hasn't set birth data, the
+    # lens falls back to ``sample_birth`` and shows a small "set in
+    # Settings" affordance — modules that don't need birth (I Ching,
+    # tarot, Nye Clock, sun-sign) still work; BaZi / ZiWei / ascendant
+    # read as a sample reading.
+    _p_birth_on = bool(
+        st.session_state.get("personalization_birth_enabled", False)
+    )
+    if _p_birth_on:
+        b_year = int(
+            st.session_state.get(
+                "personalization_birth_year", sample_birth[0]
+            )
+        )
+        b_month = int(
+            st.session_state.get(
+                "personalization_birth_month", sample_birth[1]
+            )
+        )
+        b_day = int(
+            st.session_state.get(
+                "personalization_birth_day", sample_birth[2]
+            )
+        )
+        b_hour = int(
+            st.session_state.get(
+                "personalization_birth_hour", sample_birth[3]
+            )
+        )
+    else:
+        b_year, b_month, b_day, b_hour = sample_birth
+        st.markdown(
+            "<div style='display:flex;gap:8px;align-items:flex-start;"
+            "background:#0f1011;border:1px solid #23252a;border-radius:8px;"
+            "padding:9px 12px;margin:2px 0 12px;'>"
+            "<span style='color:#8a8f98;font-size:11px;font-weight:700;"
+            "letter-spacing:0.06em;text-transform:uppercase;"
+            "padding-top:2px;'>·</span>"
+            f"<span style='color:#c9cdd4;font-size:12px;line-height:1.55;'>"
+            f"{T('settings.personalization.birth.unset_hint')}</span>"
+            "</div>",
+            unsafe_allow_html=True,
+        )
 
     # ---- Outcome + combination controls ----
     cc1, cc2, cc3 = st.columns([2, 2, 1.4])
