@@ -1050,10 +1050,10 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_FR: "Carte quantique",
     },
     "output.view.xuanxue": {
-        LANG_EN: "玄学 Nye Clock",
+        LANG_EN: "Metaphysics lens",
         LANG_ZH: "玄学时轮",
-        LANG_ES: "Reloj Nye 玄学",
-        LANG_FR: "Horloge Nye 玄学",
+        LANG_ES: "Lente metafísica",
+        LANG_FR: "Loupe métaphysique",
     },
     "output.view.label": {
         LANG_EN: "Output view",
@@ -1064,8 +1064,8 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
     "output.view.hint": {
         LANG_EN: (
             "Switch the output region between the quantum prediction "
-            "heatmap and the 玄学 Nye Clock lens. The quantum view is "
-            "the default; 玄学 is the opt-in alternate."
+            "heatmap and the Metaphysics lens. The quantum view is "
+            "the default; the Metaphysics lens is the opt-in alternate."
         ),
         LANG_ZH: (
             "在量子预测热力图与玄学时轮透镜之间切换输出区。"
@@ -1734,6 +1734,12 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_ZH: "符号系统之间意见不一——没有哪个分支被明显偏向。把透镜当作平手时的一票即可。",
         LANG_ES: "Los sistemas simbólicos no coinciden — ninguna rama tiene clara preferencia. Trata la lente como desempate.",
         LANG_FR: "Les systèmes symboliques divergent — aucune branche n'est nettement favorite. Traitez la loupe comme un départage.",
+    },
+    "lens.consensus.no_prediction": {
+        LANG_EN: "No prediction yet — generate one in the composer and the lens will pull a specific branch up or down.",
+        LANG_ZH: "还没有预测——在编排器里跑一份，透镜就会把某个分支往上或往下拉。",
+        LANG_ES: "Aún no hay predicción — genera una en el compositor y la lente subirá o bajará una rama concreta.",
+        LANG_FR: "Pas encore de prédiction — générez-en une dans le compositeur et la loupe poussera une branche précise.",
     },
     "lens.consensus.line": {
         LANG_EN: "Model alone {model} · Joint symbolic auspice {tradition} · COMBINED {combined} ({tag})",

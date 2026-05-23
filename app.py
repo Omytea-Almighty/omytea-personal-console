@@ -2610,7 +2610,8 @@ def _render_traditional_lens(
     # tri-metric (Model · Tradition · Combined) sits beneath, so the
     # founder's "what does this DO to my prediction" question is
     # answered before the user sees any individual instrument.
-    if display_branches:
+    _has_branches = bool(display_branches)
+    if _has_branches:
         _fav_label, _fav_prob, _fav_type = max(
             display_branches, key=lambda x: x[1]
         )
@@ -2619,9 +2620,17 @@ def _render_traditional_lens(
         # the branch the lens lifted to the top of the distribution.
         _contested = 0.46 <= joint_auspice <= 0.54
     else:
-        _fav_label, _fav_prob, _contested = "", 0.0, True
+        _fav_label, _fav_prob, _contested = "", 0.0, False
 
-    if _contested or not _fav_label:
+    if not _has_branches:
+        # The lens is on but the user hasn't run a prediction yet — the
+        # math is still meaningful (the symbolic auspice exists), but
+        # there's no specific branch to lift / drop. Say so honestly
+        # rather than claiming the systems "disagree" (they may not).
+        _consensus_html = _html.escape(
+            str(T("lens.consensus.no_prediction"))
+        )
+    elif _contested:
         _consensus_html = _html.escape(str(T("lens.consensus.contests")))
     else:
         _consensus_html = (
