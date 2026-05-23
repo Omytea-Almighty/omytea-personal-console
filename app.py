@@ -213,6 +213,9 @@ st.markdown(
         border: 1px solid #5e6ad2;
         color: #ffffff;
         font-weight: 600;
+        font-size: 13px;
+        border-radius: 6px;
+        padding: 7px 12px;
         box-shadow: none;
     }
     .stButton > button[kind="primary"]:hover,
@@ -264,13 +267,13 @@ st.markdown(
     section[data-testid="stSidebar"] .stButton > button[kind="primary"] {
         background: #1b1d22 !important;
         border: 1px solid #34343a !important;
-        border-radius: 8px !important;
+        border-radius: 6px !important;
         color: #f7f8f8 !important;
         font-weight: 600;
-        font-size: 13.5px;
+        font-size: 13px;
         text-align: center;
         justify-content: center;
-        padding: 9px 12px;
+        padding: 7px 11px;
         box-shadow: none !important;
     }
     section[data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {
@@ -297,7 +300,10 @@ st.markdown(
         background-color: #1b1d22 !important;
         border: 1px solid #34343a !important;
         border-color: #34343a !important;
+        border-radius: 6px !important;
         color: #f7f8f8 !important;
+        font-size: 13px !important;
+        padding: 7px 11px !important;
         box-shadow: none !important;
     }
     section[data-testid="stSidebar"] [class*="st-key-_nav_new_prediction"] button:hover,
