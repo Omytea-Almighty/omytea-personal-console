@@ -2456,13 +2456,13 @@ def _render_traditional_lens(
     import _metaphysics as _mp
     from _clock import render_celestial_svg, render_reading_svg
 
-    # ---- Lens explainer header (L3) ----
+    # ---- Lens explainer header (L3, widened for the L5 rhythm) ----
     # Every module beneath the lens needs to read as "what this is + why
     # it's here" at a glance. The header card answers that question for
     # the whole lens; per-module headers (added below) answer it for
     # each instrument.
     st.markdown(
-        f"<div style='max-width:560px;margin:6px auto 14px;"
+        f"<div style='max-width:760px;margin:6px auto 14px;"
         f"background:#0f1011;border:1px solid #23252a;border-radius:10px;"
         f"padding:14px 16px 13px;'>"
         f"<div style='color:#8a8f98;font-size:10px;font-weight:700;"
@@ -2516,7 +2516,7 @@ def _render_traditional_lens(
         st.markdown(
             "<div style='display:flex;gap:8px;align-items:flex-start;"
             "background:#0f1011;border:1px solid #23252a;border-radius:8px;"
-            "padding:9px 12px;margin:2px 0 12px;'>"
+            "padding:9px 12px;margin:2px auto 12px;max-width:760px;'>"
             "<span style='color:#8a8f98;font-size:11px;font-weight:700;"
             "letter-spacing:0.06em;text-transform:uppercase;"
             "padding-top:2px;'>·</span>"
@@ -2658,7 +2658,7 @@ def _render_traditional_lens(
     )
 
     st.markdown(
-        f"<div style='max-width:560px;margin:0 auto 16px;"
+        f"<div style='max-width:760px;margin:0 auto 16px;"
         f"background:#0f1011;border:1px solid #34343a;border-radius:10px;"
         f"padding:13px 16px;'>"
         f"<div style='color:#c9cdd4;font-size:13px;line-height:1.5;'>"
@@ -2670,9 +2670,11 @@ def _render_traditional_lens(
     )
 
     # ---- Module-card helper (L3) — one consistent title + explainer ----
-    def _mod_header(title_key: str, desc_key: str) -> None:
+    def _mod_header(
+        title_key: str, desc_key: str, *, max_w: int = 560
+    ) -> None:
         st.markdown(
-            f"<div style='max-width:560px;margin:18px auto 6px;'>"
+            f"<div style='max-width:{max_w}px;margin:18px auto 6px;'>"
             f"<div style='color:#f7f8f8;font-size:13px;font-weight:600;"
             f"letter-spacing:-0.005em;'>"
             f"{_html.escape(str(T(title_key)))}</div>"
@@ -2683,7 +2685,16 @@ def _render_traditional_lens(
         )
 
     # ---- The unified celestial astrolabe — 八字 ⊕ 占星 on one dial ----
-    _mod_header("lens.module.astrolabe.title", "lens.module.astrolabe.desc")
+    # XUANXUE_REDESIGN.md L5: the Nye Clock is the visual centerpiece,
+    # not a small inset. Companion instruments (易经 / 塔罗) stay at
+    # 560px below it; the Nye Clock card stretches to the workspace
+    # column edge (760px) so the real-image still reads at the
+    # resolution the founder captured it at.
+    _mod_header(
+        "lens.module.astrolabe.title",
+        "lens.module.astrolabe.desc",
+        max_w=760,
+    )
     astrolabe_svg = render_celestial_svg(
         readings[_mp.SYSTEM_BAZI], readings[_mp.SYSTEM_ASTRO],
         display_branches,
@@ -2695,8 +2706,8 @@ def _render_traditional_lens(
     )
     st.markdown(
         f"<div style='background:#0f1011;border:1px solid #23252a;"
-        f"border-radius:12px;padding:20px 16px;margin:18px auto 10px;"
-        f"max-width:560px;'>"
+        f"border-radius:14px;padding:14px 14px 10px;margin:8px auto 10px;"
+        f"max-width:760px;'>"
         f"{astrolabe_svg}</div>",
         unsafe_allow_html=True,
     )
@@ -2793,7 +2804,7 @@ def _render_traditional_lens(
         .replace("{delta}", f"{_delta_abs * 100:.1f} pp")
     )
     st.markdown(
-        f"<div style='max-width:560px;margin:14px auto 4px;"
+        f"<div style='max-width:760px;margin:14px auto 4px;"
         f"background:#0f1011;border:1px solid #34343a;border-radius:10px;"
         f"padding:13px 16px;'>"
         f"<div style='color:#8a8f98;font-size:10px;font-weight:700;"
@@ -2808,7 +2819,7 @@ def _render_traditional_lens(
     # ---- Always-visible disclaimer (integrity gate per spec §7) ----
     st.markdown(
         f"<div style='color:#8a8f98;font-size:11.5px;line-height:1.55;"
-        f"max-width:560px;margin:16px auto 4px;letter-spacing:0.005em;'>"
+        f"max-width:760px;margin:16px auto 4px;letter-spacing:0.005em;'>"
         f"{T('trad.disclaimer')}</div>",
         unsafe_allow_html=True,
     )
