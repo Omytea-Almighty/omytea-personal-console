@@ -1269,14 +1269,21 @@ def _render_astro(reading: LensReading,
             f'fill="{col}" fill-opacity="{alpha:.3f}" '
             f'stroke="{_HAIRLINE}" stroke-width="0.8"{glow}></path>'
         )
-        # zodiac glyph at sector midpoint
+        # zodiac glyph at sector midpoint.
+        # Font-family explicitly lists symbol-line-art fonts first
+        # (Apple Symbols on macOS, Segoe UI Symbol on Windows,
+        # Symbola on Linux); paired with VS-15 in the glyph itself,
+        # this forces monochrome text-style rendering — never the
+        # emoji-style fallback the founder rejected.
         mr = (r_out + r_in) / 2
         gx, gy = _polar(_CX, _CY, mr, i * 30.0)
         body.append(
-            f'<text x="{gx:.1f}" y="{gy+1:.1f}" font-family="{_SERIF}" '
+            f'<text x="{gx:.1f}" y="{gy+1:.1f}" '
+            f'font-family="\'Apple Symbols\',\'Segoe UI Symbol\','
+            f"'Symbola','Noto Sans Symbols 2',serif\" "
             f'font-size="{23 if is_sun else 18}" '
             f'fill="{_INK0 if is_big3 else _INK1}" '
-            f'font-weight="600" text-anchor="middle" '
+            f'font-weight="500" text-anchor="middle" '
             f'dominant-baseline="middle">{sign.glyph}</text>'
         )
 
@@ -1344,12 +1351,19 @@ def _render_astro(reading: LensReading,
         (f"{moon_sgn.element} · {moon_sgn.modality}",
          "MOON", (_VB - 40, _VB - 40)),
     )
+    # Symbol-line-art font for the corner cartouches too, so the
+    # leading ♈-♓ in "♈ Aries" renders monochrome alongside the
+    # name. Inline declaration mirrors the sector glyph rule above.
+    sym_font = (
+        "'Apple Symbols','Segoe UI Symbol','Symbola',"
+        "'Noto Sans Symbols 2',-apple-system,system-ui,sans-serif"
+    )
     for text, name, (px, py) in corners:
         body.append(
             f'<g transform="translate({px-44},{py-19})">'
             f'<rect x="0" y="0" width="88" height="38" rx="6" '
             f'fill="{_SURFACE2}" stroke="{_HAIRLINE}" stroke-width="1"></rect>'
-            f'<text x="44" y="17" font-family="{_SERIF}" font-size="13" '
+            f'<text x="44" y="17" font-family="{sym_font}" font-size="13" '
             f'fill="{_INK0}" font-weight="600" text-anchor="middle" '
             f'dominant-baseline="middle">{_esc(text,22)}</text>'
             f'<text x="44" y="30" font-family="{_MONO}" font-size="7" '

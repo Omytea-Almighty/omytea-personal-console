@@ -813,19 +813,27 @@ class ZodiacSign:
 
 
 # The 12 signs, in zodiac order starting at Aries.
+#
+# Each glyph is the astrological Unicode codepoint followed by U+FE0E
+# (Variation Selector-15, "text style"). Without VS-15, fonts default
+# to the emoji-style rendering of ♈–♓ — colourful, raster-ish, the
+# "emoji 表情的星座星盘" the founder called out as a sketch-looking
+# placeholder. VS-15 requests the monochrome text-style glyph from
+# whichever fallback font has it (Apple Symbols on macOS, Symbola /
+# system serif elsewhere) — restoring real line-art glyphs.
 ZODIAC: tuple[ZodiacSign, ...] = (
-    ZodiacSign("aries",       "Aries",       "♈", "fire",  "cardinal"),
-    ZodiacSign("taurus",      "Taurus",      "♉", "earth", "fixed"),
-    ZodiacSign("gemini",      "Gemini",      "♊", "air",   "mutable"),
-    ZodiacSign("cancer",      "Cancer",      "♋", "water", "cardinal"),
-    ZodiacSign("leo",         "Leo",         "♌", "fire",  "fixed"),
-    ZodiacSign("virgo",       "Virgo",       "♍", "earth", "mutable"),
-    ZodiacSign("libra",       "Libra",       "♎", "air",   "cardinal"),
-    ZodiacSign("scorpio",     "Scorpio",     "♏", "water", "fixed"),
-    ZodiacSign("sagittarius", "Sagittarius", "♐", "fire",  "mutable"),
-    ZodiacSign("capricorn",   "Capricorn",   "♑", "earth", "cardinal"),
-    ZodiacSign("aquarius",    "Aquarius",    "♒", "air",   "fixed"),
-    ZodiacSign("pisces",      "Pisces",      "♓", "water", "mutable"),
+    ZodiacSign("aries",       "Aries",       "♈︎", "fire",  "cardinal"),
+    ZodiacSign("taurus",      "Taurus",      "♉︎", "earth", "fixed"),
+    ZodiacSign("gemini",      "Gemini",      "♊︎", "air",   "mutable"),
+    ZodiacSign("cancer",      "Cancer",      "♋︎", "water", "cardinal"),
+    ZodiacSign("leo",         "Leo",         "♌︎", "fire",  "fixed"),
+    ZodiacSign("virgo",       "Virgo",       "♍︎", "earth", "mutable"),
+    ZodiacSign("libra",       "Libra",       "♎︎", "air",   "cardinal"),
+    ZodiacSign("scorpio",     "Scorpio",     "♏︎", "water", "fixed"),
+    ZodiacSign("sagittarius", "Sagittarius", "♐︎", "fire",  "mutable"),
+    ZodiacSign("capricorn",   "Capricorn",   "♑︎", "earth", "cardinal"),
+    ZodiacSign("aquarius",    "Aquarius",    "♒︎", "air",   "fixed"),
+    ZodiacSign("pisces",      "Pisces",      "♓︎", "water", "mutable"),
 )
 
 # (month) → (day the *second* sign of that month begins, first-sign index,

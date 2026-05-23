@@ -1783,6 +1783,18 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_ES: "Pasado · presente · futuro para esta decisión, determinista a partir del texto. (L8 reemplazará los visuales por cartas reales.)",
         LANG_FR: "Passé · présent · futur pour cette décision, déterministe à partir du texte. (L8 remplacera les visuels par de vraies cartes.)",
     },
+    "lens.module.astro.title": {
+        LANG_EN: "Natal wheel — sun · moon · 12 signs",
+        LANG_ZH: "本命星盘 —— 日 · 月 · 十二宫",
+        LANG_ES: "Carta natal — sol · luna · 12 signos",
+        LANG_FR: "Carte natale — soleil · lune · 12 signes",
+    },
+    "lens.module.astro.desc": {
+        LANG_EN: "A real natal wheel — sun sign + moon sign placed on the zodiac ring. Drawn with monochrome line-art glyphs; the ascendant (rising sign) requires birth city + lat/long, which the console does not collect.",
+        LANG_ZH: "真实的本命星盘——太阳与月亮分别落在十二宫之上。星座符号采用单色线条字形；上升星座需要出生城市的经纬度，本控制台暂不采集。",
+        LANG_ES: "Una carta natal real — signo solar y lunar sobre el círculo zodiacal. Glifos monocromos en línea; el ascendente requiere coordenadas que no recogemos.",
+        LANG_FR: "Une vraie carte natale — soleil et lune sur le cercle zodiacal. Glyphes en ligne monochrome ; l'ascendant requiert des coordonnées non collectées.",
+    },
     "lens.module.chips.title": {
         LANG_EN: "Per-tradition vote",
         LANG_ZH: "各体系投票",

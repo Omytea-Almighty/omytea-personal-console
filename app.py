@@ -2712,13 +2712,20 @@ def _render_traditional_lens(
         unsafe_allow_html=True,
     )
 
-    # ---- 易经 + 塔罗 — companion instruments, shown together (no
-    # selector, no click-through) directly below the astrolabe ----
+    # ---- 易经 + 塔罗 + 星盘 — companion instruments below the astrolabe ----
+    # L9: the 占星 reading was previously invisible (folded only into
+    # the joint auspice); now rendered as its own natal-wheel panel
+    # alongside I Ching and Tarot. Glyphs are forced text-style via
+    # the U+FE0E variation selector on each ZODIAC sign, so the
+    # founder's "emoji 表情的星座星盘" complaint is fixed at the
+    # glyph level too.
     _mod_meta = (
         (_mp.SYSTEM_ICHING, "易经 I CHING",
          "lens.module.iching.title", "lens.module.iching.desc"),
         (_mp.SYSTEM_TAROT, "塔罗 TAROT",
          "lens.module.tarot.title", "lens.module.tarot.desc"),
+        (_mp.SYSTEM_ASTRO, "本命星盘 NATAL",
+         "lens.module.astro.title", "lens.module.astro.desc"),
     )
     for sysk, label, title_key, desc_key in _mod_meta:
         _mod_header(title_key, desc_key)
