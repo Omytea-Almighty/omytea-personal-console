@@ -2456,6 +2456,30 @@ def _render_traditional_lens(
     import _metaphysics as _mp
     from _clock import render_celestial_svg, render_reading_svg
 
+    # ---- Lens explainer header (L3) ----
+    # Every module beneath the lens needs to read as "what this is + why
+    # it's here" at a glance. The header card answers that question for
+    # the whole lens; per-module headers (added below) answer it for
+    # each instrument.
+    st.markdown(
+        f"<div style='max-width:560px;margin:6px auto 14px;"
+        f"background:#0f1011;border:1px solid #23252a;border-radius:10px;"
+        f"padding:14px 16px 13px;'>"
+        f"<div style='color:#8a8f98;font-size:10px;font-weight:700;"
+        f"letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;'>"
+        f"{_html.escape(str(T('lens.header.eyebrow')))}"
+        f"</div>"
+        f"<div style='color:#f7f8f8;font-size:14px;font-weight:600;"
+        f"line-height:1.4;letter-spacing:-0.005em;margin-bottom:6px;'>"
+        f"{_html.escape(str(T('lens.header.title')))}"
+        f"</div>"
+        f"<div style='color:#c9cdd4;font-size:12px;line-height:1.55;'>"
+        f"{_html.escape(str(T('lens.header.desc')))}"
+        f"</div>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
     # ---- Birth data — read from Settings → Personalization (R4) ----
     # XUANXUE_REDESIGN.md L2: personal data is not per-prediction. The
     # composer no longer asks. When the user hasn't set birth data, the
@@ -2579,7 +2603,78 @@ def _render_traditional_lens(
     combined_value = f"{combined * 100:.1f}%"
     alpha_tag = f"α={alpha:.2f}" if mode != "off" else "model only"
 
+    # ---- The consensus arrow (L3) — proof the lens MODULATES the model ----
+    # The single header block that ties everything below back to the
+    # branches the heatmap shows. When the symbolic systems agree, name
+    # the favoured branch; when they disagree, say so. Then the live
+    # tri-metric (Model · Tradition · Combined) sits beneath, so the
+    # founder's "what does this DO to my prediction" question is
+    # answered before the user sees any individual instrument.
+    if display_branches:
+        _fav_label, _fav_prob, _fav_type = max(
+            display_branches, key=lambda x: x[1]
+        )
+        # Disagreement test: the joint auspice sits in a near-neutral
+        # band [0.46, 0.54] → no clear favourite. Otherwise we name
+        # the branch the lens lifted to the top of the distribution.
+        _contested = 0.46 <= joint_auspice <= 0.54
+    else:
+        _fav_label, _fav_prob, _contested = "", 0.0, True
+
+    if _contested or not _fav_label:
+        _consensus_html = _html.escape(str(T("lens.consensus.contests")))
+    else:
+        _consensus_html = (
+            str(T("lens.consensus.favours"))
+            .replace(
+                "{branch}",
+                f"<span style='color:#f7f8f8;'>"
+                f"{_html.escape(str(_fav_label))}</span>",
+            )
+            .replace("{pct}", f"{joint_prior * 100:.0f}%")
+        )
+
+    _consensus_line = (
+        str(T("lens.consensus.line"))
+        .replace("{model}", f"<b style='color:#f7f8f8;'>{model_value}</b>")
+        .replace(
+            "{tradition}",
+            f"<b style='color:#f7f8f8;'>{joint_prior * 100:.1f}%</b>",
+        )
+        .replace(
+            "{combined}",
+            f"<b style='color:#5e6ad2;'>{combined_value}</b>",
+        )
+        .replace("{tag}", _html.escape(alpha_tag))
+    )
+
+    st.markdown(
+        f"<div style='max-width:560px;margin:0 auto 16px;"
+        f"background:#0f1011;border:1px solid #34343a;border-radius:10px;"
+        f"padding:13px 16px;'>"
+        f"<div style='color:#c9cdd4;font-size:13px;line-height:1.5;'>"
+        f"{_consensus_html}</div>"
+        f"<div style='color:#8a8f98;font-size:11.5px;line-height:1.55;"
+        f"margin-top:6px;letter-spacing:0.01em;'>{_consensus_line}</div>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+    # ---- Module-card helper (L3) — one consistent title + explainer ----
+    def _mod_header(title_key: str, desc_key: str) -> None:
+        st.markdown(
+            f"<div style='max-width:560px;margin:18px auto 6px;'>"
+            f"<div style='color:#f7f8f8;font-size:13px;font-weight:600;"
+            f"letter-spacing:-0.005em;'>"
+            f"{_html.escape(str(T(title_key)))}</div>"
+            f"<div style='color:#8a8f98;font-size:11.5px;line-height:1.55;"
+            f"margin-top:3px;'>"
+            f"{_html.escape(str(T(desc_key)))}</div></div>",
+            unsafe_allow_html=True,
+        )
+
     # ---- The unified celestial astrolabe — 八字 ⊕ 占星 on one dial ----
+    _mod_header("lens.module.astrolabe.title", "lens.module.astrolabe.desc")
     astrolabe_svg = render_celestial_svg(
         readings[_mp.SYSTEM_BAZI], readings[_mp.SYSTEM_ASTRO],
         display_branches,
@@ -2599,8 +2694,14 @@ def _render_traditional_lens(
 
     # ---- 易经 + 塔罗 — companion instruments, shown together (no
     # selector, no click-through) directly below the astrolabe ----
-    for sysk, label in ((_mp.SYSTEM_ICHING, "易经 I CHING"),
-                        (_mp.SYSTEM_TAROT, "塔罗 TAROT")):
+    _mod_meta = (
+        (_mp.SYSTEM_ICHING, "易经 I CHING",
+         "lens.module.iching.title", "lens.module.iching.desc"),
+        (_mp.SYSTEM_TAROT, "塔罗 TAROT",
+         "lens.module.tarot.title", "lens.module.tarot.desc"),
+    )
+    for sysk, label, title_key, desc_key in _mod_meta:
+        _mod_header(title_key, desc_key)
         panel_svg = render_reading_svg(
             readings[sysk], display_branches,
             center_top_label=T("trad.metric.model_short"),
@@ -2611,7 +2712,7 @@ def _render_traditional_lens(
         )
         st.markdown(
             f"<div style='background:#0f1011;border:1px solid #23252a;"
-            f"border-radius:12px;padding:16px 14px;margin:10px auto;"
+            f"border-radius:12px;padding:16px 14px;margin:6px auto 10px;"
             f"max-width:560px;'>"
             f"{panel_svg}</div>",
             unsafe_allow_html=True,
@@ -2622,8 +2723,9 @@ def _render_traditional_lens(
 
     # ---- Per-system consensus chips — each tradition's favourability,
     # so the user sees for themselves whether the four agree ----
+    _mod_header("lens.module.chips.title", "lens.module.chips.desc")
     chips = ['<div style="display:flex;gap:8px;flex-wrap:wrap;'
-             'justify-content:center;margin:16px auto 2px;max-width:560px;">']
+             'justify-content:center;margin:6px auto 2px;max-width:560px;">']
     for sysk in _mp.SYSTEMS:
         ausp = readings[sysk].auspice
         # Favourability — a restrained semantic green / red, with a
@@ -2651,14 +2753,9 @@ def _render_traditional_lens(
         )
     chips.append('</div>')
     st.markdown("".join(chips), unsafe_allow_html=True)
-    st.markdown(
-        "<div style='color:#8a8f98;font-size:11px;text-align:center;"
-        "margin:0 auto 4px;max-width:560px;'>Each tradition's "
-        "favourability — the 玄学 consensus is their equal-weight mean.</div>",
-        unsafe_allow_html=True,
-    )
 
-    # ---- Joint tri-metric readout ----
+    # ---- Joint tri-metric readout (L3 — gets its own header now) ----
+    _mod_header("lens.module.readout.title", "lens.module.readout.desc")
     m1, m2, m3 = st.columns(3)
     with m1:
         st.metric(T("trad.metric.model"), f"{model_prob * 100:.1f}%")
@@ -2666,6 +2763,38 @@ def _render_traditional_lens(
         st.metric(T("trad.metric.tradition"), f"{joint_prior * 100:.1f}%")
     with m3:
         st.metric(T("trad.metric.combined"), f"{combined * 100:.1f}%")
+
+    # ---- The takeaway (L3) — "what this means for your decision" ----
+    # The lens has to answer the founder's question: with the lens on,
+    # what changed for THIS decision? Express it as a single sentence
+    # comparing the focal branch's model probability to its combined
+    # probability — the actual modulation the lens applied.
+    _delta = combined - model_prob
+    _delta_abs = abs(_delta)
+    if _delta_abs < 0.005:
+        _take_key = "lens.module.takeaway.flat"
+    elif _delta > 0:
+        _take_key = "lens.module.takeaway.lift"
+    else:
+        _take_key = "lens.module.takeaway.drop"
+    _take_sentence = (
+        str(T(_take_key))
+        .replace("{model}", f"{model_prob * 100:.1f}%")
+        .replace("{combined}", f"{combined * 100:.1f}%")
+        .replace("{delta}", f"{_delta_abs * 100:.1f} pp")
+    )
+    st.markdown(
+        f"<div style='max-width:560px;margin:14px auto 4px;"
+        f"background:#0f1011;border:1px solid #34343a;border-radius:10px;"
+        f"padding:13px 16px;'>"
+        f"<div style='color:#8a8f98;font-size:10px;font-weight:700;"
+        f"letter-spacing:0.12em;text-transform:uppercase;margin-bottom:5px;'>"
+        f"{_html.escape(str(T('lens.module.takeaway.title')))}"
+        f"</div>"
+        f"<div style='color:#c9cdd4;font-size:13px;line-height:1.5;'>"
+        f"{_html.escape(_take_sentence)}</div></div>",
+        unsafe_allow_html=True,
+    )
 
     # ---- Always-visible disclaimer (integrity gate per spec §7) ----
     st.markdown(

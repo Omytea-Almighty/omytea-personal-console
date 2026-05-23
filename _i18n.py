@@ -1686,6 +1686,145 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
             "Nye 玄学 avec le commutateur en haut de la sortie."
         ),
     },
+    "lens.header.eyebrow": {
+        LANG_EN: "Metaphysics lens",
+        LANG_ZH: "玄学透镜",
+        LANG_ES: "Lente metafísica",
+        LANG_FR: "Loupe métaphysique",
+    },
+    "lens.header.title": {
+        LANG_EN: "Five symbolic priors, overlaid on the model — never replacing it.",
+        LANG_ZH: "五种符号先验，叠加在世界模型之上 —— 而不是替代它。",
+        LANG_ES: "Cinco priores simbólicos, superpuestos al modelo — nunca lo reemplazan.",
+        LANG_FR: "Cinq priors symboliques, superposés au modèle — jamais en remplacement.",
+    },
+    "lens.header.desc": {
+        LANG_EN: (
+            "易经 cast · 八字 four pillars · 紫薇 12-palace · tarot draw · "
+            "natal sky — each casts a vote on this decision; their joint "
+            "auspice is mixed into the world-model probability you already "
+            "see. The number that matters is COMBINED."
+        ),
+        LANG_ZH: (
+            "易经卦象 · 八字四柱 · 紫薇十二宫 · 塔罗三牌 · 出生天象——"
+            "每一个体系对这次决定投一票，它们的合意被混入你已经看到的"
+            "世界模型概率中。最终看 COMBINED 这个数字。"
+        ),
+        LANG_ES: (
+            "Yi Jing · pilares BaZi · 12 palacios ZiWei · tirada de tarot · "
+            "cielo natal — cada uno emite un voto sobre esta decisión; su "
+            "auspicio conjunto se mezcla con la probabilidad del modelo. "
+            "El número que importa es COMBINED."
+        ),
+        LANG_FR: (
+            "Tirage du Yi Jing · piliers BaZi · 12 palais ZiWei · tirage "
+            "de tarot · ciel natal — chacun vote sur cette décision ; "
+            "leur auspice conjoint est mêlé à la probabilité du modèle. "
+            "Le nombre qui compte est COMBINED."
+        ),
+    },
+    "lens.consensus.favours": {
+        LANG_EN: "Across the symbolic systems, the lens favours **{branch}** — {pct} consensus.",
+        LANG_ZH: "在所有符号系统的合议中，本透镜更倾向 **{branch}** —— 合意 {pct}。",
+        LANG_ES: "En los sistemas simbólicos, la lente favorece **{branch}** — consenso {pct}.",
+        LANG_FR: "Parmi les systèmes symboliques, la loupe favorise **{branch}** — consensus {pct}.",
+    },
+    "lens.consensus.contests": {
+        LANG_EN: "The symbolic systems disagree — no branch is clearly favoured. Treat the lens as a tie-breaker only.",
+        LANG_ZH: "符号系统之间意见不一——没有哪个分支被明显偏向。把透镜当作平手时的一票即可。",
+        LANG_ES: "Los sistemas simbólicos no coinciden — ninguna rama tiene clara preferencia. Trata la lente como desempate.",
+        LANG_FR: "Les systèmes symboliques divergent — aucune branche n'est nettement favorite. Traitez la loupe comme un départage.",
+    },
+    "lens.consensus.line": {
+        LANG_EN: "Model alone {model} · Joint symbolic auspice {tradition} · COMBINED {combined} ({tag})",
+        LANG_ZH: "纯模型 {model} · 符号系统合意 {tradition} · 组合 COMBINED {combined}（{tag}）",
+        LANG_ES: "Sólo modelo {model} · Auspicio simbólico conjunto {tradition} · COMBINADO {combined} ({tag})",
+        LANG_FR: "Modèle seul {model} · Auspice symbolique conjoint {tradition} · COMBINÉ {combined} ({tag})",
+    },
+    "lens.module.astrolabe.title": {
+        LANG_EN: "Celestial dial — 八字 × 占星",
+        LANG_ZH: "天体盘 —— 八字 × 占星",
+        LANG_ES: "Dial celeste — BaZi × astrología",
+        LANG_FR: "Cadran céleste — BaZi × astrologie",
+    },
+    "lens.module.astrolabe.desc": {
+        LANG_EN: "Your four pillars and your natal sky on one dial — read together. Their joint auspice pulls the focal branch up or down.",
+        LANG_ZH: "你的四柱与本命天象，画在同一张盘上一起读。它们的合意把焦点分支的概率往上或往下拉。",
+        LANG_ES: "Tus cuatro pilares y tu cielo natal en un solo dial — leídos juntos. Su auspicio conjunto sube o baja la rama focal.",
+        LANG_FR: "Vos quatre piliers et votre ciel natal sur un seul cadran — lus ensemble. Leur auspice conjoint pousse la branche focale.",
+    },
+    "lens.module.iching.title": {
+        LANG_EN: "易经 — I Ching cast",
+        LANG_ZH: "易经卦象",
+        LANG_ES: "易经 — tirada del I Ching",
+        LANG_FR: "易经 — tirage du Yi Jing",
+    },
+    "lens.module.iching.desc": {
+        LANG_EN: "Cast deterministically from this prediction's text — the same prediction always gives the same hexagram. (L4 will draw both primary and derived hexagram.)",
+        LANG_ZH: "由这份预测文本确定性起卦——同一份预测每次都得到同一卦。（L4 起将同时展示本卦与变卦。）",
+        LANG_ES: "Trazado de forma determinista del texto de la predicción — la misma predicción siempre da el mismo hexagrama. (L4 mostrará el hexagrama primario y derivado.)",
+        LANG_FR: "Tiré de manière déterministe du texte — la même prédiction donne toujours le même hexagramme. (L4 montrera l'hexagramme primaire et dérivé.)",
+    },
+    "lens.module.tarot.title": {
+        LANG_EN: "Tarot — three-card draw",
+        LANG_ZH: "塔罗三牌阵",
+        LANG_ES: "Tarot — tirada de tres cartas",
+        LANG_FR: "Tarot — tirage à trois cartes",
+    },
+    "lens.module.tarot.desc": {
+        LANG_EN: "Past · present · future for this decision, deterministic from the prediction text. (L8 will replace the placeholder visuals with real card art.)",
+        LANG_ZH: "针对这份决定的 过去 · 现在 · 未来 三牌阵，结果由预测文本确定。（L8 起将用真正的牌面取代占位图。）",
+        LANG_ES: "Pasado · presente · futuro para esta decisión, determinista a partir del texto. (L8 reemplazará los visuales por cartas reales.)",
+        LANG_FR: "Passé · présent · futur pour cette décision, déterministe à partir du texte. (L8 remplacera les visuels par de vraies cartes.)",
+    },
+    "lens.module.chips.title": {
+        LANG_EN: "Per-tradition vote",
+        LANG_ZH: "各体系投票",
+        LANG_ES: "Voto por tradición",
+        LANG_FR: "Vote par tradition",
+    },
+    "lens.module.chips.desc": {
+        LANG_EN: "Each tradition's favourability, side by side. The joint auspice above is their equal-weight mean — agreement = stronger pull, disagreement = weaker pull.",
+        LANG_ZH: "并排展示每个体系的吉凶分。上方的合意是它们的等权平均——意见越一致，拉力越强；越分散，拉力越弱。",
+        LANG_ES: "La favorabilidad de cada tradición, lado a lado. El auspicio conjunto es su media simple — más acuerdo, más tirón.",
+        LANG_FR: "La favorabilité de chaque tradition, côte à côte. L'auspice conjoint est leur moyenne — plus d'accord, plus de tirage.",
+    },
+    "lens.module.readout.title": {
+        LANG_EN: "How the lens modulates the model",
+        LANG_ZH: "透镜如何调制模型",
+        LANG_ES: "Cómo modula la lente al modelo",
+        LANG_FR: "Comment la loupe module le modèle",
+    },
+    "lens.module.readout.desc": {
+        LANG_EN: "Model is the world-model alone. Tradition is the joint symbolic auspice. Combined is the α-weighted mix that's actually used.",
+        LANG_ZH: "Model 是纯世界模型；Tradition 是符号系统的合意；Combined 是实际使用的、按 α 权重融合后的结果。",
+        LANG_ES: "Model = sólo modelo. Tradition = auspicio conjunto. Combined = mezcla ponderada por α, la realmente usada.",
+        LANG_FR: "Model = modèle seul. Tradition = auspice conjoint. Combined = mélange pondéré par α, celui réellement utilisé.",
+    },
+    "lens.module.takeaway.title": {
+        LANG_EN: "What this means for your decision",
+        LANG_ZH: "这对你的决定意味着什么",
+        LANG_ES: "Qué significa esto para tu decisión",
+        LANG_FR: "Ce que cela signifie pour votre décision",
+    },
+    "lens.module.takeaway.lift": {
+        LANG_EN: "The lens lifts the focal branch from {model} to {combined} — a {delta} upward modulation.",
+        LANG_ZH: "透镜把焦点分支从 {model} 上调到 {combined}——一次 {delta} 的向上调制。",
+        LANG_ES: "La lente sube la rama focal de {model} a {combined} — modulación al alza de {delta}.",
+        LANG_FR: "La loupe relève la branche focale de {model} à {combined} — modulation à la hausse de {delta}.",
+    },
+    "lens.module.takeaway.drop": {
+        LANG_EN: "The lens lowers the focal branch from {model} to {combined} — a {delta} downward modulation.",
+        LANG_ZH: "透镜把焦点分支从 {model} 下调到 {combined}——一次 {delta} 的向下调制。",
+        LANG_ES: "La lente baja la rama focal de {model} a {combined} — modulación a la baja de {delta}.",
+        LANG_FR: "La loupe abaisse la branche focale de {model} à {combined} — modulation à la baisse de {delta}.",
+    },
+    "lens.module.takeaway.flat": {
+        LANG_EN: "The symbolic systems land near-neutral — the lens leaves the focal branch essentially unchanged ({model} → {combined}).",
+        LANG_ZH: "符号系统给出的合意接近中性——透镜基本上没有改变焦点分支（{model} → {combined}）。",
+        LANG_ES: "Los sistemas simbólicos son casi neutros — la lente apenas cambia la rama focal ({model} → {combined}).",
+        LANG_FR: "Les systèmes symboliques sont quasi neutres — la loupe laisse la branche focale presque inchangée ({model} → {combined}).",
+    },
     "trad.using_sample": {
         LANG_EN: (
             "Sample branches shown — generate a real prediction in the "
