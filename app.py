@@ -2712,6 +2712,74 @@ def _render_traditional_lens(
         unsafe_allow_html=True,
     )
 
+    # ---- BaZi Four Pillars text readout (L6) ----
+    # XUANXUE_REDESIGN.md L6. The dial shows the four pillars
+    # spatially but doesn't read them out. This compact 4-card row
+    # surfaces 年柱 · 月柱 · 日柱 · 时柱 as plain text: stem +
+    # branch + five-element tag for each. Element-tinted left
+    # accent shows the five-element distribution at a glance.
+    _bazi_reading = readings[_mp.SYSTEM_BAZI]
+    _bazi: _mp.BaZiPattern | None = _bazi_reading.bazi
+    if _bazi is not None:
+        _mod_header(
+            "lens.module.bazi_pillars.title",
+            "lens.module.bazi_pillars.desc",
+            max_w=760,
+        )
+        _pillars = (
+            (T("trad.birth.year"),  _bazi.year_pillar),
+            (T("trad.birth.month"), _bazi.month_pillar),
+            (T("trad.birth.day"),   _bazi.day_pillar),
+            (T("trad.birth.hour"),  _bazi.hour_pillar),
+        )
+        _pcards: list[str] = [
+            '<div style="display:grid;'
+            'grid-template-columns:repeat(4,1fr);gap:8px;'
+            'max-width:760px;margin:6px auto 10px;">'
+        ]
+        for _ptitle, (_st_idx, _br_idx) in _pillars:
+            _stem = _mp.HEAVENLY_STEMS[_st_idx]
+            _branch = _mp.EARTHLY_BRANCHES[_br_idx]
+            # The pillar's element is the stem's element by convention
+            # (the day-master derivation also uses the day stem). Tag
+            # both stem & branch elements separately below.
+            _stem_wuxing_idx = _mp.WUXING_OF_STEM[_st_idx]
+            _branch_wuxing_idx = _mp.WUXING_OF_BRANCH[_br_idx]
+            _stem_el_key = _mp.WUXING_KEYS[_stem_wuxing_idx]
+            _branch_el_key = _mp.WUXING_KEYS[_branch_wuxing_idx]
+            _stem_color = _mp.WUXING_COLOR[_stem_el_key]
+            _stem_hanzi = _mp.WUXING_HANZI[_stem_wuxing_idx]
+            _branch_hanzi = _mp.WUXING_HANZI[_branch_wuxing_idx]
+            _pcards.append(
+                f'<div style="background:#0f1011;'
+                f'border:1px solid #23252a;border-left:2px solid '
+                f'{_stem_color};border-radius:8px;padding:10px 12px;">'
+                f'<div style="color:#8a8f98;font-size:9.5px;'
+                f'font-weight:700;letter-spacing:0.11em;'
+                f'text-transform:uppercase;margin-bottom:6px;">'
+                f'{_html.escape(str(_ptitle))}</div>'
+                f'<div style="display:flex;align-items:baseline;'
+                f'gap:4px;font-family:-apple-system,system-ui,sans-serif;">'
+                f'<span style="color:#f7f8f8;font-size:22px;'
+                f'font-weight:600;letter-spacing:-0.01em;">'
+                f'{_html.escape(_stem)}</span>'
+                f'<span style="color:#c9cdd4;font-size:20px;'
+                f'font-weight:500;">'
+                f'{_html.escape(_branch)}</span></div>'
+                f'<div style="color:#8a8f98;font-size:10px;'
+                f'letter-spacing:0.04em;margin-top:5px;'
+                f'display:flex;gap:4px;align-items:center;">'
+                f'<span style="color:{_stem_color};">'
+                f'{_html.escape(_stem_hanzi)}</span>'
+                f'<span style="opacity:0.5;">·</span>'
+                f'<span style="color:{_mp.WUXING_COLOR[_branch_el_key]};">'
+                f'{_html.escape(_branch_hanzi)}</span>'
+                f'</div>'
+                f'</div>'
+            )
+        _pcards.append('</div>')
+        st.markdown("".join(_pcards), unsafe_allow_html=True)
+
     # ---- 易经 + 塔罗 + 星盘 — companion instruments below the astrolabe ----
     # L9: the 占星 reading was previously invisible (folded only into
     # the joint auspice); now rendered as its own natal-wheel panel

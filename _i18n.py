@@ -1766,10 +1766,10 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_FR: "易经 — tirage du Yi Jing",
     },
     "lens.module.iching.desc": {
-        LANG_EN: "Cast deterministically from this prediction's text — the same prediction always gives the same hexagram. (L4 will draw both primary and derived hexagram.)",
-        LANG_ZH: "由这份预测文本确定性起卦——同一份预测每次都得到同一卦。（L4 起将同时展示本卦与变卦。）",
-        LANG_ES: "Trazado de forma determinista del texto de la predicción — la misma predicción siempre da el mismo hexagrama. (L4 mostrará el hexagrama primario y derivado.)",
-        LANG_FR: "Tiré de manière déterministe du texte — la même prédiction donne toujours le même hexagramme. (L4 montrera l'hexagramme primaire et dérivé.)",
+        LANG_EN: "Cast deterministically from this prediction's text — same prediction → same hexagram. When the cast has moving lines (变爻), the derived hexagram (变卦) appears alongside the primary, showing how the situation transforms.",
+        LANG_ZH: "由这份预测文本确定性起卦——同一份预测每次都得到同一卦。出现变爻时，变卦会与本卦并列展示，呈现局势的转化。",
+        LANG_ES: "Trazado de forma determinista del texto — la misma predicción da el mismo hexagrama. Cuando hay líneas móviles (变爻), el hexagrama derivado (变卦) aparece junto al primario, mostrando la transformación de la situación.",
+        LANG_FR: "Tiré de manière déterministe du texte — la même prédiction donne le même hexagramme. Lorsque le tirage a des lignes mobiles (变爻), l'hexagramme dérivé (变卦) apparaît à côté du primaire, montrant la transformation.",
     },
     "lens.module.tarot.title": {
         LANG_EN: "Tarot — three-card draw",
@@ -1782,6 +1782,18 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_ZH: "针对这份决定的 过去 · 现在 · 未来 三牌阵，结果由预测文本确定。（L8 起将用真正的牌面取代占位图。）",
         LANG_ES: "Pasado · presente · futuro para esta decisión, determinista a partir del texto. (L8 reemplazará los visuales por cartas reales.)",
         LANG_FR: "Passé · présent · futur pour cette décision, déterministe à partir du texte. (L8 remplacera les visuels par de vraies cartes.)",
+    },
+    "lens.module.bazi_pillars.title": {
+        LANG_EN: "Four Pillars · 八字",
+        LANG_ZH: "四柱八字",
+        LANG_ES: "Cuatro Pilares · 八字",
+        LANG_FR: "Quatre Piliers · 八字",
+    },
+    "lens.module.bazi_pillars.desc": {
+        LANG_EN: "Year / month / day / hour pillars derived from your birth — heavenly stem, earthly branch, and five-element tag for each.",
+        LANG_ZH: "由你的出生信息推出的年/月/日/时四柱——每一柱包含天干、地支与对应的五行。",
+        LANG_ES: "Pilares año / mes / día / hora derivados de tu nacimiento — tallo celestial, rama terrestre y elemento de cada uno.",
+        LANG_FR: "Piliers année / mois / jour / heure dérivés de votre naissance — tige céleste, branche terrestre et élément pour chacun.",
     },
     "lens.module.astro.title": {
         LANG_EN: "Natal wheel — sun · moon · 12 signs",
