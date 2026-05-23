@@ -589,6 +589,37 @@ def cast_hexagram(seed: str) -> Hexagram:
     )
 
 
+def derive_hexagram(primary: Hexagram) -> Hexagram | None:
+    """Compute the derived (变卦) hexagram from a primary cast.
+
+    Real 六爻 always works as a pair: the primary cast names the
+    *current* situation, and (when moving lines are present) the
+    derived hexagram names what the situation *transforms into*. The
+    derived is built by flipping every line marked as changing in the
+    primary — yang→yin and yin→yang at exactly those positions — and
+    has no moving lines of its own.
+
+    Returns ``None`` when the primary has no moving lines (a settled
+    reading: nothing transforms, only the primary stands).
+
+    XUANXUE_REDESIGN.md §5.3 / loop slice L4.
+    """
+    if not primary.changing:
+        return None
+    new_lines = list(primary.lines)
+    for i in primary.changing:
+        new_lines[i] = not new_lines[i]
+    lt = (new_lines[0] << 0) | (new_lines[1] << 1) | (new_lines[2] << 2)
+    ut = (new_lines[3] << 0) | (new_lines[4] << 1) | (new_lines[5] << 2)
+    number = _KING_WEN_GRID[_KW_ORDER.index(ut)][_KW_ORDER.index(lt)]
+    return Hexagram(
+        number=number,
+        name=HEXAGRAM_NAMES[number],
+        lines=tuple(new_lines),  # type: ignore[arg-type]
+        changing=(),
+    )
+
+
 def hexagram_outcome_prior(hx: Hexagram, outcome: str) -> float:
     """易经 prior P(outcome | hexagram) — a SIMPLIFIED structural model.
 
@@ -953,6 +984,10 @@ class LensReading:
     balance: dict[str, float] | None = None
     ziwei: ZiWeiChart | None = None
     hexagram: Hexagram | None = None
+    # When 易经 casts moving lines, the derived (变卦) hexagram — what
+    # the situation transforms INTO. None when the primary cast is
+    # settled (no moving lines). XUANXUE_REDESIGN.md L4.
+    hexagram_derived: Hexagram | None = None
     tarot: TarotDraw | None = None
     natal: NatalChart | None = None
 
@@ -979,11 +1014,13 @@ def compute_reading(
         )
     if system == SYSTEM_ICHING:
         hx = cast_hexagram(seed)
+        hx_derived = derive_hexagram(hx)
         return LensReading(
             system=system,
             prior=hexagram_outcome_prior(hx, outcome),
             auspice=hexagram_auspice(hx),
             hexagram=hx,
+            hexagram_derived=hx_derived,
         )
     if system == SYSTEM_TAROT:
         draw = draw_tarot(seed)

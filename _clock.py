@@ -654,10 +654,77 @@ def _render_bazi(reading: LensReading,
 # Instrument 2 — 易经 hexagram
 # ======================================================================
 
+def _iching_draw_lines(
+    hx: Hexagram,
+    *,
+    cx: float,
+    line_w: float,
+    line_h: float,
+    gap_y: float,
+    base_y: float,
+    yin_gap: float,
+    show_changing: bool,
+) -> str:
+    """Draw the six lines of a hexagram, bottom-to-top, around ``cx``.
+
+    Yang line → one solid bronze bar; yin line → two bronze bars with a
+    central gap. ``show_changing`` adds a teal annulus marker beside any
+    line whose index is in ``hx.changing`` — used only on the primary
+    cast (the derived hexagram, by definition, has no moving lines of
+    its own).
+    """
+    out: list[str] = []
+    x_left = cx - line_w / 2
+    for i in range(6):
+        yang = hx.lines[i]
+        y = base_y - i * (line_h + gap_y)
+        if yang:
+            out.append(
+                f'<rect x="{x_left:.1f}" y="{y:.1f}" '
+                f'width="{line_w:.1f}" height="{line_h:.1f}" rx="3.5" '
+                f'fill="url(#bronze)" stroke="#7a5a28" stroke-width="0.8" '
+                f'filter="url(#drop)"></rect>'
+            )
+        else:
+            seg = (line_w - yin_gap) / 2
+            out.append(
+                f'<rect x="{x_left:.1f}" y="{y:.1f}" width="{seg:.1f}" '
+                f'height="{line_h:.1f}" rx="3.5" fill="url(#bronze)" '
+                f'stroke="#7a5a28" stroke-width="0.8" '
+                f'filter="url(#drop)"></rect>'
+                f'<rect x="{x_left+seg+yin_gap:.1f}" y="{y:.1f}" '
+                f'width="{seg:.1f}" height="{line_h:.1f}" rx="3.5" '
+                f'fill="url(#bronze)" stroke="#7a5a28" stroke-width="0.8" '
+                f'filter="url(#drop)"></rect>'
+            )
+        if show_changing and i in hx.changing:
+            ccx = x_left + line_w + 14
+            ccy = y + line_h / 2
+            out.append(
+                f'<circle cx="{ccx:.1f}" cy="{ccy:.1f}" r="4.5" '
+                f'fill="none" stroke="{_TEAL}" stroke-width="1.4"></circle>'
+                f'<circle cx="{ccx:.1f}" cy="{ccy:.1f}" r="1.4" '
+                f'fill="{_TEAL}"></circle>'
+            )
+    return "".join(out)
+
+
 def _render_iching(reading: LensReading,
                     model_value: str, combined_value: str,
                     meta: str) -> str:
+    """Draw the I Ching reading — primary cast and (when moving lines
+    are present) derived hexagram side by side. XUANXUE_REDESIGN.md L4.
+
+    Real 六爻 is a pair: the primary names the *current* situation, the
+    derived names what it *transforms into*. The previous renderer drew
+    only the primary; the founder's critique: "六爻只有一卦，正常的
+    六爻能只有一卦吗". When ``reading.hexagram_derived`` is set, this
+    function lays out the two hexagrams left + right with a transform
+    arrow between them; when None (no moving lines, a settled reading),
+    it falls back to the original single-centered layout.
+    """
     hx: Hexagram = reading.hexagram  # type: ignore[assignment]
+    hx_d: Hexagram | None = reading.hexagram_derived
     body: list[str] = [_svg_open()]
 
     # framed plate
@@ -669,79 +736,150 @@ def _render_iching(reading: LensReading,
         f'fill="none" stroke="rgba(216,166,87,0.18)" stroke-width="0.8"></rect>'
     )
 
-    # heading: 卦名 + number
-    body.append(
-        f'<text x="{_CX}" y="86" font-family="{_MONO}" font-size="9.5" '
-        f'fill="{_INK2}" letter-spacing="0.28em" text-anchor="middle">'
-        f'I CHING · HEXAGRAM {hx.number:02d}</text>'
-        f'<text x="{_CX}" y="128" font-family="{_SERIF}" font-size="46" '
-        f'fill="{_AMBER}" font-weight="600" text-anchor="middle" '
-        f'filter="url(#num-glow)">{_esc(hx.name,4)}</text>'
-    )
+    if hx_d is None:
+        # ----- Single-hexagram layout (no moving lines) -----
+        body.append(
+            f'<text x="{_CX}" y="86" font-family="{_MONO}" font-size="9.5" '
+            f'fill="{_INK2}" letter-spacing="0.28em" text-anchor="middle">'
+            f'I CHING · HEXAGRAM {hx.number:02d}</text>'
+            f'<text x="{_CX}" y="128" font-family="{_SERIF}" font-size="46" '
+            f'fill="{_AMBER}" font-weight="600" text-anchor="middle" '
+            f'filter="url(#num-glow)">{_esc(hx.name,4)}</text>'
+        )
 
-    # the 6 lines — bottom (index 0) at the bottom
-    line_w = 168.0
-    line_h = 17.0
-    gap_y = 12.0
-    x_left = _CX - line_w / 2
-    base_y = 322.0
-    for i in range(6):
-        yang = hx.lines[i]
-        y = base_y - i * (line_h + gap_y)
-        is_changing = i in hx.changing
-        if yang:
-            body.append(
-                f'<rect x="{x_left:.1f}" y="{y:.1f}" width="{line_w:.1f}" '
-                f'height="{line_h:.1f}" rx="3.5" fill="url(#bronze)" '
-                f'stroke="#7a5a28" stroke-width="0.8" filter="url(#drop)"></rect>'
+        body.append(
+            _iching_draw_lines(
+                hx, cx=_CX, line_w=168.0, line_h=17.0, gap_y=12.0,
+                base_y=322.0, yin_gap=26.0, show_changing=True,
             )
-        else:
-            seg = (line_w - 26.0) / 2
-            body.append(
-                f'<rect x="{x_left:.1f}" y="{y:.1f}" width="{seg:.1f}" '
-                f'height="{line_h:.1f}" rx="3.5" fill="url(#bronze)" '
-                f'stroke="#7a5a28" stroke-width="0.8" filter="url(#drop)"></rect>'
-                f'<rect x="{x_left+seg+26:.1f}" y="{y:.1f}" width="{seg:.1f}" '
-                f'height="{line_h:.1f}" rx="3.5" fill="url(#bronze)" '
-                f'stroke="#7a5a28" stroke-width="0.8" filter="url(#drop)"></rect>'
-            )
-        if is_changing:
-            cx = x_left + line_w + 18
-            cy = y + line_h / 2
-            body.append(
-                f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="5" fill="none" '
-                f'stroke="{_TEAL}" stroke-width="1.4"></circle>'
-                f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="1.6" '
-                f'fill="{_TEAL}"></circle>'
-            )
+        )
 
-    # trigram labels (upper / lower)
-    ut, lt = hx.upper_trigram, hx.lower_trigram
-    body.append(
-        f'<text x="{x_left-30:.1f}" y="{base_y - 3.5*(line_h+gap_y)+8:.1f}" '
-        f'font-family="{_SERIF}" font-size="26" fill="{_INK1}" '
-        f'text-anchor="middle">{TRIGRAM_SYMBOL[ut]}</text>'
-        f'<text x="{x_left-30:.1f}" y="{base_y - 3.5*(line_h+gap_y)+30:.1f}" '
-        f'font-family="{_MONO}" font-size="8" fill="{_INK3}" '
-        f'letter-spacing="0.1em" text-anchor="middle">UPPER {TRIGRAM_HANZI[ut]}</text>'
-        f'<text x="{x_left-30:.1f}" y="{base_y - 1.0*(line_h+gap_y)+4:.1f}" '
-        f'font-family="{_SERIF}" font-size="26" fill="{_INK1}" '
-        f'text-anchor="middle">{TRIGRAM_SYMBOL[lt]}</text>'
-        f'<text x="{x_left-30:.1f}" y="{base_y - 1.0*(line_h+gap_y)+26:.1f}" '
-        f'font-family="{_MONO}" font-size="8" fill="{_INK3}" '
-        f'letter-spacing="0.1em" text-anchor="middle">LOWER {TRIGRAM_HANZI[lt]}</text>'
-    )
+        # trigram labels (upper / lower)
+        ut, lt = hx.upper_trigram, hx.lower_trigram
+        x_left = _CX - 84.0
+        line_h = 17.0
+        gap_y = 12.0
+        base_y = 322.0
+        body.append(
+            f'<text x="{x_left-30:.1f}" '
+            f'y="{base_y - 3.5*(line_h+gap_y)+8:.1f}" '
+            f'font-family="{_SERIF}" font-size="26" fill="{_INK1}" '
+            f'text-anchor="middle">{TRIGRAM_SYMBOL[ut]}</text>'
+            f'<text x="{x_left-30:.1f}" '
+            f'y="{base_y - 3.5*(line_h+gap_y)+30:.1f}" '
+            f'font-family="{_MONO}" font-size="8" fill="{_INK3}" '
+            f'letter-spacing="0.1em" text-anchor="middle">'
+            f'UPPER {TRIGRAM_HANZI[ut]}</text>'
+            f'<text x="{x_left-30:.1f}" '
+            f'y="{base_y - 1.0*(line_h+gap_y)+4:.1f}" '
+            f'font-family="{_SERIF}" font-size="26" fill="{_INK1}" '
+            f'text-anchor="middle">{TRIGRAM_SYMBOL[lt]}</text>'
+            f'<text x="{x_left-30:.1f}" '
+            f'y="{base_y - 1.0*(line_h+gap_y)+26:.1f}" '
+            f'font-family="{_MONO}" font-size="8" fill="{_INK3}" '
+            f'letter-spacing="0.1em" text-anchor="middle">'
+            f'LOWER {TRIGRAM_HANZI[lt]}</text>'
+        )
 
-    # changing-lines note
-    if hx.changing:
-        note = "moving lines: " + ", ".join(str(c + 1) for c in hx.changing)
-    else:
         note = "no moving lines — a settled reading"
-    body.append(
-        f'<text x="{_CX}" y="368" font-family="{_MONO}" font-size="8.5" '
-        f'fill="{_TEAL if hx.changing else _INK3}" letter-spacing="0.08em" '
-        f'text-anchor="middle">{_esc(note,48)}</text>'
-    )
+        body.append(
+            f'<text x="{_CX}" y="368" font-family="{_MONO}" font-size="8.5" '
+            f'fill="{_INK3}" letter-spacing="0.08em" '
+            f'text-anchor="middle">{_esc(note,48)}</text>'
+        )
+
+    else:
+        # ----- Dual-hexagram layout (primary → derived) -----
+        # Two compact hexagrams side by side with a transform arrow
+        # between them. The primary keeps its teal moving-line marks;
+        # the derived (by definition) has none.
+        cx_L = 145.0
+        cx_R = 335.0
+        cy_arrow = 232.0
+
+        # eyebrow
+        body.append(
+            f'<text x="{_CX}" y="80" font-family="{_MONO}" font-size="9.5" '
+            f'fill="{_INK2}" letter-spacing="0.28em" text-anchor="middle">'
+            f'I CHING · HEXAGRAM {hx.number:02d} → {hx_d.number:02d}</text>'
+        )
+
+        # 卦名 row — primary, ⟶, derived
+        body.append(
+            f'<text x="{cx_L:.1f}" y="120" font-family="{_SERIF}" '
+            f'font-size="34" fill="{_AMBER}" font-weight="600" '
+            f'text-anchor="middle" filter="url(#num-glow)">'
+            f'{_esc(hx.name,4)}</text>'
+            f'<text x="{cx_R:.1f}" y="120" font-family="{_SERIF}" '
+            f'font-size="34" fill="{_AMBER}" font-weight="600" '
+            f'text-anchor="middle" filter="url(#num-glow)">'
+            f'{_esc(hx_d.name,4)}</text>'
+            f'<text x="{_CX}" y="118" font-family="{_SERIF}" '
+            f'font-size="28" fill="{_INK2}" text-anchor="middle" '
+            f'opacity="0.85">→</text>'
+        )
+
+        # number tags BELOW each 卦名 in monospace
+        body.append(
+            f'<text x="{cx_L:.1f}" y="140" font-family="{_MONO}" '
+            f'font-size="8.5" fill="{_INK3}" letter-spacing="0.16em" '
+            f'text-anchor="middle">HEX {hx.number:02d}</text>'
+            f'<text x="{cx_R:.1f}" y="140" font-family="{_MONO}" '
+            f'font-size="8.5" fill="{_INK3}" letter-spacing="0.16em" '
+            f'text-anchor="middle">HEX {hx_d.number:02d}</text>'
+        )
+
+        # the two hexagrams' six lines
+        line_w = 100.0
+        line_h = 13.0
+        gap_y = 9.5
+        base_y = 318.0
+        yin_gap = 16.0
+        body.append(
+            _iching_draw_lines(
+                hx, cx=cx_L, line_w=line_w, line_h=line_h, gap_y=gap_y,
+                base_y=base_y, yin_gap=yin_gap, show_changing=True,
+            )
+        )
+        body.append(
+            _iching_draw_lines(
+                hx_d, cx=cx_R, line_w=line_w, line_h=line_h, gap_y=gap_y,
+                base_y=base_y, yin_gap=yin_gap, show_changing=False,
+            )
+        )
+
+        # central transform arrow between the two hexagram blocks
+        body.append(
+            f'<line x1="{cx_L+line_w/2+18:.1f}" y1="{cy_arrow:.1f}" '
+            f'x2="{cx_R-line_w/2-18:.1f}" y2="{cy_arrow:.1f}" '
+            f'stroke="{_TEAL}" stroke-width="1.4" opacity="0.7"></line>'
+            f'<polygon points="{cx_R-line_w/2-18:.1f},{cy_arrow:.1f} '
+            f'{cx_R-line_w/2-24:.1f},{cy_arrow-4:.1f} '
+            f'{cx_R-line_w/2-24:.1f},{cy_arrow+4:.1f}" '
+            f'fill="{_TEAL}" opacity="0.85"></polygon>'
+        )
+
+        # labels under each block
+        body.append(
+            f'<text x="{cx_L:.1f}" y="345" font-family="{_MONO}" '
+            f'font-size="9" fill="{_INK1}" letter-spacing="0.14em" '
+            f'text-anchor="middle">本卦 · PRIMARY</text>'
+            f'<text x="{cx_R:.1f}" y="345" font-family="{_MONO}" '
+            f'font-size="9" fill="{_INK1}" letter-spacing="0.14em" '
+            f'text-anchor="middle">变卦 · DERIVED</text>'
+        )
+
+        # changing-lines note
+        note = (
+            "moving lines: "
+            + ", ".join(str(c + 1) for c in hx.changing)
+            + " — the situation transforms"
+        )
+        body.append(
+            f'<text x="{_CX}" y="370" font-family="{_MONO}" '
+            f'font-size="8.5" fill="{_TEAL}" letter-spacing="0.08em" '
+            f'text-anchor="middle">{_esc(note,56)}</text>'
+        )
 
     body.append(_footer_band(model_value, combined_value, meta))
     body.append('</svg>')
