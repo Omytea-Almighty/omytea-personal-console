@@ -895,10 +895,75 @@ def _tarot_glyph(name: str, cx: float, cy: float, col: str) -> str:
 
     Drawn inside a medallion by the caller; stroke kept fine (1.7px)
     so the emblem reads as an engraved inlay, not a sketch.
+
+    L8 (XUANXUE_REDESIGN.md): every Major Arcana card now gets its
+    OWN distinct line-art glyph. The previous implementation grouped
+    6+3+3+2 cards under shared emblems (wand / chariot/throne /
+    lion/chains/scythe / chalice/venus/wreath), so 14 cards drew as
+    one of 4 emblems — the founder's "看起来并不专业的塔罗牌"
+    complaint. Now 22 cards, 22 emblems.
     """
     s = f'stroke="{col}" stroke-width="1.7" fill="none" ' \
         'stroke-linecap="round" stroke-linejoin="round"'
     sf = f'fill="{col}" stroke="none"'
+
+    # ----- I — The Magician: wand + infinity (∞) above -----
+    if name == "wand":
+        return (
+            f'<line x1="{cx}" y1="{cy+20}" x2="{cx}" y2="{cy-6}" {s}></line>'
+            f'<path d="M {cx-12} {cy-14} C {cx-12} {cy-22}, {cx-4} {cy-22}, '
+            f'{cx} {cy-14} C {cx+4} {cy-6}, {cx+12} {cy-6}, {cx+12} {cy-14} '
+            f'C {cx+12} {cy-22}, {cx+4} {cy-22}, {cx} {cy-14} '
+            f'C {cx-4} {cy-6}, {cx-12} {cy-6}, {cx-12} {cy-14} Z" {s}></path>'
+        )
+    # ----- 0 — The Fool: walker silhouette + tiny bundle on a staff -----
+    if name == "spark":
+        return (
+            f'<circle cx="{cx-2}" cy="{cy-15}" r="5" {s}></circle>'
+            f'<path d="M {cx-2} {cy-10} L {cx-2} {cy+8} L {cx-9} {cy+18} '
+            f'M {cx-2} {cy+8} L {cx+5} {cy+18} '
+            f'M {cx-2} {cy-6} L {cx+10} {cy-16} L {cx+14} {cy-12} '
+            f'L {cx+14} {cy-6} L {cx+10} {cy-6} Z" {s}></path>'
+        )
+    # ----- XX — Judgement: angel's trumpet -----
+    if name == "trumpet":
+        return (
+            f'<path d="M {cx-18} {cy+4} L {cx+10} {cy-10} L {cx+18} {cy-10} '
+            f'L {cx+18} {cy+10} L {cx+10} {cy+10} L {cx-18} {cy-4} Z" {s}></path>'
+            f'<line x1="{cx-18}" y1="{cy-4}" x2="{cx-18}" y2="{cy+4}" {s}></line>'
+        )
+    # ----- IX — The Hermit: hanging lantern -----
+    if name == "lantern":
+        return (
+            f'<line x1="{cx}" y1="{cy-20}" x2="{cx}" y2="{cy-12}" {s}></line>'
+            f'<path d="M {cx-3} {cy-12} L {cx+3} {cy-12} L {cx+5} {cy-9} '
+            f'L {cx-5} {cy-9} Z" {s}></path>'
+            f'<rect x="{cx-10}" y="{cy-9}" width="20" height="22" rx="2" {s}></rect>'
+            f'<line x1="{cx-7}" y1="{cy-3}" x2="{cx+7}" y2="{cy-3}" {s}></line>'
+            f'<line x1="{cx-7}" y1="{cy+5}" x2="{cx+7}" y2="{cy+5}" {s}></line>'
+            f'<circle cx="{cx}" cy="{cy+1}" r="1.6" {sf}></circle>'
+        )
+    # ----- V — The Hierophant: two crossed keys -----
+    if name == "keys":
+        return (
+            f'<circle cx="{cx-7}" cy="{cy-12}" r="6" {s}></circle>'
+            f'<line x1="{cx-3}" y1="{cy-8}" x2="{cx+13}" y2="{cy+18}" {s}></line>'
+            f'<line x1="{cx+5}" y1="{cy+6}" x2="{cx+13}" y2="{cy+2}" {s}></line>'
+            f'<line x1="{cx+9}" y1="{cy+13}" x2="{cx+17}" y2="{cy+9}" {s}></line>'
+            f'<circle cx="{cx+7}" cy="{cy-12}" r="6" {s}></circle>'
+            f'<line x1="{cx+3}" y1="{cy-8}" x2="{cx-13}" y2="{cy+18}" {s}></line>'
+            f'<line x1="{cx-5}" y1="{cy+6}" x2="{cx-13}" y2="{cy+2}" {s}></line>'
+            f'<line x1="{cx-9}" y1="{cy+13}" x2="{cx-17}" y2="{cy+9}" {s}></line>'
+        )
+    # ----- XII — The Hanged Man: an upside-down T-cross with a pendant -----
+    if name == "pendulum":
+        return (
+            f'<line x1="{cx-14}" y1="{cy-16}" x2="{cx+14}" y2="{cy-16}" {s}></line>'
+            f'<line x1="{cx}" y1="{cy-16}" x2="{cx}" y2="{cy+4}" {s}></line>'
+            f'<circle cx="{cx}" cy="{cy+12}" r="8" {s}></circle>'
+            f'<line x1="{cx-3}" y1="{cy+9}" x2="{cx+3}" y2="{cy+15}" {s}></line>'
+            f'<line x1="{cx+3}" y1="{cy+9}" x2="{cx-3}" y2="{cy+15}" {s}></line>'
+        )
     if name == "star":
         pts = []
         for k in range(16):
@@ -939,23 +1004,100 @@ def _tarot_glyph(name: str, cx: float, cy: float, col: str) -> str:
             for k in range(8))
         return (f'<circle cx="{cx}" cy="{cy}" r="20" {s}></circle>'
                 f'<circle cx="{cx}" cy="{cy}" r="5" {s}></circle>{spokes}')
-    if name in ("wand", "spark", "trumpet", "lantern", "keys", "pendulum"):
-        return (f'<line x1="{cx}" y1="{cy+20}" x2="{cx}" y2="{cy-16}" {s}></line>'
-                f'<circle cx="{cx}" cy="{cy-18}" r="6" {sf} opacity="0.92"></circle>'
-                f'<line x1="{cx-9}" y1="{cy-9}" x2="{cx+9}" y2="{cy-9}" {s}></line>')
-    if name in ("chariot", "throne"):
-        return (f'<rect x="{cx-16}" y="{cy-14}" width="32" height="20" rx="3" {s}></rect>'
-                f'<circle cx="{cx-10}" cy="{cy+13}" r="7" {s}></circle>'
-                f'<circle cx="{cx+10}" cy="{cy+13}" r="7" {s}></circle>')
-    if name in ("lion", "chains", "scythe"):
-        return (f'<circle cx="{cx}" cy="{cy-3}" r="15" {s}></circle>'
-                f'<path d="M {cx-7} {cy+12} Q {cx} {cy+22} {cx+7} {cy+12}" {s}></path>'
-                f'<circle cx="{cx-6}" cy="{cy-5}" r="2.2" {sf}></circle>'
-                f'<circle cx="{cx+6}" cy="{cy-5}" r="2.2" {sf}></circle>')
-    if name in ("chalice", "venus", "wreath"):
-        return (f'<path d="M {cx-15} {cy-14} Q {cx} {cy+14} {cx+15} {cy-14} Z" {s}></path>'
-                f'<line x1="{cx}" y1="{cy+2}" x2="{cx}" y2="{cy+18}" {s}></line>'
-                f'<line x1="{cx-11}" y1="{cy+18}" x2="{cx+11}" y2="{cy+18}" {s}></line>')
+    # ----- IV — The Emperor: throne with crown peaks -----
+    if name == "throne":
+        return (
+            f'<path d="M {cx-12} {cy-22} L {cx-10} {cy-12} L {cx-6} {cy-20} '
+            f'L {cx-2} {cy-12} L {cx+2} {cy-20} L {cx+6} {cy-12} '
+            f'L {cx+10} {cy-22} L {cx+12} {cy-12}" {s}></path>'
+            f'<rect x="{cx-14}" y="{cy-10}" width="28" height="14" rx="2" {s}></rect>'
+            f'<rect x="{cx-14}" y="{cy+4}" width="28" height="6" rx="1" {s}></rect>'
+            f'<line x1="{cx-12}" y1="{cy+10}" x2="{cx-12}" y2="{cy+20}" {s}></line>'
+            f'<line x1="{cx+12}" y1="{cy+10}" x2="{cx+12}" y2="{cy+20}" {s}></line>'
+        )
+    # ----- VII — The Chariot: cart with two large wheels -----
+    if name == "chariot":
+        return (
+            f'<rect x="{cx-14}" y="{cy-12}" width="28" height="14" rx="3" {s}></rect>'
+            f'<line x1="{cx-10}" y1="{cy-12}" x2="{cx-10}" y2="{cy+2}" {s}></line>'
+            f'<line x1="{cx+10}" y1="{cy-12}" x2="{cx+10}" y2="{cy+2}" {s}></line>'
+            f'<line x1="{cx}" y1="{cy-16}" x2="{cx}" y2="{cy-12}" {s}></line>'
+            f'<polygon points="{cx-3},{cy-20} {cx+3},{cy-20} {cx},{cy-16}" {sf}></polygon>'
+            f'<circle cx="{cx-10}" cy="{cy+12}" r="8" {s}></circle>'
+            f'<circle cx="{cx+10}" cy="{cy+12}" r="8" {s}></circle>'
+            f'<circle cx="{cx-10}" cy="{cy+12}" r="2" {sf}></circle>'
+            f'<circle cx="{cx+10}" cy="{cy+12}" r="2" {sf}></circle>'
+        )
+    # ----- VIII — Strength: lion's head with mane radiating -----
+    if name == "lion":
+        # 12 mane tufts radiating; face circle + eyes
+        manes = "".join(
+            f'<line x1="{cx+12*math.cos(math.radians(k*30)):.1f}" '
+            f'y1="{cy+12*math.sin(math.radians(k*30)):.1f}" '
+            f'x2="{cx+22*math.cos(math.radians(k*30)):.1f}" '
+            f'y2="{cy+22*math.sin(math.radians(k*30)):.1f}" {s}></line>'
+            for k in range(12))
+        return (
+            f'<circle cx="{cx}" cy="{cy}" r="12" {s}></circle>'
+            f'{manes}'
+            f'<circle cx="{cx-4}" cy="{cy-3}" r="1.6" {sf}></circle>'
+            f'<circle cx="{cx+4}" cy="{cy-3}" r="1.6" {sf}></circle>'
+            f'<path d="M {cx-3} {cy+5} Q {cx} {cy+8} {cx+3} {cy+5}" {s}></path>'
+        )
+    # ----- XV — The Devil: pentagram inverted + horns -----
+    if name == "chains":
+        # Inverted pentagram (the devil's classic emblem)
+        pts = []
+        # Inverted pentagram: 5 points, starting bottom
+        for k in range(5):
+            a = math.radians(k * 72 + 90)
+            pts.append(f"{cx+18*math.cos(a):.1f},{cy+18*math.sin(a):.1f}")
+        # Reorder to draw a 5-pointed star (skip every other point)
+        ordered = [pts[0], pts[2], pts[4], pts[1], pts[3]]
+        return (
+            f'<polygon points="{" ".join(ordered)}" {s}></polygon>'
+            f'<circle cx="{cx}" cy="{cy}" r="22" {s} opacity="0.4"></circle>'
+        )
+    # ----- XIII — Death: scythe blade + handle -----
+    if name == "scythe":
+        return (
+            f'<line x1="{cx-12}" y1="{cy+18}" x2="{cx+14}" y2="{cy-18}" {s}></line>'
+            f'<path d="M {cx+14} {cy-18} Q {cx-2} {cy-14} {cx-8} {cy-2}" {s}></path>'
+            f'<line x1="{cx-12}" y1="{cy+14}" x2="{cx-8}" y2="{cy+18}" {s}></line>'
+        )
+    # ----- XIV — Temperance: chalice with a pouring stream -----
+    if name == "chalice":
+        return (
+            f'<path d="M {cx-12} {cy-12} L {cx-10} {cy+2} '
+            f'Q {cx} {cy+10} {cx+10} {cy+2} L {cx+12} {cy-12} Z" {s}></path>'
+            f'<line x1="{cx-12}" y1="{cy-12}" x2="{cx+12}" y2="{cy-12}" {s}></line>'
+            f'<line x1="{cx}" y1="{cy+10}" x2="{cx}" y2="{cy+16}" {s}></line>'
+            f'<line x1="{cx-7}" y1="{cy+18}" x2="{cx+7}" y2="{cy+18}" {s}></line>'
+            f'<path d="M {cx+6} {cy-18} Q {cx+10} {cy-14} {cx+8} {cy-10}" {s} '
+            f'opacity="0.7"></path>'
+        )
+    # ----- III — The Empress: Venus symbol (♀) -----
+    if name == "venus":
+        return (
+            f'<circle cx="{cx}" cy="{cy-6}" r="10" {s}></circle>'
+            f'<line x1="{cx}" y1="{cy+4}" x2="{cx}" y2="{cy+20}" {s}></line>'
+            f'<line x1="{cx-7}" y1="{cy+12}" x2="{cx+7}" y2="{cy+12}" {s}></line>'
+        )
+    # ----- XXI — The World: laurel wreath circle -----
+    if name == "wreath":
+        # 12 leaf strokes around a circle
+        leaves = "".join(
+            f'<path d="M {cx+16*math.cos(math.radians(k*30)):.1f} '
+            f'{cy+16*math.sin(math.radians(k*30)):.1f} '
+            f'L {cx+22*math.cos(math.radians(k*30+8)):.1f} '
+            f'{cy+22*math.sin(math.radians(k*30+8)):.1f} '
+            f'L {cx+16*math.cos(math.radians(k*30+16)):.1f} '
+            f'{cy+16*math.sin(math.radians(k*30+16)):.1f}" {s}></path>'
+            for k in range(12))
+        return (
+            f'<circle cx="{cx}" cy="{cy}" r="14" {s} opacity="0.6"></circle>'
+            f'{leaves}'
+        )
     # default emblem — concentric diamond
     return (f'<path d="M {cx} {cy-20} L {cx+20} {cy} L {cx} {cy+20} '
             f'L {cx-20} {cy} Z" {s}></path>'

@@ -1418,12 +1418,86 @@ def _render_settings_about() -> None:
     )
 
 
+def _render_settings_model() -> None:
+    """Model & API (R3) — LLM backend selector + session-scoped API
+    keys. The last "Planned" placeholder becomes real.
+
+    Streamlit session_state is the storage; nothing here writes to
+    disk. The backend dispatch read-side (`llm_backends.get_default_
+    backend`) will consult `model_backend_choice` + `model_api_key_*`
+    on a follow-up wiring pass; the choice + key are valid the moment
+    the user submits the form, but the rotation default behaviour
+    stays unchanged for backend modules that read env vars only.
+    """
+    _settings_section_header(
+        T("settings.cat.model"), T("settings.model.desc")
+    )
+
+    _backends = ("default", "ollama", "anthropic", "groq", "openai")
+    if st.session_state.get("model_backend_choice") not in _backends:
+        st.session_state["model_backend_choice"] = "default"
+
+    st.selectbox(
+        T("settings.model.backend.label"),
+        options=_backends,
+        format_func=lambda b: T(f"settings.model.backend.{b}"),
+        key="model_backend_choice",
+        help=T("settings.model.backend.help"),
+    )
+
+    choice = st.session_state["model_backend_choice"]
+
+    # Each backend has its own field: API key for cloud providers,
+    # local URL for Ollama. Only the relevant field surfaces; the
+    # others stay invisible (no irrelevant fields to read past).
+    if choice == "anthropic":
+        st.text_input(
+            T("settings.model.api_key.label"),
+            type="password",
+            key="model_api_key_anthropic",
+            placeholder="sk-ant-...",
+            help=T("settings.model.api_key.help"),
+        )
+    elif choice == "groq":
+        st.text_input(
+            T("settings.model.api_key.label"),
+            type="password",
+            key="model_api_key_groq",
+            placeholder="gsk_...",
+            help=T("settings.model.api_key.help"),
+        )
+    elif choice == "openai":
+        st.text_input(
+            T("settings.model.api_key.label"),
+            type="password",
+            key="model_api_key_openai",
+            placeholder="sk-...",
+            help=T("settings.model.api_key.help"),
+        )
+    elif choice == "ollama":
+        if "model_ollama_url" not in st.session_state:
+            st.session_state["model_ollama_url"] = "http://localhost:11434"
+        st.text_input(
+            T("settings.model.ollama_url.label"),
+            key="model_ollama_url",
+            placeholder="http://localhost:11434",
+            help=T("settings.model.ollama_url.help"),
+        )
+
+    st.markdown("<div style='height:6px;'></div>", unsafe_allow_html=True)
+    if choice == "default":
+        st.caption(T("settings.model.status.default"))
+    else:
+        st.caption(T("settings.model.status.pinned"))
+
+
 def _render_settings_planned(cat: str) -> None:
     """An honest preview panel for a category whose controls are still on
     the roadmap — the category name + a one-line description of what it
     will hold, plus a "Planned" badge. No fake controls (roadmap §5)."""
-    meta = {
-        "model": ("settings.cat.model", "settings.model.desc"),
+    meta: dict[str, tuple[str, str]] = {
+        # Empty after R3 lands. Kept as a guard for future deferred
+        # categories so we don't have to re-introduce the function.
     }
     tkey, dkey = meta.get(
         cat, ("settings.cat.general", "settings.general.desc")
@@ -1869,6 +1943,8 @@ def render_settings() -> None:
             _render_settings_general()
         elif active == "prediction":
             _render_settings_prediction()
+        elif active == "model":
+            _render_settings_model()
         elif active == "personalization":
             _render_settings_personalization()
         elif active == "data":
@@ -2922,6 +2998,13 @@ def _render_traditional_lens(
     _mod_meta = (
         (_mp.SYSTEM_ICHING, "易经 I CHING",
          "lens.module.iching.title", "lens.module.iching.desc"),
+        # L7: 紫微 12-palace chart was previously computed but never
+        # rendered in the lens — the `_render_ziwei` 4×4 grid already
+        # existed in _clock.py, just not wired here. Now appears as a
+        # sibling instrument; 命宫 highlights via amber accent + a
+        # central MODEL/COMBINED readout sits in the 2×2 court.
+        (_mp.SYSTEM_ZIWEI, "紫微 ZIWEI",
+         "lens.module.ziwei.title", "lens.module.ziwei.desc"),
         (_mp.SYSTEM_TAROT, "塔罗 TAROT",
          "lens.module.tarot.title", "lens.module.tarot.desc"),
         (_mp.SYSTEM_ASTRO, "本命星盘 NATAL",
