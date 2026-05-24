@@ -1187,24 +1187,15 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         ),
     },
     "heatmap.idle_note": {
-        LANG_EN: (
-            "The grid is uniform — a world with no evidence yet. Run a "
-            "prediction below, or drop a video to drive it live."
-        ),
-        LANG_ZH: (
-            "网格是均匀的——一个还没有证据的世界。在下方运行一次预测，"
-            "或拖入视频实时驱动它。"
-        ),
-        LANG_ES: (
-            "La cuadrícula es uniforme — un mundo aún sin evidencia. "
-            "Ejecuta una predicción abajo o suelta un vídeo para "
-            "controlarla en vivo."
-        ),
-        LANG_FR: (
-            "La grille est uniforme — un monde encore sans preuve. "
-            "Lancez une prédiction ci-dessous, ou déposez une vidéo "
-            "pour la piloter en direct."
-        ),
+        # Iteration #1: shortened from "The grid is uniform — a world
+        # with no evidence yet. Run a prediction below..." (text-heavy
+        # crutch) to a single soft pointer. The grid's own grey
+        # uniformity is the "no evidence yet" cue; users don't need to
+        # read it.
+        LANG_EN: "Empty grid · waiting for input ↓",
+        LANG_ZH: "空网格 · 等待输入 ↓",
+        LANG_ES: "Cuadrícula vacía · esperando entrada ↓",
+        LANG_FR: "Grille vide · en attente d'entrée ↓",
     },
     "heatmap.live_note": {
         LANG_EN: (
@@ -1283,25 +1274,16 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         ),
     },
     "heatmap.narrative_idle": {
-        LANG_EN: (
-            "No prediction yet — the distribution is uniform until "
-            "you run one. Each row would then carry its own share of the "
-            "probability mass."
-        ),
-        LANG_ZH: (
-            "尚无预测——在你运行一次之前分布是均匀的。"
-            "运行之后每一行会各自承载一份概率质量。"
-        ),
-        LANG_ES: (
-            "Aún sin predicción: la distribución es "
-            "uniforme hasta que ejecutes una. Después cada fila "
-            "tendrá su propia parte de la masa de probabilidad."
-        ),
-        LANG_FR: (
-            "Pas encore de prédiction : la distribution est uniforme "
-            "jusqu'à ce que vous en lanciez une. Chaque ligne "
-            "portera alors sa part de la masse de probabilité."
-        ),
+        # Iteration #1 (design-self-explains): the empty-state used to
+        # spell out the math ("distribution is uniform...") which is
+        # exactly the kind of explainer-text crutch a first-time visitor
+        # has to READ in order to understand. Replaced with a single
+        # short prompt that *points* the user at the action — the grid's
+        # own emptiness already conveys "no data yet".
+        LANG_EN: "Your probability distribution will appear here ↓",
+        LANG_ZH: "你的概率分布会显示在这里 ↓",
+        LANG_ES: "Tu distribución de probabilidad aparecerá aquí ↓",
+        LANG_FR: "Votre distribution de probabilité apparaîtra ici ↓",
     },
     "heatmap.narrative_live": {
         LANG_EN: (

@@ -41,9 +41,14 @@ class InputField:
 
 
 INPUT_FIELDS: list[InputField] = [
+    # ⚠️ Field render ORDER is governed by `_COMPOSER_CORE_FIELDS` in
+    # app.py, not by this list. ``decision_options`` renders FIRST in the
+    # composer (XUANXUE_REDESIGN iteration #1: "the decision is the
+    # hero"). Order here is preserved historical for compiler stability;
+    # do not rely on it for UI order.
     InputField(
         key="current_role",
-        label="What are you doing right now?",
+        label="A little about you",
         field_type="textarea",
         hint=(
             "Job, study, freelance, in-transition — anything. One or two "
@@ -62,19 +67,17 @@ INPUT_FIELDS: list[InputField] = [
     ),
     InputField(
         key="decision_options",
-        label="Options you're choosing between (one per line)",
+        label="What decision are you weighing?",
         field_type="textarea",
         hint=(
-            "Three to five concrete choices — comparing offers, stay-vs-"
-            "leave, returning home vs. continuing abroad, industry vs. PhD, "
-            "join-existing vs. start-something, etc."
+            "List 3-5 concrete choices, one per line — comparing offers, "
+            "stay-vs-leave, returning home vs. abroad, industry vs. PhD, "
+            "join-existing vs. start-something."
         ),
         placeholder=(
-            "e.g.,\n"
-            "- Accept the ML engineer offer at Anthropic (Bay Area)\n"
-            "- Join a Series-A startup back home as tech lead\n"
-            "- Continue solo on the open-source project for 6 months and "
-            "reassess"
+            "Take the ML engineer offer at Anthropic\n"
+            "Join a Series-A startup back home as tech lead\n"
+            "Go solo on the open-source project for 6 months and reassess"
         ),
         example_value=(
             "- Accept the ML engineer offer at Anthropic (Bay Area)\n"

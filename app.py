@@ -1938,8 +1938,14 @@ _COMPOSER_PANE_HEIGHT = 275
 # Composer fields shown directly; every other scenario field folds into
 # the composer's "More details" expander so the composer stays compact.
 _COMPOSER_CORE_FIELDS = (
-    "current_role",
+    # Reordered (XUANXUE_REDESIGN iteration #1, "design-self-explains"):
+    # the DECISION the user is weighing is the hero — first field they
+    # see, first thing they fill. Context about THEM (current role,
+    # motivation) comes after the decision so the page reads "tell me
+    # what you're choosing between → tell me about you" rather than
+    # "tell me about you → tell me about your decision".
     "decision_options",
+    "current_role",
     "why_considering_change",
     "time_horizon",
 )
@@ -2212,6 +2218,99 @@ def _render_workspace_composer_body() -> None:
     # Shares the session-stable id with the history rail, so a
     # prediction created here appears in the sidebar immediately.
     session_user_id()
+
+    # ---- Quick-start suggestion chips (iteration #1 — design-self-
+    # explains) ----
+    # ChatGPT-/Claude.ai-style examples on a fresh load: 3 one-click
+    # decision templates so a stumbled-in visitor knows by sight what
+    # this product takes as input — no instruction text needed. Hidden
+    # once any prediction exists so they never crowd a returning user.
+    if (
+        st.session_state.get("current_prediction") is None
+        and not st.session_state.get("input_decision_options", "").strip()
+    ):
+        st.markdown(
+            "<div style='display:flex;gap:8px;flex-wrap:wrap;"
+            "margin:0 0 12px;'>"
+            "<span style='color:#8a8f98;font-size:11px;font-weight:600;"
+            "letter-spacing:0.08em;text-transform:uppercase;"
+            "align-self:center;margin-right:4px;'>Try</span>"
+            "</div>",
+            unsafe_allow_html=True,
+        )
+        _chip_specs = (
+            (
+                "🎯 Take the offer or stay?",
+                "decision",
+                (
+                    "Accept the senior engineer offer (relocate)\n"
+                    "Stay in current role and negotiate a counter\n"
+                    "Wait one more quarter for the planned promotion"
+                ),
+                (
+                    "Early-career engineer, 4 years experience, currently "
+                    "at a stable mid-size company; have an offer from a "
+                    "fast-moving Series-B with 30% comp bump but relocation."
+                ),
+                (
+                    "Comp + growth ceiling vs. uprooting life and team "
+                    "I trust. Promotion is 'planned' but uncertain."
+                ),
+            ),
+            (
+                "🌏 Move home or stay abroad?",
+                "move",
+                (
+                    "Return home now to be near family\n"
+                    "Stay abroad two more years to lock in residency\n"
+                    "Take a 6-month sabbatical and decide afterward"
+                ),
+                (
+                    "Have been working abroad 5 years, parents aging, "
+                    "current job is good but not life-defining; partner "
+                    "is flexible either way."
+                ),
+                (
+                    "Family proximity + cost of living vs. residency "
+                    "status and the career arc I've built here."
+                ),
+            ),
+            (
+                "🔬 Industry or PhD?",
+                "phd",
+                (
+                    "Take the research scientist role at an AI lab\n"
+                    "Start a PhD in machine learning theory this fall\n"
+                    "Defer one year and ship the open-source project"
+                ),
+                (
+                    "Final-year Master's student in ML; admitted to a "
+                    "strong PhD program; have a competing offer from a "
+                    "well-funded AI research lab."
+                ),
+                (
+                    "Long-horizon depth vs. near-term impact + income. "
+                    "5-year career ROI is the real question."
+                ),
+            ),
+        )
+        cols = st.columns(len(_chip_specs))
+        for col, (label, key_suffix, opts, role, why) in zip(
+            cols, _chip_specs
+        ):
+            with col:
+                if st.button(
+                    label,
+                    key=f"_quick_chip_{key_suffix}",
+                    use_container_width=True,
+                    type="secondary",
+                    help="One-click prefill — edit anything, then Generate.",
+                ):
+                    st.session_state["input_decision_options"] = opts
+                    st.session_state["input_current_role"] = role
+                    st.session_state["input_why_considering_change"] = why
+                    st.session_state["input_user_id"] = session_user_id()
+                    st.rerun()
 
     # ---- Modality bar: attach (+) · live video · 玄学 lens ----
     mod_attach, mod_live, mod_lens = st.columns([2, 2, 2])
