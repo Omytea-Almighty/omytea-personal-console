@@ -204,11 +204,16 @@ def test_component_has_now_horizon_axis() -> None:
 
 
 def test_component_renders_idle_grid_when_no_branches() -> None:
-    """With an empty payload the component builds its own idle grid."""
+    """With an empty payload the component builds its own idle grid.
+
+    Iter #7 (design-self-explains): idle row labels were renamed from
+    "Branch A...E" (academic) to "Your option 1...5" (self-explains
+    "each option you type becomes one row").
+    """
     html = _build_html([])
     assert "idleBranches" in html
-    # idle mirror of _idle_heatmap_branches: 5 branches.
-    assert "Branch A" in html and "Branch E" in html
+    # idle mirror of _idle_heatmap_branches: 5 rows, "Your option N".
+    assert "Your option 1" in html and "Your option 5" in html
 
 
 def test_heatmap_grid_is_fine_and_compact() -> None:

@@ -1152,9 +1152,14 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
   }}
 
   function idleBranches() {{
+    // Iter #7 (design-self-explains): "Branch A/B/C/D/E" labels were
+    // academic placeholders that taught the first-time visitor
+    // nothing about what they'll BECOME. Replaced with self-evident
+    // "Your option 1...5" rows that telegraph: each option you type
+    // turns into one row of the heatmap.
     var out = [];
-    var labels = ["Branch A", "Branch B", "Branch C",
-                  "Branch D", "Branch E"];
+    var labels = ["Your option 1", "Your option 2", "Your option 3",
+                  "Your option 4", "Your option 5"];
     for (var i = 0; i < labels.length; i++) {{
       out.push({{ label: labels[i],
                   probability: 0.2, branch_type: "realistic" }});
