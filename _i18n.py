@@ -1414,10 +1414,11 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_FR: "Traditionnel × Calibré",
     },
     "trad.hero.title": {
-        LANG_EN: "Two priors, one instrument.",
-        LANG_ZH: "两种先验，一台仪器。",
-        LANG_ES: "Dos priors, un instrumento.",
-        LANG_FR: "Deux a priori, un instrument.",
+        # Iter #16: quiet page name × 4 locales.
+        LANG_EN: "Metaphysics lens · standalone",
+        LANG_ZH: "玄学透镜 · 独立视图",
+        LANG_ES: "Lente metafísica · vista independiente",
+        LANG_FR: "Loupe métaphysique · vue autonome",
     },
     "trad.hero.subtitle": {
         LANG_EN: (
@@ -1973,10 +1974,11 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
     },
     # -----  Other-page heroes (Apple-style two-tier)  -----
     "video.hero.title": {
-        LANG_EN: "Watch a clip. Get the futures.",
-        LANG_ZH: "看一段视频，得到未来分布。",
-        LANG_ES: "Mira un clip. Obtén los futuros.",
-        LANG_FR: "Regardez un clip. Obtenez les futurs.",
+        # Iter #16: quiet page name × 4 locales.
+        LANG_EN: "Video query",
+        LANG_ZH: "视频查询",
+        LANG_ES: "Consulta por vídeo",
+        LANG_FR: "Requête par vidéo",
     },
     "video.hero.subtitle": {
         LANG_EN: (

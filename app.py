@@ -3257,21 +3257,15 @@ def render_traditional_view() -> None:
     to type a decision first. Users who *do* have a current prediction
     see the dial driven by that prediction's branches.
     """
-    # ---- Apple-style two-tier hero ----
+    # Iter #16: quiet left-aligned page title; the lens instruments
+    # below name what they are. Same de-marketing-hero pass as iter
+    # #15 for the secondary pages.
     st.markdown(
-        f"""
-        <div style='text-align:center;padding:40px 24px 28px;'>
-          <h1 style='font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;
-                     font-size:38px;font-weight:600;letter-spacing:-0.028em;
-                     margin:0 0 14px;color:#f7f8f8;line-height:1.1;'>
-            {T("trad.hero.title")}
-          </h1>
-          <p style='max-width:600px;margin:0 auto;color:#8a8f98;
-                    font-size:16px;line-height:1.55;letter-spacing:0.005em;'>
-            {T("trad.hero.subtitle")}
-          </p>
-        </div>
-        """,
+        f"<div style='margin:8px 0 14px;'>"
+        f"<h2 style='color:#f7f8f8;font-size:22px;font-weight:600;"
+        f"letter-spacing:-0.012em;margin:0;'>"
+        f"{T('trad.hero.title')}</h2>"
+        f"</div>",
         unsafe_allow_html=True,
     )
 
@@ -4512,21 +4506,14 @@ def render_video_query(embedded: bool = False) -> None:
     Master plan §9 first-cut consumer surface for the video path.
     """
     if not embedded:
+        # Iter #16: quiet page title; the upload affordance below
+        # tells the user what to do.
         st.markdown(
-            f"""
-            <div style='text-align:center;padding:40px 24px 28px;'>
-              <h1 style='font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;
-                         font-size:38px;font-weight:600;letter-spacing:-0.028em;
-                         margin:0 0 14px;color:#f7f8f8;line-height:1.1;'>
-                {T("video.hero.title")}
-              </h1>
-              <p style='max-width:600px;margin:0 auto;color:#8a8f98;
-                        font-size:16px;line-height:1.55;
-                        letter-spacing:0.005em;'>
-                {T("video.hero.subtitle")}
-              </p>
-            </div>
-            """,
+            f"<div style='margin:8px 0 14px;'>"
+            f"<h2 style='color:#f7f8f8;font-size:22px;font-weight:600;"
+            f"letter-spacing:-0.012em;margin:0;'>"
+            f"{T('video.hero.title')}</h2>"
+            f"</div>",
             unsafe_allow_html=True,
         )
 
