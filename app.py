@@ -2113,21 +2113,11 @@ def _render_workspace_output() -> None:
         if current is None:
             # Idle state — heatmap only, calm "awaiting your decision"
             # grid.
-            st.markdown(
-                "<div style='display:flex;align-items:center;gap:9px;"
-                "margin:6px 0 4px;'>"
-                "<span style='width:5px;height:5px;border-radius:50%;"
-                "background:#8a8f98;'>"
-                "</span>"
-                "<span style='color:#8a8f98;font-size:10.5px;"
-                "letter-spacing:0.15em;"
-                "text-transform:uppercase;font-weight:600;'>"
-                "Prediction space</span>"
-                "<span style='flex:1;height:1px;"
-                "background:#23252a;'></span>"
-                "</div>",
-                unsafe_allow_html=True,
-            )
+            # Iter #3: removed the "PREDICTION SPACE" eyebrow above the
+            # heatmap. It was an extra all-caps label adding nothing
+            # the heatmap's own card-title doesn't already convey, and
+            # the founder's "no text crutches" rule applies — the
+            # heatmap card title + the grid itself name the surface.
             # Idle = empty branch list. The interactive component
             # renders its own uniform grid + idle caption (i18n
             # heatmap.idle_note), and a video dropped here will drive

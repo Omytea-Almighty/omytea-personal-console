@@ -1037,10 +1037,15 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
     },
     # -----  Result render  -----
     "result.heatmap_title": {
-        LANG_EN: "Probability mass across futures",
-        LANG_ZH: "未来分布概率热力图",
-        LANG_ES: "Masa de probabilidad entre futuros",
-        LANG_FR: "Masse de probabilité entre les futurs",
+        # Iter #3 (design-self-explains): "Probability mass across
+        # futures" is jargon a first-time visitor doesn't parse — the
+        # heatmap below carries the meaning, the title should just
+        # name the surface. Replaced with the shortest concrete label
+        # that fits next to the heatmap without instructing the user.
+        LANG_EN: "Your futures",
+        LANG_ZH: "你的未来",
+        LANG_ES: "Tus futuros",
+        LANG_FR: "Vos futurs",
     },
     # -----  Output-region view toggle (OMY-V415 #60 D)  -----
     "output.view.quantum": {
@@ -1216,10 +1221,12 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
     # The {slot}s are filled in Python (render_heatmap_camera_component)
     # from the live branch distribution — v10's one-line answer sentence.
     "heatmap.head_title": {
-        LANG_EN: "Probability of each outcome",
-        LANG_ZH: "各结果的概率",
-        LANG_ES: "Probabilidad de cada resultado",
-        LANG_FR: "Probabilité de chaque issue",
+        # Iter #3 — same de-jargonization as the outer title; the
+        # heatmap's branch rows + horizon columns already SAY this.
+        LANG_EN: "Likelihood by branch · over time",
+        LANG_ZH: "每个分支的概率 · 沿时间",
+        LANG_ES: "Probabilidad por rama · en el tiempo",
+        LANG_FR: "Probabilité par branche · dans le temps",
     },
     "heatmap.head_hint": {
         LANG_EN: "click a cell for detail",
