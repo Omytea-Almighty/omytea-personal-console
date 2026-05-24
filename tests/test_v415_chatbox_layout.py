@@ -124,10 +124,12 @@ def test_idle_branches_are_five_equal_probability() -> None:
     src = ast.unparse(_func("_idle_heatmap_branches"))
     assert "0.2" in src, "idle branches must be equal-probability (0.20)"
     assert src.count("ConsoleHypothesis(") >= 1
-    # Iter #7 (design-self-explains): label list switched from
-    # "Branch A...E — awaiting your decision" to "Your option 1...5".
-    # Pin the new label scheme — 5 entries.
-    assert src.count("Your option") >= 5
+    # Iter #7 → iter #11: label list switched from "Branch A...E —
+    # awaiting your decision" to "Your option 1...5" to "Option 1...5"
+    # (final form fits the chart gutter without truncation). Pin the
+    # current label scheme — 5 entries beginning with "Option ".
+    assert src.count("Option 1") + src.count("Option 2") + src.count(
+        "Option 3") + src.count("Option 4") + src.count("Option 5") >= 5
 
 
 def test_idle_branches_sum_to_one() -> None:

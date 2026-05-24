@@ -1902,17 +1902,18 @@ def _idle_heatmap_branches() -> list[Any]:
     """
     from console import ConsoleHypothesis
 
-    # Iter #7: idle placeholder labels were "Branch A/B/C... —
-    # awaiting your decision" (academic + repetitive). Replaced with
-    # "Your option 1...5" — telegraphs the contract: every option
-    # you type becomes one row. The suffix "—awaiting your decision"
-    # dropped: empty grid + faint colour already conveys "waiting".
+    # Iter #7 → iter #11: idle row labels first went "Branch A/B/C...
+    # —awaiting your decision" → "Your option 1...5". Live verify
+    # showed the chart's narrow left gutter truncated to "Your
+    # option…" (the digit was cut off). Shortened again to "Option
+    # 1...5" — still self-explanatory + fits the gutter without
+    # truncation.
     labels = [
-        "Your option 1",
-        "Your option 2",
-        "Your option 3",
-        "Your option 4",
-        "Your option 5",
+        "Option 1",
+        "Option 2",
+        "Option 3",
+        "Option 4",
+        "Option 5",
     ]
     return [
         ConsoleHypothesis(

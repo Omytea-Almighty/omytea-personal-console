@@ -1152,14 +1152,13 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
   }}
 
   function idleBranches() {{
-    // Iter #7 (design-self-explains): "Branch A/B/C/D/E" labels were
-    // academic placeholders that taught the first-time visitor
-    // nothing about what they'll BECOME. Replaced with self-evident
-    // "Your option 1...5" rows that telegraph: each option you type
-    // turns into one row of the heatmap.
+    // Iter #7 → iter #11: "Branch A...E" → "Your option 1...5" →
+    // "Option 1...5". The middle form got truncated by the chart's
+    // narrow left gutter ("Your option…"); final form is short enough
+    // to fit + still names the contract (each form option = one row).
     var out = [];
-    var labels = ["Your option 1", "Your option 2", "Your option 3",
-                  "Your option 4", "Your option 5"];
+    var labels = ["Option 1", "Option 2", "Option 3",
+                  "Option 4", "Option 5"];
     for (var i = 0; i < labels.length; i++) {{
       out.push({{ label: labels[i],
                   probability: 0.2, branch_type: "realistic" }});

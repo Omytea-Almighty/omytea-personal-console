@@ -705,10 +705,16 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         ),
     },
     "composer.lens": {
-        LANG_EN: "Metaphysics lens",
-        LANG_ZH: "玄学透镜",
-        LANG_ES: "Lente metafísica",
-        LANG_FR: "Loupe métaphysique",
+        # Iter #11: composer toggle label shortened so it fits one
+        # line in the now-narrow modality column (iter #4 cut it from
+        # full-width to left-third). "Metaphysics lens" wrapped to
+        # two lines. "Lens" alone reads as the affordance label;
+        # tooltip still says "Metaphysics lens" via the help= text
+        # for users hovering for context.
+        LANG_EN: "Lens",
+        LANG_ZH: "透镜",
+        LANG_ES: "Lente",
+        LANG_FR: "Loupe",
     },
     "composer.more_fields": {
         LANG_EN: "More details (optional)",
@@ -2010,7 +2016,18 @@ def T(key: str, lang: str | None = None) -> str:
     entry = TRANSLATIONS.get(key)
     if entry is None:
         return key
-    return entry.get(lang) or entry.get(LANG_EN) or key
+    # Bug fix (iter #11): the prior `entry.get(lang) or entry.get(EN)
+    # or key` chain treated an EMPTY STRING translation ("") as missing
+    # and fell through to the raw key — so iter #8's intentional
+    # `heatmap.cell_hint = ""` rendered the literal key string on the
+    # page. Distinguish "missing" (None) from "intentionally blank"
+    # ("") and honour empty strings as valid translations.
+    val = entry.get(lang)
+    if val is None:
+        val = entry.get(LANG_EN)
+    if val is None:
+        return key
+    return val
 
 
 __all__ = [

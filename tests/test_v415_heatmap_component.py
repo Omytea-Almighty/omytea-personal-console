@@ -212,8 +212,10 @@ def test_component_renders_idle_grid_when_no_branches() -> None:
     """
     html = _build_html([])
     assert "idleBranches" in html
-    # idle mirror of _idle_heatmap_branches: 5 rows, "Your option N".
-    assert "Your option 1" in html and "Your option 5" in html
+    # idle mirror of _idle_heatmap_branches: 5 rows, "Option N".
+    # (Renamed in iter #11 from "Your option N" — the longer form
+    # got truncated by the chart's narrow left gutter.)
+    assert "Option 1" in html and "Option 5" in html
 
 
 def test_heatmap_grid_is_fine_and_compact() -> None:
