@@ -61,25 +61,15 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_FR: "Aide à la décision à probabilité calibrée",
     },
     "brand.disclaimer": {
-        LANG_EN: (
-            "Not a deterministic prediction system. Outputs are calibrated "
-            "future scenarios with measurement-update feedback. Not "
-            "medical, legal, or financial advice."
-        ),
-        LANG_ZH: (
-            "本系统不预测确定性结果，输出的是带校准反馈的未来情景概率分布。"
-            "不构成医疗、法律或金融建议。"
-        ),
-        LANG_ES: (
-            "No es un sistema de predicción determinista. Las salidas son "
-            "escenarios futuros calibrados con retroalimentación de "
-            "medición. No es asesoramiento médico, legal o financiero."
-        ),
-        LANG_FR: (
-            "Pas un système de prédiction déterministe. Les résultats sont "
-            "des scénarios futurs calibrés avec retour de mesure. Ne "
-            "constitue pas un avis médical, juridique ou financier."
-        ),
+        # Iter #5 (design-self-explains): 3 lines of legal-ese in the
+        # sidebar = forced reading. The first-time visitor doesn't
+        # need to parse "calibrated future scenarios with
+        # measurement-update feedback" to use the app. Trimmed to one
+        # short line; the full legal copy lives in Privacy.
+        LANG_EN: "Calibrated forecasts · not advice · see Privacy.",
+        LANG_ZH: "校准过的概率预测 · 非建议 · 详见隐私政策。",
+        LANG_ES: "Pronósticos calibrados · no es asesoría · ver Privacidad.",
+        LANG_FR: "Prévisions calibrées · pas un conseil · voir Confidentialité.",
     },
     # -----  Sidebar mode labels  -----
     "mode.new_prediction": {
