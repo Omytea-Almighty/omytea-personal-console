@@ -3627,23 +3627,11 @@ def _render_result(
     stable id to key the cache on). When prediction_id is None we
     fall back to inline-persistence (legacy path for tests that
     construct results directly)."""
-    # Chatbox layout: this result renders at the TOP of the workspace
-    # on every rerun, so a one-shot green success toast would stick on
-    # permanently. A quiet resolved-state header reads better as a
-    # standing top-of-output element.
-    st.markdown(
-        "<div style='display:flex;align-items:center;gap:9px;"
-        "margin:6px 0 4px;'>"
-        "<span style='width:5px;height:5px;border-radius:50%;"
-        "background:#8a8f98;'>"
-        "</span>"
-        "<span style='color:#8a8f98;font-size:11px;letter-spacing:0.14em;"
-        "text-transform:uppercase;font-weight:600;'>"
-        "Resolved prediction</span>"
-        "<span style='flex:1;height:1px;background:#23252a;'></span>"
-        "</div>",
-        unsafe_allow_html=True,
-    )
+    # Iter #14 (design-self-explains): "RESOLVED PREDICTION" eyebrow
+    # tag deleted — same class as iter #3's "PREDICTION SPACE" delete.
+    # The heatmap rendering below ALREADY conveys "this is a resolved
+    # prediction" (real branch distribution vs. the idle uniform
+    # grid). An all-caps tag above it added nothing.
 
     if prediction_id is None:
         rec = storage.PredictionRecord(
@@ -3666,9 +3654,10 @@ def _render_result(
         storage.save_prediction(rec)
         prediction_id = rec.prediction_id
 
-    st.caption(
-        f"Prediction ID (save this to come back later) · `{prediction_id}`"
-    )
+    # Iter #14: "Prediction ID (save this to come back later) · ID"
+    # — telling the user what to do with the ID. The ID itself + a
+    # small icon are enough; instruction moves to tooltip.
+    st.caption(f"`{prediction_id}` — your prediction ID")
 
     # v4.16 P1+P4: partition by branch_type for visually distinct anchor
     # display + offer Story (default) vs Comparison-table view.
@@ -3686,6 +3675,11 @@ def _render_result(
     )
     st.divider()
 
+    # Iter #14: view-mode radio's help text was 4 sentences explaining
+    # each of the 4 view options — exactly the "use text to teach the
+    # affordance instead of letting the affordance teach itself" rule.
+    # The labels (Story / Comparison table / Timeline / Continuous)
+    # already name what each is; users discover by clicking.
     view_mode = st.radio(
         "View",
         options=(
@@ -3693,13 +3687,7 @@ def _render_result(
             "Decision timeline", "Continuous distribution",
         ),
         horizontal=True,
-        help=(
-            "Story = each future as a paragraph. "
-            "Comparison = side-by-side table. "
-            "Timeline = decision-branch flowchart. "
-            "Continuous = density over the time horizon (each branch "
-            "gets a Gaussian kernel; smooth view of the discrete data)."
-        ),
+        label_visibility="collapsed",
     )
 
     if view_mode == "Comparison table":
