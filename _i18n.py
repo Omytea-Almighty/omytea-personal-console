@@ -1149,10 +1149,15 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         ),
     },
     "heatmap.cell_hint": {
-        LANG_EN: "Hover a cell to highlight it · click a cell for detail.",
-        LANG_ZH: "悬停高亮单元格 · 点击查看详情。",
-        LANG_ES: "Pasa el cursor para resaltar · haz clic para detalle.",
-        LANG_FR: "Survolez pour surligner · cliquez pour le détail.",
+        # Iter #8: emptied. "Hover a cell to highlight it · click a
+        # cell for detail." is interaction instruction text — telling
+        # the user the affordance instead of letting hover BE the
+        # affordance. Standard direct-manipulation pattern: cells
+        # respond when hovered/clicked; no caption needed.
+        LANG_EN: "",
+        LANG_ZH: "",
+        LANG_ES: "",
+        LANG_FR: "",
     },
     "heatmap.axis_now": {
         LANG_EN: "now",

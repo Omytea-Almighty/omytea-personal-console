@@ -2224,14 +2224,13 @@ def _render_workspace_composer_body() -> None:
         st.session_state.get("current_prediction") is None
         and not st.session_state.get("input_decision_options", "").strip()
     ):
+        # Iter #8: "TRY" eyebrow above the chips dropped — the chips
+        # themselves are the call to action; an instruction label
+        # above them is exactly the "tell the user with text instead
+        # of design" pattern the founder rejected. A small top margin
+        # gives the chip row breathing room without a label.
         st.markdown(
-            "<div style='display:flex;gap:8px;flex-wrap:wrap;"
-            "margin:0 0 12px;'>"
-            "<span style='color:#8a8f98;font-size:11px;font-weight:600;"
-            "letter-spacing:0.08em;text-transform:uppercase;"
-            "align-self:center;margin-right:4px;'>Try</span>"
-            "</div>",
-            unsafe_allow_html=True,
+            "<div style='height:4px;'></div>", unsafe_allow_html=True
         )
         _chip_specs = (
             (
