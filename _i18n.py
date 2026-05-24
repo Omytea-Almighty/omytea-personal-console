@@ -1597,27 +1597,18 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         ),
     },
     "trad.disclaimer": {
-        LANG_EN: (
-            "Not deterministic fortune-telling — an explicitly weighted "
-            "prior the user chooses (or doesn't) to use. The model's "
-            "unweighted output is always shown alongside the combined "
-            "view so you can see the shift."
-        ),
-        LANG_ZH: (
-            "不是确定的命理预言——它只是一个用户主动选择是否使用的"
-            "可调权重先验。模型未加权的原始输出始终与融合视图并列展示，"
-            "让你看清差异从哪里来。"
-        ),
-        LANG_ES: (
-            "No es adivinación determinista — un prior con peso "
-            "explícito que el usuario elige usar o no. La salida no "
-            "ponderada del modelo siempre se muestra junto al posterior."
-        ),
-        LANG_FR: (
-            "Pas de prédiction déterministe — un prior pondéré que "
-            "l'utilisateur choisit (ou non) d'utiliser. La sortie non "
-            "pondérée du modèle est toujours affichée à côté."
-        ),
+        # Iter #13 (design-self-explains): trimmed from a 4-line
+        # paragraph explaining the lens's epistemic posture to one
+        # short line. The MODEL → ↑/↓ → COMBINED visual delta strip
+        # right above already SHOWS that the model's unweighted output
+        # is rendered alongside the combined view — the paragraph was
+        # telling the user what the design already conveys. Full
+        # epistemic note lives in /docs/PRIVACY_POLICY.md (linked from
+        # the sidebar footer's Privacy line).
+        LANG_EN: "Symbolic prior · not a fortune · the model output stays visible above.",
+        LANG_ZH: "符号先验 · 非预言 · 上方的模型原始输出始终可见。",
+        LANG_ES: "Prior simbólico · no es predicción · la salida del modelo sigue visible arriba.",
+        LANG_FR: "Prior symbolique · pas une prédiction · la sortie du modèle reste visible.",
     },
     "trad.no_input": {
         LANG_EN: "Fill in your birth + outcome above, then read the dial.",
