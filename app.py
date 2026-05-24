@@ -2302,8 +2302,16 @@ def _render_workspace_composer_body() -> None:
                     st.session_state["input_user_id"] = session_user_id()
                     st.rerun()
 
-    # ---- Modality bar: attach (+) · live video · 玄学 lens ----
-    mod_attach, mod_live, mod_lens = st.columns([2, 2, 2])
+    # ---- Modality bar: attach (+) · live video · Metaphysics lens ----
+    # Iter #4 (design-self-explains): all three are SECONDARY modifiers
+    # — the primary action is "type your decision → Generate". Shrunk
+    # to the left third (4-col layout with an empty trailing column)
+    # so they no longer compete visually with the form fields below.
+    # Lens stays visible because it's the founder's easter-egg
+    # affordance the user must be able to discover.
+    mod_attach, mod_live, mod_lens, _mod_spacer = st.columns(
+        [1.2, 1.2, 1.2, 2.4]
+    )
 
     with mod_attach:
         with st.popover(T("composer.attach"), use_container_width=True):
@@ -2396,9 +2404,20 @@ def _render_workspace_composer_body() -> None:
     # Form fields — the core fields are visible; secondary / optional
     # fields fold into a "More details" expander so the composer stays a
     # compact, always-visible input bar.
+    # Iter #1-bugfix: previously the filter `[f for f in fields if
+    # f.key in _COMPOSER_CORE_FIELDS]` preserved the INPUT_FIELDS
+    # order, ignoring the explicit _COMPOSER_CORE_FIELDS order. That
+    # meant the iter #1 reorder ("decision is the hero, first field")
+    # never took effect. Now the render order is taken FROM
+    # _COMPOSER_CORE_FIELDS — the authoritative UI-order list.
     form_data: dict[str, Any] = {}
     fields = AVAILABLE_SCENARIOS[scenario]["input_fields"]
-    core = [f for f in fields if f.key in _COMPOSER_CORE_FIELDS]
+    _fields_by_key = {f.key: f for f in fields}
+    core = [
+        _fields_by_key[k]
+        for k in _COMPOSER_CORE_FIELDS
+        if k in _fields_by_key
+    ]
     extra = [f for f in fields if f.key not in _COMPOSER_CORE_FIELDS]
 
     with st.form(key=f"form_{scenario}"):
