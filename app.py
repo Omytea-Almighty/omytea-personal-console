@@ -2555,25 +2555,21 @@ def _render_traditional_lens(
     import _metaphysics as _mp
     from _clock import render_celestial_svg, render_reading_svg
 
-    # ---- Lens explainer header (L3, widened for the L5 rhythm) ----
-    # Every module beneath the lens needs to read as "what this is + why
-    # it's here" at a glance. The header card answers that question for
-    # the whole lens; per-module headers (added below) answer it for
-    # each instrument.
+    # ---- Lens header (iter #2 — design-self-explains) ----
+    # The L3 thesis paragraph + "易经 cast · 八字 four pillars · ..."
+    # explainer was 4 lines of reading. Replaced with an eyebrow tag
+    # alone — the five instruments rendered below ARE the explanation;
+    # the user looks down and sees what the lens does. No paragraph
+    # to read.
     st.markdown(
-        f"<div style='max-width:760px;margin:6px auto 14px;"
-        f"background:#0f1011;border:1px solid #23252a;border-radius:10px;"
-        f"padding:14px 16px 13px;'>"
+        f"<div style='max-width:760px;margin:6px auto 10px;'>"
         f"<div style='color:#8a8f98;font-size:10px;font-weight:700;"
-        f"letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;'>"
+        f"letter-spacing:0.14em;text-transform:uppercase;'>"
         f"{_html.escape(str(T('lens.header.eyebrow')))}"
-        f"</div>"
-        f"<div style='color:#f7f8f8;font-size:14px;font-weight:600;"
-        f"line-height:1.4;letter-spacing:-0.005em;margin-bottom:6px;'>"
-        f"{_html.escape(str(T('lens.header.title')))}"
-        f"</div>"
-        f"<div style='color:#c9cdd4;font-size:12px;line-height:1.55;'>"
-        f"{_html.escape(str(T('lens.header.desc')))}"
+        f"<span style='color:#34343a;margin:0 8px;'>·</span>"
+        f"<span style='color:#5e6ad2;font-weight:600;letter-spacing:0.10em;'>"
+        f"5 systems"
+        f"</span>"
         f"</div>"
         f"</div>",
         unsafe_allow_html=True,
@@ -2756,30 +2752,40 @@ def _render_traditional_lens(
         .replace("{tag}", _html.escape(alpha_tag))
     )
 
+    # Iter #2: drop the L3 "Model alone X% · Joint symbolic Y% ·
+    # COMBINED Z%" numeric line. That same data renders at the BOTTOM
+    # of the lens as a visual delta arrow (MODEL → ↑ → COMBINED), so
+    # repeating it here was forced double-reading. Keep only the one
+    # plain-language sentence about WHICH branch the systems favour.
     st.markdown(
         f"<div style='max-width:760px;margin:0 auto 16px;"
-        f"background:#0f1011;border:1px solid #34343a;border-radius:10px;"
-        f"padding:13px 16px;'>"
+        f"background:#0f1011;border:1px solid #23252a;border-radius:10px;"
+        f"padding:11px 16px;'>"
         f"<div style='color:#c9cdd4;font-size:13px;line-height:1.5;'>"
         f"{_consensus_html}</div>"
-        f"<div style='color:#8a8f98;font-size:11.5px;line-height:1.55;"
-        f"margin-top:6px;letter-spacing:0.01em;'>{_consensus_line}</div>"
         f"</div>",
         unsafe_allow_html=True,
     )
 
-    # ---- Module-card helper (L3) — one consistent title + explainer ----
+    # ---- Module-card helper (iter #2 — title-only, no paragraph) ----
+    # The L3 version always rendered a 1-2 line description below each
+    # module title. That's the founder's text-crutch — 5 modules × 2
+    # lines = 10 lines of forced reading. Now: title alone (the
+    # instrument itself shows what it is). `desc_key` kept in the
+    # signature for call-site stability but no longer rendered as a
+    # body paragraph — only as a title=tooltip the cursor reveals on
+    # hover for users who want the explainer.
     def _mod_header(
         title_key: str, desc_key: str, *, max_w: int = 560
     ) -> None:
+        _title = _html.escape(str(T(title_key)))
+        _desc = _html.escape(str(T(desc_key)))
         st.markdown(
-            f"<div style='max-width:{max_w}px;margin:18px auto 6px;'>"
+            f"<div style='max-width:{max_w}px;margin:18px auto 6px;' "
+            f"title='{_desc}'>"
             f"<div style='color:#f7f8f8;font-size:13px;font-weight:600;"
-            f"letter-spacing:-0.005em;'>"
-            f"{_html.escape(str(T(title_key)))}</div>"
-            f"<div style='color:#8a8f98;font-size:11.5px;line-height:1.55;"
-            f"margin-top:3px;'>"
-            f"{_html.escape(str(T(desc_key)))}</div></div>",
+            f"letter-spacing:-0.005em;'>{_title}</div>"
+            f"</div>",
             unsafe_allow_html=True,
         )
 
@@ -2948,8 +2954,11 @@ def _render_traditional_lens(
     chips.append('</div>')
     st.markdown("".join(chips), unsafe_allow_html=True)
 
-    # ---- Joint tri-metric readout (L3 — gets its own header now) ----
-    _mod_header("lens.module.readout.title", "lens.module.readout.desc")
+    # ---- Joint tri-metric readout (iter #2 — title dropped) ----
+    # The "How the lens modulates the model" title + description was
+    # text duplication of what st.metric labels already show. The 3
+    # st.metric pills (Model · Tradition · Combined) are self-labelled
+    # and self-explanatory — no header card needed.
     m1, m2, m3 = st.columns(3)
     with m1:
         st.metric(T("trad.metric.model"), f"{model_prob * 100:.1f}%")
@@ -2958,35 +2967,54 @@ def _render_traditional_lens(
     with m3:
         st.metric(T("trad.metric.combined"), f"{combined * 100:.1f}%")
 
-    # ---- The takeaway (L3) — "what this means for your decision" ----
-    # The lens has to answer the founder's question: with the lens on,
-    # what changed for THIS decision? Express it as a single sentence
-    # comparing the focal branch's model probability to its combined
-    # probability — the actual modulation the lens applied.
+    # ---- The takeaway delta (iter #2 — visual, not a sentence) ----
+    # The L3 takeaway was a full sentence ("The lens lifts the focal
+    # branch from 22.0% to 27.0% — a 5.0 pp upward modulation") —
+    # forced reading. Replaced with a visual delta strip: MODEL → COMBINED
+    # with a coloured arrow ↑ / ↓ / · and the pp magnitude as a tag.
+    # No sentence — the symbols carry it.
     _delta = combined - model_prob
     _delta_abs = abs(_delta)
     if _delta_abs < 0.005:
-        _take_key = "lens.module.takeaway.flat"
+        _arrow = "·"
+        _arrow_color = "#8a8f98"
     elif _delta > 0:
-        _take_key = "lens.module.takeaway.lift"
+        _arrow = "↑"
+        _arrow_color = "#27a644"
     else:
-        _take_key = "lens.module.takeaway.drop"
-    _take_sentence = (
-        str(T(_take_key))
-        .replace("{model}", f"{model_prob * 100:.1f}%")
-        .replace("{combined}", f"{combined * 100:.1f}%")
-        .replace("{delta}", f"{_delta_abs * 100:.1f} pp")
-    )
+        _arrow = "↓"
+        _arrow_color = "#dc4c5a"
+    _delta_tag = f"{_delta_abs * 100:.1f}pp"
     st.markdown(
         f"<div style='max-width:760px;margin:14px auto 4px;"
         f"background:#0f1011;border:1px solid #34343a;border-radius:10px;"
-        f"padding:13px 16px;'>"
-        f"<div style='color:#8a8f98;font-size:10px;font-weight:700;"
-        f"letter-spacing:0.12em;text-transform:uppercase;margin-bottom:5px;'>"
-        f"{_html.escape(str(T('lens.module.takeaway.title')))}"
+        f"padding:13px 18px;display:flex;align-items:center;"
+        f"justify-content:center;gap:14px;flex-wrap:wrap;'>"
+        # MODEL pill
+        f"<div style='display:flex;flex-direction:column;align-items:flex-end;"
+        f"gap:2px;'>"
+        f"<span style='color:#8a8f98;font-size:9px;font-weight:700;"
+        f"letter-spacing:0.14em;text-transform:uppercase;'>MODEL</span>"
+        f"<span style='color:#c9cdd4;font-size:18px;font-weight:600;"
+        f"letter-spacing:-0.01em;'>{model_prob * 100:.1f}%</span>"
         f"</div>"
-        f"<div style='color:#c9cdd4;font-size:13px;line-height:1.5;'>"
-        f"{_html.escape(_take_sentence)}</div></div>",
+        # arrow + delta tag
+        f"<div style='display:flex;flex-direction:column;align-items:center;"
+        f"gap:2px;'>"
+        f"<span style='color:{_arrow_color};font-size:22px;font-weight:700;"
+        f"line-height:1;'>{_arrow}</span>"
+        f"<span style='color:{_arrow_color};font-size:10px;font-weight:600;"
+        f"letter-spacing:0.06em;'>{_delta_tag}</span>"
+        f"</div>"
+        # COMBINED pill
+        f"<div style='display:flex;flex-direction:column;align-items:flex-start;"
+        f"gap:2px;'>"
+        f"<span style='color:#5e6ad2;font-size:9px;font-weight:700;"
+        f"letter-spacing:0.14em;text-transform:uppercase;'>COMBINED</span>"
+        f"<span style='color:#f7f8f8;font-size:18px;font-weight:600;"
+        f"letter-spacing:-0.01em;'>{combined * 100:.1f}%</span>"
+        f"</div>"
+        f"</div>",
         unsafe_allow_html=True,
     )
 
