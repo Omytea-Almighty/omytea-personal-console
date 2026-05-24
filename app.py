@@ -3128,6 +3128,108 @@ def _render_traditional_lens(
         unsafe_allow_html=True,
     )
 
+    # ---- L10: per-branch modulation visualization ----
+    # The single-branch takeaway delta above shows what the lens did
+    # to the FOCAL branch. L10 closes the redesign by showing the
+    # lens's effect on EVERY branch — paired bars (grey = model,
+    # lavender = combined) so the user sees which branches the lens
+    # lifts and which it lowers. This is the visual link between
+    # the lens and the workspace's heatmap that XUANXUE_REDESIGN.md
+    # §5.7 specifies — the proof that the lens MODULATES the world
+    # model rather than running in parallel.
+    if branch_data and display_branches:
+        _mod_header(
+            "lens.module.delta.title",
+            "lens.module.delta.desc",
+            max_w=760,
+        )
+        # Pair model-prob ↔ combined-prob by label so reordering
+        # (which apply_lens_to_branches doesn't do, but defensive
+        # programming) doesn't misalign.
+        _model_by_label = {l: p for l, p, _ in branch_data}
+        _combined_by_label = {l: p for l, p, _ in display_branches}
+        _max_p = max(
+            [p for p in _model_by_label.values()]
+            + [p for p in _combined_by_label.values()]
+            + [0.01]
+        )
+        # Sort by combined-prob descending so the lens-favoured
+        # branches sit at the top.
+        _ordered = sorted(
+            (
+                (lbl, _model_by_label.get(lbl, 0.0), p, btype)
+                for lbl, p, btype in display_branches
+            ),
+            key=lambda x: -x[2],
+        )
+        _rows: list[str] = [
+            "<div style='max-width:760px;margin:6px auto 10px;"
+            "display:flex;flex-direction:column;gap:6px;'>"
+        ]
+        for lbl, m_p, c_p, _btype in _ordered:
+            _m_w = (m_p / _max_p) * 100.0
+            _c_w = (c_p / _max_p) * 100.0
+            _delta_p = c_p - m_p
+            _delta_color = (
+                "#27a644" if _delta_p > 0.005
+                else "#dc4c5a" if _delta_p < -0.005
+                else "#8a8f98"
+            )
+            _delta_sign = (
+                "+" if _delta_p > 0.005
+                else "−" if _delta_p < -0.005
+                else "·"
+            )
+            _delta_tag = (
+                f"{_delta_sign}{abs(_delta_p) * 100:.1f}pp"
+                if abs(_delta_p) > 0.005
+                else "·"
+            )
+            _rows.append(
+                f"<div style='background:#0f1011;"
+                f"border:1px solid #23252a;border-radius:8px;"
+                f"padding:9px 12px 8px;'>"
+                # label + delta tag row
+                f"<div style='display:flex;align-items:center;"
+                f"justify-content:space-between;margin-bottom:6px;'>"
+                f"<span style='color:#f7f8f8;font-size:12px;"
+                f"font-weight:500;letter-spacing:-0.005em;'>"
+                f"{_html.escape(str(lbl))[:48]}</span>"
+                f"<span style='color:{_delta_color};font-size:11px;"
+                f"font-weight:700;letter-spacing:0.04em;"
+                f"font-family:-apple-system,system-ui,sans-serif;'>"
+                f"{_delta_tag}</span>"
+                f"</div>"
+                # model bar (grey)
+                f"<div style='display:flex;align-items:center;gap:8px;"
+                f"margin-bottom:3px;'>"
+                f"<span style='color:#8a8f98;font-size:9px;"
+                f"font-weight:700;letter-spacing:0.1em;width:54px;"
+                f"text-align:right;'>MODEL</span>"
+                f"<div style='flex:1;height:6px;border-radius:3px;"
+                f"background:#181c25;overflow:hidden;'>"
+                f"<div style='height:100%;width:{_m_w:.1f}%;"
+                f"background:#c9cdd4;border-radius:3px;'></div></div>"
+                f"<span style='color:#c9cdd4;font-size:11px;"
+                f"font-weight:600;width:44px;'>"
+                f"{m_p * 100:.1f}%</span></div>"
+                # combined bar (lavender)
+                f"<div style='display:flex;align-items:center;gap:8px;'>"
+                f"<span style='color:#5e6ad2;font-size:9px;"
+                f"font-weight:700;letter-spacing:0.1em;width:54px;"
+                f"text-align:right;'>COMBINED</span>"
+                f"<div style='flex:1;height:6px;border-radius:3px;"
+                f"background:#181c25;overflow:hidden;'>"
+                f"<div style='height:100%;width:{_c_w:.1f}%;"
+                f"background:#5e6ad2;border-radius:3px;'></div></div>"
+                f"<span style='color:#f7f8f8;font-size:11px;"
+                f"font-weight:600;width:44px;'>"
+                f"{c_p * 100:.1f}%</span></div>"
+                f"</div>"
+            )
+        _rows.append("</div>")
+        st.markdown("".join(_rows), unsafe_allow_html=True)
+
     # ---- Always-visible disclaimer (integrity gate per spec §7) ----
     st.markdown(
         f"<div style='color:#8a8f98;font-size:11.5px;line-height:1.55;"

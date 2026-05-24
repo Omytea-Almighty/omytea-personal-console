@@ -1869,6 +1869,18 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_ES: "Pilares año / mes / día / hora derivados de tu nacimiento — tallo celestial, rama terrestre y elemento de cada uno.",
         LANG_FR: "Piliers année / mois / jour / heure dérivés de votre naissance — tige céleste, branche terrestre et élément pour chacun.",
     },
+    "lens.module.delta.title": {
+        LANG_EN: "Per-branch modulation",
+        LANG_ZH: "每个分支的调制量",
+        LANG_ES: "Modulación por rama",
+        LANG_FR: "Modulation par branche",
+    },
+    "lens.module.delta.desc": {
+        LANG_EN: "For each branch in the heatmap: the model's own probability vs. the lens-combined probability, drawn side by side so you can see which branches the lens lifts and which it lowers.",
+        LANG_ZH: "对热力图中的每个分支：模型原始概率 vs. 透镜融合后的概率，左右并列，让你看清透镜把哪些分支抬升、哪些压低。",
+        LANG_ES: "Para cada rama del mapa de calor: probabilidad del modelo vs. la combinada con la lente, lado a lado.",
+        LANG_FR: "Pour chaque branche du mapa de calor : probabilité du modèle vs. probabilité combinée avec la loupe, côte à côte.",
+    },
     "lens.module.ziwei.title": {
         LANG_EN: "紫微 — 12-palace chart",
         LANG_ZH: "紫微 —— 十二宫盘",
