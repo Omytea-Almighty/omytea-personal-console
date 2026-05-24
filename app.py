@@ -4078,20 +4078,19 @@ def render_measurement_update(
         picks from a list.
     """
     _render_back_bar()
+    # Iter #15 (design-self-explains): the 38px center-aligned
+    # marketing hero "Tell it what actually happened." + 3-line
+    # explainer paragraph violated the same rule the workspace's
+    # iter #3 fixed — telling the user what the page does with
+    # text before the form below explains it via interaction. Now a
+    # quiet left-aligned page title; the form's own field labels +
+    # the interaction telegraph the rest.
     st.markdown(
-        f"""
-        <div style='text-align:center;padding:40px 24px 28px;'>
-          <h1 style='font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;
-                     font-size:38px;font-weight:600;letter-spacing:-0.028em;
-                     margin:0 0 14px;color:#f7f8f8;line-height:1.1;'>
-            {T("measurement.hero.title")}
-          </h1>
-          <p style='max-width:600px;margin:0 auto;color:#8a8f98;
-                    font-size:16px;line-height:1.55;letter-spacing:0.005em;'>
-            {T("measurement.hero.subtitle")}
-          </p>
-        </div>
-        """,
+        f"<div style='margin:8px 0 14px;'>"
+        f"<h2 style='color:#f7f8f8;font-size:22px;font-weight:600;"
+        f"letter-spacing:-0.012em;margin:0;'>"
+        f"{T('measurement.hero.title')}</h2>"
+        f"</div>",
         unsafe_allow_html=True,
     )
 
@@ -4115,7 +4114,7 @@ def render_measurement_update(
         )
     else:
         user_id = st.text_input(
-            "Your handle (same one you used when creating the prediction)",
+            "Your handle",
         )
         if not user_id:
             return
@@ -4259,25 +4258,19 @@ def render_measurement_update(
 def render_calibration_history() -> None:
     """Show aggregate calibration metrics with owner-bias breakdown."""
     _render_back_bar()
+    # Iter #15: quiet left-aligned page title; the chart + metric
+    # pills below self-explain the calibration view.
     st.markdown(
-        f"""
-        <div style='text-align:center;padding:40px 24px 28px;'>
-          <h1 style='font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;
-                     font-size:38px;font-weight:600;letter-spacing:-0.028em;
-                     margin:0 0 14px;color:#f7f8f8;line-height:1.1;'>
-            {T("calibration.hero.title")}
-          </h1>
-          <p style='max-width:600px;margin:0 auto;color:#8a8f98;
-                    font-size:16px;line-height:1.55;letter-spacing:0.005em;'>
-            {T("calibration.hero.subtitle")}
-          </p>
-        </div>
-        """,
+        f"<div style='margin:8px 0 14px;'>"
+        f"<h2 style='color:#f7f8f8;font-size:22px;font-weight:600;"
+        f"letter-spacing:-0.012em;margin:0;'>"
+        f"{T('calibration.hero.title')}</h2>"
+        f"</div>",
         unsafe_allow_html=True,
     )
 
     user_id = st.text_input(
-        "User handle (leave blank for global aggregate)", value="",
+        "User handle", value="",
     )
     breakdown = storage.get_calibration_bias_breakdown(
         user_id=user_id if user_id else None,
@@ -4357,20 +4350,14 @@ def render_pricing_and_preorder() -> None:
     """v4.16 P6 — pricing tier comparison + pre-order interest
     capture. Pre-revenue PMF research; no payment processor wired."""
     _render_back_bar()
+    # Iter #15: quiet left-aligned page title; the 3 pricing tier
+    # cards below tell their own story.
     st.markdown(
-        f"""
-        <div style='text-align:center;padding:40px 24px 28px;'>
-          <h1 style='font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;
-                     font-size:38px;font-weight:600;letter-spacing:-0.028em;
-                     margin:0 0 14px;color:#f7f8f8;line-height:1.1;'>
-            {T("pricing.hero.title")}
-          </h1>
-          <p style='max-width:600px;margin:0 auto;color:#8a8f98;
-                    font-size:16px;line-height:1.55;letter-spacing:0.005em;'>
-            {T("pricing.hero.subtitle")}
-          </p>
-        </div>
-        """,
+        f"<div style='margin:8px 0 14px;'>"
+        f"<h2 style='color:#f7f8f8;font-size:22px;font-weight:600;"
+        f"letter-spacing:-0.012em;margin:0;'>"
+        f"{T('pricing.hero.title')}</h2>"
+        f"</div>",
         unsafe_allow_html=True,
     )
 

@@ -2002,10 +2002,12 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         ),
     },
     "measurement.hero.title": {
-        LANG_EN: "Tell it what actually happened.",
-        LANG_ZH: "告诉它真实发生了什么。",
-        LANG_ES: "Cuéntale lo que pasó de verdad.",
-        LANG_FR: "Dis-lui ce qui s'est réellement passé.",
+        # Iter #15: marketing-hero title trimmed × 4 locales to a
+        # quiet page name. The form below names what to do.
+        LANG_EN: "Score a past prediction",
+        LANG_ZH: "为过去的预测打分",
+        LANG_ES: "Puntúa una predicción pasada",
+        LANG_FR: "Évaluer une prédiction passée",
     },
     "measurement.hero.subtitle": {
         LANG_EN: (
@@ -2033,10 +2035,11 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         ),
     },
     "calibration.hero.title": {
-        LANG_EN: "How well-calibrated are you?",
-        LANG_ZH: "你的判断校准得怎样？",
-        LANG_ES: "¿Qué tan bien calibrado estás?",
-        LANG_FR: "À quel point êtes-vous calibré ?",
+        # Iter #15: quiet page name × 4 locales.
+        LANG_EN: "Your calibration record",
+        LANG_ZH: "你的校准记录",
+        LANG_ES: "Tu historial de calibración",
+        LANG_FR: "Votre historique de calibration",
     },
     "calibration.hero.subtitle": {
         LANG_EN: (
@@ -2061,10 +2064,11 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         ),
     },
     "pricing.hero.title": {
-        LANG_EN: "An honest price, posted in advance.",
-        LANG_ZH: "事先公开的、诚实的价格。",
-        LANG_ES: "Un precio honesto, publicado por adelantado.",
-        LANG_FR: "Un prix honnête, affiché à l'avance.",
+        # Iter #15: quiet page name × 4 locales.
+        LANG_EN: "Pricing",
+        LANG_ZH: "定价",
+        LANG_ES: "Precios",
+        LANG_FR: "Tarifs",
     },
     "pricing.hero.subtitle": {
         LANG_EN: (
