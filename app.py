@@ -4946,21 +4946,14 @@ def render_live_webcam(embedded: bool = False) -> None:
     only).
     """
     if not embedded:
+        # Iter #17: last remaining marketing-hero — webcam page.
+        # Same quiet h2 pattern; subtitle dropped.
         st.markdown(
-            f"""
-            <div style='text-align:center;padding:40px 24px 28px;'>
-              <h1 style='font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,Helvetica,Arial,sans-serif;
-                         font-size:38px;font-weight:600;letter-spacing:-0.028em;
-                         margin:0 0 14px;color:#f7f8f8;line-height:1.1;'>
-                {T("webcam.title")}
-              </h1>
-              <p style='max-width:600px;margin:0 auto;color:#8a8f98;
-                        font-size:16px;line-height:1.55;
-                        letter-spacing:0.005em;'>
-                {T("webcam.subtitle")}
-              </p>
-            </div>
-            """,
+            f"<div style='margin:8px 0 14px;'>"
+            f"<h2 style='color:#f7f8f8;font-size:22px;font-weight:600;"
+            f"letter-spacing:-0.012em;margin:0;'>"
+            f"{T('webcam.title')}</h2>"
+            f"</div>",
             unsafe_allow_html=True,
         )
 
