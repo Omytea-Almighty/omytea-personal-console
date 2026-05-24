@@ -55,10 +55,16 @@ DEFAULT_LANG: Final = LANG_EN
 TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
     # -----  Brand / chrome  -----
     "brand.tagline": {
-        LANG_EN: "Probability-calibrated decision support",
-        LANG_ZH: "概率校准的决策辅助",
-        LANG_ES: "Apoyo a decisiones con probabilidad calibrada",
-        LANG_FR: "Aide à la décision à probabilité calibrée",
+        # Iter #10: brand subtitle was technical positioning ("Probability-
+        # calibrated decision support") — corporate-speak the stumbled-in
+        # visitor doesn't parse. Replaced with a 4-word imperative that
+        # describes the workflow: type → see. The workspace title "Your
+        # futures" + the chips already do the heavy lifting; the tagline
+        # just reinforces the verb-object pair.
+        LANG_EN: "Type a decision · see its futures.",
+        LANG_ZH: "写下一个决定 · 看见它的未来。",
+        LANG_ES: "Escribe una decisión · ve sus futuros.",
+        LANG_FR: "Écrivez une décision · voyez ses futurs.",
     },
     "brand.disclaimer": {
         # Iter #5 (design-self-explains): 3 lines of legal-ese in the
