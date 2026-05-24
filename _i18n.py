@@ -128,10 +128,15 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_FR: "Historique",
     },
     "nav.history.empty": {
-        LANG_EN: "No predictions yet. Run one and it appears here.",
-        LANG_ZH: "还没有预测。生成一个就会出现在这里。",
-        LANG_ES: "Aún no hay predicciones. Ejecuta una y aparecerá aquí.",
-        LANG_FR: "Pas encore de prédictions. Lancez-en une et elle apparaîtra ici.",
+        # Iter #9: trimmed from "No predictions yet. Run one and it
+        # appears here." — the empty list below the History eyebrow
+        # IS the empty-state cue (no list items = no predictions).
+        # Reading "run one and it appears here" instructs the user
+        # what the design already shows.
+        LANG_EN: "Your history will fill in here.",
+        LANG_ZH: "你的历史会出现在这里。",
+        LANG_ES: "Tu historial aparecerá aquí.",
+        LANG_FR: "Votre historique apparaîtra ici.",
     },
     "nav.more": {
         LANG_EN: "More",
