@@ -88,12 +88,19 @@ INPUT_FIELDS: list[InputField] = [
     ),
     InputField(
         key="why_considering_change",
-        label="What's actually driving you? (the more honest, the more accurate)",
+        # Iter #12 (design-self-explains): label was 11 words + a
+        # parenthetical lecture ("(the more honest, the more accurate)").
+        # That parenthetical is the kind of "tell the user how to use
+        # it" text the design rule rejects. The honesty cue moves to
+        # the `hint` (the small "?" tooltip) — surfaces for users who
+        # hover, doesn't take up first-paint reading space.
+        label="What's driving you?",
         field_type="textarea",
         hint=(
             "Pay / growth / team dynamics / life balance / creative pull / "
             "family proximity / visa / external opportunity — the real driver, "
-            "not the polished one."
+            "not the polished one. The more honest, the more accurate the "
+            "forecast."
         ),
         placeholder=(
             "e.g., Bay-area cost of living plus wanting to be closer to "
@@ -110,7 +117,11 @@ INPUT_FIELDS: list[InputField] = [
     ),
     InputField(
         key="time_horizon",
-        label="When will you come back to score this?",
+        # Iter #12: 8-word question → 2-word imperative. The dropdown
+        # options ("3 months / 6 / 12 / 24") complete the verb
+        # naturally — "Score it in [3 months]" reads as one sentence
+        # without lecturing the user that "you'll come back".
+        label="Score it in",
         field_type="select",
         options=("3 months", "6 months", "12 months", "24 months"),
         hint=(
@@ -143,7 +154,11 @@ INPUT_FIELDS: list[InputField] = [
     ),
     InputField(
         key="key_unknowns",
-        label="Things you know you don't know — but that matter (optional)",
+        # Iter #12: "Things you know you don't know — but that matter"
+        # (11 words, philosophical-Rumsfeld phrasing) → "Key unknowns".
+        # The hint still teaches the concept for users who need it;
+        # the label itself just names the slot.
+        label="Key unknowns (optional)",
         field_type="textarea",
         required=False,
         hint=(
