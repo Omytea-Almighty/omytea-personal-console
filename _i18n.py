@@ -888,10 +888,14 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_FR: "Effacer le formulaire",
     },
     "new.generate": {
-        LANG_EN: "Generate prediction",
-        LANG_ZH: "生成预测",
-        LANG_ES: "Generar predicción",
-        LANG_FR: "Générer la prédiction",
+        # Iter #6: "Generate prediction" is operational language. Renamed
+        # to a destination phrase — what the user GETS by clicking, not
+        # what the system DOES. ChatGPT calls it "Send", we name the
+        # outcome.
+        LANG_EN: "See my futures →",
+        LANG_ZH: "查看我的未来 →",
+        LANG_ES: "Ver mis futuros →",
+        LANG_FR: "Voir mes futurs →",
     },
     "new.howto.title": {
         LANG_EN: "How this works · 30 seconds",

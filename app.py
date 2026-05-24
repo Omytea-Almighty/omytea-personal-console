@@ -2372,34 +2372,47 @@ def _render_workspace_composer_body() -> None:
     # picker clutters the slim composer.
     scenario = next(iter(AVAILABLE_SCENARIOS))
 
-    # Fill / clear row — testers can land + click once + Generate.
-    col_a, col_b = st.columns([3, 2])
-    with col_a:
-        if st.button(
-            T("new.fill_sample"),
-            help=(
-                "Prefill every field with realistic example values so you "
-                "can see the entire prediction flow in one click."
-            ),
-            use_container_width=True,
-            type="secondary",
-        ):
-            for field in AVAILABLE_SCENARIOS[scenario]["input_fields"]:
-                if field.example_value:
-                    st.session_state[f"input_{field.key}"] = field.example_value
-            handle_field_key = "input_user_id"
-            if not st.session_state.get(handle_field_key):
-                st.session_state[handle_field_key] = session_user_id()
-            st.rerun()
-    with col_b:
-        if st.button(
-            T("new.clear_form"),
-            help="Reset all fields to empty.",
-            use_container_width=True,
-        ):
-            for field in AVAILABLE_SCENARIOS[scenario]["input_fields"]:
-                st.session_state.pop(f"input_{field.key}", None)
-            st.rerun()
+    # Fill / clear utility row — iter #6: hidden on the cold start
+    # (no input AND no prediction yet) because the 3 suggestion chips
+    # already cover the "one-click prefill" job there. Surfaced after
+    # the user has typed anything OR a prediction exists, so a
+    # returning visitor can still wipe / reseed the form.
+    _has_any_input = any(
+        bool(str(st.session_state.get(f"input_{f.key}", "")).strip())
+        for f in AVAILABLE_SCENARIOS[scenario]["input_fields"]
+    )
+    _has_prediction = st.session_state.get("current_prediction") is not None
+    if _has_any_input or _has_prediction:
+        col_a, col_b = st.columns([3, 2])
+        with col_a:
+            if st.button(
+                T("new.fill_sample"),
+                help=(
+                    "Prefill every field with realistic example values "
+                    "so you can see the entire prediction flow in one "
+                    "click."
+                ),
+                use_container_width=True,
+                type="secondary",
+            ):
+                for field in AVAILABLE_SCENARIOS[scenario]["input_fields"]:
+                    if field.example_value:
+                        st.session_state[f"input_{field.key}"] = (
+                            field.example_value
+                        )
+                handle_field_key = "input_user_id"
+                if not st.session_state.get(handle_field_key):
+                    st.session_state[handle_field_key] = session_user_id()
+                st.rerun()
+        with col_b:
+            if st.button(
+                T("new.clear_form"),
+                help="Reset all fields to empty.",
+                use_container_width=True,
+            ):
+                for field in AVAILABLE_SCENARIOS[scenario]["input_fields"]:
+                    st.session_state.pop(f"input_{field.key}", None)
+                st.rerun()
 
     # Form fields — the core fields are visible; secondary / optional
     # fields fold into a "More details" expander so the composer stays a
