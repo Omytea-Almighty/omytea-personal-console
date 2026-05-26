@@ -4836,7 +4836,17 @@ def render_calibration_history() -> None:
 
     aggregate = breakdown["all"]
     if not aggregate:
-        st.info("No measurement updates recorded yet.")
+        # Iter #32 — empty state now describes the loop so users
+        # who arrive here BEFORE having scored anything understand
+        # why it's empty + what they can do (the founder thesis:
+        # "校准记录可视化 / 当初哪些判断错了" only renders once they've
+        # closed the loop at least once).
+        st.info(
+            "No measurement updates recorded yet. After a prediction's "
+            "horizon date passes, score it on the **Measurement update** "
+            "page to populate this view — that's where your calibration "
+            "track record builds up."
+        )
         return
 
     cols = st.columns(3)
@@ -4898,6 +4908,106 @@ def render_calibration_history() -> None:
             "Negative delta means owner self-test scored 'better calibrated' "
             "than the neutral sample — interpret as ownership bias."
         )
+
+    # Iter #32 — measurement-loop part 2: per-prediction diff cards.
+    # Founder thesis: the user's most-wanted view is "what I predicted
+    # vs. what happened" per individual prediction, not just
+    # aggregates. This section renders the most recent N measurements
+    # as cards showing: decision excerpt → top predicted branch &
+    # probability → which branch actually happened & the probability
+    # the user gave it in advance → calibration metrics. The single
+    # most decision-relevant number per card is "you gave the outcome
+    # that actually happened X% in advance" — that's the calibration
+    # the user is most curious about.
+    st.divider()
+    st.subheader("Per-prediction track record")
+    st.caption(
+        "Your most recent scored predictions. Each card shows the "
+        "probability you assigned to the future that actually "
+        "happened — the single number you most want to see."
+    )
+    records = storage.list_recent_measurements_with_predictions(
+        user_id=user_id if user_id else None,
+        limit=20,
+    )
+    if not records:
+        st.info(
+            "No per-prediction records yet. The aggregate above counts "
+            "all measurements across users; individual records show up "
+            "here only when you scored predictions under this user "
+            "handle."
+        )
+    else:
+        # Format helper for the "you gave the outcome X% in advance"
+        # headline number. Honest fallback ("not scored against a
+        # specific branch") when the measurement form didn't capture
+        # which branch materialized.
+        import datetime as _dt
+        for rec in records:
+            top_label = _humanize_id(rec["predicted_top_label"]) or "—"
+            top_pct = f"{rec['predicted_top_prob'] * 100:.0f}%"
+            actual = rec["actual_label"]
+            actual_human = _humanize_id(actual) if actual else ""
+            advance_pct = (
+                f"{rec['prob_for_actual'] * 100:.0f}%"
+                if rec["prob_for_actual"] > 0
+                else "—"
+            )
+            try:
+                pred_date = _dt.datetime.fromtimestamp(
+                    rec["predicted_at"]
+                ).strftime("%b %Y")
+            except Exception:
+                pred_date = ""
+            try:
+                obs_date = _dt.datetime.fromtimestamp(
+                    rec["observed_at"]
+                ).strftime("%b %Y")
+            except Exception:
+                obs_date = ""
+            with st.container(border=True):
+                # Decision excerpt as the card headline; falls back
+                # to scenario name if no decision_options captured.
+                heading = (
+                    rec["decision_label"]
+                    or f"({rec['scenario']} prediction)"
+                )
+                st.markdown(f"### {heading}")
+                # Predicted-vs-actual line — the founder-asked
+                # "what I got right / wrong" surface.
+                if actual_human:
+                    line = (
+                        f"**Predicted most likely**: _{top_label}_ ({top_pct})  \n"
+                        f"**Actually happened**: _{actual_human}_  \n"
+                        f"**You gave it {advance_pct} in advance**"
+                    )
+                else:
+                    # Older / softer measurements without an explicit
+                    # branch — honest fallback rather than fabricating.
+                    line = (
+                        f"**Predicted most likely**: _{top_label}_ ({top_pct})  \n"
+                        "_(this measurement didn't capture which branch "
+                        "materialized — only aggregate calibration metrics "
+                        "are recorded.)_"
+                    )
+                st.markdown(line)
+                meta_bits: list[str] = []
+                if pred_date:
+                    meta_bits.append(f"predicted {pred_date}")
+                if obs_date:
+                    meta_bits.append(f"scored {obs_date}")
+                if rec["brier"] is not None:
+                    meta_bits.append(f"Brier {float(rec['brier']):.3f}")
+                if rec["log_loss"] is not None:
+                    meta_bits.append(
+                        f"log-loss {float(rec['log_loss']):.3f}"
+                    )
+                if rec["user_notes"]:
+                    meta_bits.append(
+                        f"note: {str(rec['user_notes'])[:60]}"
+                    )
+                if meta_bits:
+                    st.caption(" · ".join(meta_bits))
 
 
 # ============================================================

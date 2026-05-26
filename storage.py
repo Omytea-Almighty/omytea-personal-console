@@ -723,6 +723,147 @@ def get_calibration_bias_breakdown(
     }
 
 
+def list_recent_measurements_with_predictions(
+    user_id: str | None = None,
+    limit: int = 20,
+    db_path: Path | None = None,
+) -> list[dict[str, Any]]:
+    """Iter #32 — measurement-loop part 2: per-prediction diff records.
+
+    Joins ``predictions`` and ``measurement_updates`` to return a list
+    of records suitable for rendering "what you predicted vs. what
+    actually happened" diff cards on the Calibration History page —
+    the founder-thesis "校准记录可视化 / 当初哪些判断错了" direct
+    delivery.
+
+    Each record is a dict with keys:
+      - ``prediction_id``       : str
+      - ``user_id``             : str
+      - ``predicted_at``        : float (unix epoch, from predictions)
+      - ``observed_at``         : float (unix epoch, from measurement)
+      - ``scenario``            : str   (from predictions.scenario)
+      - ``decision_label``      : str   (best-effort excerpt of the
+                                          user's decision_options input)
+      - ``predicted_top_label`` : str   (the most-probable branch at
+                                          prediction time)
+      - ``predicted_top_prob``  : float in [0, 1]
+      - ``actual_outcome``      : dict  (the user's reported outcome)
+      - ``actual_label``        : str   (best-effort label of which
+                                          branch materialized)
+      - ``prob_for_actual``     : float in [0, 1] — the probability
+                                  the user assigned at prediction time
+                                  to the branch that actually happened.
+                                  This is the single number the user
+                                  most wants to see: "I gave the
+                                  outcome that actually happened X%
+                                  in advance".
+      - ``brier``               : float | None
+      - ``log_loss``            : float | None
+      - ``user_satisfaction``   : int | None
+      - ``user_notes``          : str
+
+    Sorted by ``observed_at`` descending so the most recent
+    measurement is first. ``limit`` caps the list; pass a larger
+    value for export-style views.
+    """
+    conn = _connect(db_path)
+    try:
+        q = (
+            "SELECT m.update_id, m.prediction_id, m.user_id, "
+            "       m.observed_at, m.actual_outcome_json, "
+            "       m.calibration_json, m.user_satisfaction, "
+            "       m.user_notes, p.created_at AS predicted_at, "
+            "       p.scenario, p.input_json, p.wavefunction_json "
+            "FROM measurement_updates m "
+            "JOIN predictions p ON p.prediction_id = m.prediction_id "
+        )
+        params: list[Any] = []
+        if user_id:
+            q += "WHERE m.user_id = ? "
+            params.append(user_id)
+        q += "ORDER BY m.observed_at DESC LIMIT ?"
+        params.append(int(limit))
+        rows = conn.execute(q, params).fetchall()
+    finally:
+        conn.close()
+
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        try:
+            wf = json.loads(r["wavefunction_json"] or "{}")
+        except Exception:
+            wf = {}
+        try:
+            actual = json.loads(r["actual_outcome_json"] or "{}")
+        except Exception:
+            actual = {}
+        try:
+            cal = json.loads(r["calibration_json"] or "{}")
+        except Exception:
+            cal = {}
+        try:
+            inp = json.loads(r["input_json"] or "{}")
+        except Exception:
+            inp = {}
+
+        # Find the most-probable branch at prediction time.
+        hypotheses = wf.get("hypotheses", []) or []
+        top_label = ""
+        top_prob = 0.0
+        for h in hypotheses:
+            p = float(h.get("probability", 0.0) or 0.0)
+            if p > top_prob:
+                top_prob = p
+                top_label = str(h.get("label", ""))
+
+        # Find which branch actually happened + its predicted prob.
+        # The actual_outcome dict varies by collection form; common
+        # shapes: {"outcome_branch_label": "X"} or
+        # {"outcome": "X"} or {"branch": "X"}.
+        actual_label = (
+            actual.get("outcome_branch_label")
+            or actual.get("outcome")
+            or actual.get("branch")
+            or actual.get("realized_branch")
+            or ""
+        )
+        actual_label = str(actual_label) if actual_label else ""
+        prob_for_actual = 0.0
+        if actual_label and hypotheses:
+            for h in hypotheses:
+                if str(h.get("label", "")) == actual_label:
+                    prob_for_actual = float(h.get("probability", 0.0) or 0.0)
+                    break
+
+        # Decision label — best-effort excerpt of the first
+        # decision_options entry, truncated to 80 chars for card use.
+        decision_raw = (
+            inp.get("decision_options")
+            or inp.get("decision")
+            or ""
+        )
+        decision_label = str(decision_raw).split("\n")[0][:80]
+
+        out.append({
+            "prediction_id": str(r["prediction_id"]),
+            "user_id": str(r["user_id"]),
+            "predicted_at": float(r["predicted_at"] or 0.0),
+            "observed_at": float(r["observed_at"] or 0.0),
+            "scenario": str(r["scenario"] or ""),
+            "decision_label": decision_label,
+            "predicted_top_label": top_label,
+            "predicted_top_prob": top_prob,
+            "actual_outcome": actual,
+            "actual_label": actual_label,
+            "prob_for_actual": prob_for_actual,
+            "brier": cal.get("brier"),
+            "log_loss": cal.get("log_loss"),
+            "user_satisfaction": r["user_satisfaction"],
+            "user_notes": str(r["user_notes"] or ""),
+        })
+    return out
+
+
 def new_prediction_id() -> str:
     return str(uuid.uuid4())
 
