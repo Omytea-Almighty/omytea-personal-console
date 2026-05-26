@@ -3495,6 +3495,87 @@ def render_traditional_view() -> None:
     )
 
 
+# Iter #23 — review-date helpers for the measurement-update CTA. Kept
+# at module scope so the function under test is straightforward and the
+# ics generator is reusable by future surfaces (e.g. a "schedule
+# review" button on the calibration-history page).
+def _dt_today_plus_months(months: int):
+    """Return today's date + ~months later. Uses 30-day months for the
+    offset — accurate to a few days at 12-month horizons and avoids
+    pulling python-dateutil for a single calculation. The downstream
+    .ics format only needs day-precision."""
+    import datetime as _dt
+    today = _dt.date.today()
+    days = max(1, int(round(float(months) * 30.44)))
+    return today + _dt.timedelta(days=days)
+
+
+def _build_review_ics(
+    *,
+    prediction_id: str,
+    decision_label: str,
+    review_date,
+) -> bytes:
+    """Return a minimal RFC 5545 .ics calendar blob for a one-day
+    review reminder on the horizon date.
+
+    Encoded fields:
+      - SUMMARY: "Score your Omytea prediction"
+      - DESCRIPTION: short narrative + prediction ID + deep link
+        back to the demo's measurement-update tab.
+      - DTSTART / DTEND: all-day event on the review date.
+      - UID: derived from the prediction ID so re-downloading the
+        same reminder updates the existing event rather than
+        creating duplicates.
+
+    The blob is bytes (utf-8) so it can be piped straight into a
+    streamlit download_button without further encoding gymnastics.
+    """
+    import datetime as _dt
+    decision_excerpt = (decision_label or "").strip().replace("\n", " · ")[:80]
+    dtstart = review_date.strftime("%Y%m%d")
+    dtend = (review_date + _dt.timedelta(days=1)).strftime("%Y%m%d")
+    dtstamp = _dt.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    uid = f"omytea-review-{prediction_id}@omytea-personal-console"
+    # ICS escapes commas, semicolons, backslashes and newlines.
+    def _esc(text: str) -> str:
+        return (
+            text.replace("\\", "\\\\")
+            .replace(",", "\\,")
+            .replace(";", "\\;")
+            .replace("\n", "\\n")
+        )
+    description = (
+        "Time to score your Omytea prediction against what actually "
+        "happened — that's the calibration loop. "
+        f"Prediction ID: {prediction_id}. "
+        "Open the live demo and head to the Measurement update tab: "
+        f"{_brand.BRAND_PUBLIC_URL}"
+    )
+    body = (
+        "BEGIN:VCALENDAR\r\n"
+        "VERSION:2.0\r\n"
+        "PRODID:-//Omytea Personal Console//Review Reminder//EN\r\n"
+        "CALSCALE:GREGORIAN\r\n"
+        "METHOD:PUBLISH\r\n"
+        "BEGIN:VEVENT\r\n"
+        f"UID:{uid}\r\n"
+        f"DTSTAMP:{dtstamp}\r\n"
+        f"DTSTART;VALUE=DATE:{dtstart}\r\n"
+        f"DTEND;VALUE=DATE:{dtend}\r\n"
+        f"SUMMARY:{_esc('Score your Omytea prediction')}"
+    )
+    if decision_excerpt:
+        body += f" — {_esc(decision_excerpt)}"
+    body += "\r\n"
+    body += f"DESCRIPTION:{_esc(description)}\r\n"
+    body += f"URL:{_brand.BRAND_PUBLIC_URL}\r\n"
+    body += "TRANSP:TRANSPARENT\r\n"
+    body += "END:VEVENT\r\n"
+    body += "END:VCALENDAR\r\n"
+    return body.encode("utf-8")
+
+
 def _render_story_card(
     h: Any,
     kind_tag: str,
@@ -4306,10 +4387,48 @@ def _render_result(
     # both branches (either passed in by caller, or reassigned to the
     # freshly-created record's id by the inline-persistence fallback
     # above). See tests/test_render_result_unbound_regression.py.
+    # Iter #23 — measurement-update CTA upgraded. The founder's
+    # product thesis: the real value isn't a one-shot prediction —
+    # it's the user coming back in N months to score what actually
+    # happened. That closes the calibration loop, which is the
+    # difference between "fancy ChatGPT wrapper" and "calibrated
+    # decision journal" (per founder audit + FactTune/Hindsyt peer
+    # research). The existing st.info() reminder is correct but
+    # passive — users have to remember to come back.
+    #
+    # The fix: an .ics calendar download. Click → open in macOS
+    # Calendar / Google Calendar / Outlook → the user's real
+    # calendar has the reminder, anchored to the actual horizon
+    # date. The measurement loop now lives outside our app, where
+    # the user actually lives.
+    horizon_str = str(user_input.get("time_horizon", "6 months"))
+    horizon_months_for_cta = _parse_time_horizon_to_steps(horizon_str)
+    review_date = _dt_today_plus_months(horizon_months_for_cta)
+    review_date_human = review_date.strftime("%B %Y")
     st.info(
-        f"📅 Come back in **{user_input.get('time_horizon', '6 months')}** to "
-        f"report what actually happened. Use the **Measurement update** tab "
-        f"with prediction ID `{prediction_id}`."
+        f"📅 Come back in **{horizon_str}** "
+        f"(around **{review_date_human}**) to score what actually "
+        f"happened — that's where calibration kicks in. Prediction ID "
+        f"`{prediction_id}`."
+    )
+    # The .ics download — encodes a one-shot all-day reminder on
+    # the horizon date with the prediction ID + deep-link back to
+    # the live demo + Measurement-update tab. RFC 5545 compliant.
+    ics_blob = _build_review_ics(
+        prediction_id=prediction_id,
+        decision_label=str(user_input.get("decision_options", ""))[:80],
+        review_date=review_date,
+    )
+    st.download_button(
+        label="📥  Add reminder to my calendar (.ics)",
+        data=ics_blob,
+        file_name=f"omytea-review-{prediction_id[:8]}.ics",
+        mime="text/calendar",
+        key=f"_ics_dl_{prediction_id}",
+        help=(
+            "Downloads a calendar event for the review date so the "
+            "reminder lives in your real calendar, not just this app."
+        ),
     )
 
 
