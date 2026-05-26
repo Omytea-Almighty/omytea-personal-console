@@ -1418,6 +1418,52 @@ def _render_settings_about() -> None:
     )
 
 
+def _resolve_user_backend():
+    """If the user pinned a backend in Settings → Model & API (R3),
+    instantiate it with their session-scoped credentials. Returns
+    None when the user is on "default" (or there's no choice yet),
+    so callers fall back to ``get_default_backend()``'s rotation.
+
+    Iter #18: closes the previous "UI without wiring" gap — R3
+    shipped a clean selectbox + password field but the actual
+    backend dispatch path (`get_default_backend` / `compile_belief_
+    program`) wasn't consulting it. Now `compile_belief_program`
+    receives the resolved backend on every form submit.
+    """
+    choice = st.session_state.get("model_backend_choice", "default")
+    if choice == "default" or not choice:
+        return None
+    try:
+        if choice == "ollama":
+            host = (
+                st.session_state.get("model_ollama_url", "").strip()
+                or "http://localhost:11434"
+            )
+            from llm_backends import get_backend
+            return get_backend("ollama", host=host)
+        if choice == "anthropic":
+            key = st.session_state.get("model_api_key_anthropic", "").strip()
+            if not key:
+                return None
+            from llm_backends import get_backend
+            return get_backend("anthropic", api_key=key)
+        if choice == "groq":
+            key = st.session_state.get("model_api_key_groq", "").strip()
+            if not key:
+                return None
+            from llm_backends import get_backend
+            return get_backend("groq", api_key=key)
+        if choice == "openai":
+            key = st.session_state.get("model_api_key_openai", "").strip()
+            if not key:
+                return None
+            from llm_backends import get_backend
+            return get_backend("openai", api_key=key)
+    except Exception:  # noqa: BLE001 — defensive: never block submission
+        return None
+    return None
+
+
 def _render_settings_model() -> None:
     """Model & API (R3) — LLM backend selector + session-scoped API
     keys. The last "Planned" placeholder becomes real.
@@ -2553,9 +2599,15 @@ def _render_workspace_composer_body() -> None:
             st.error("Please provide a user handle.")
             return
 
+        # Iter #18: if the user pinned a backend in Settings → Model
+        # & API and supplied a key, use it; else None falls through
+        # to the env-var-driven default rotation.
+        _user_backend = _resolve_user_backend()
         with st.spinner("Compiling input → BeliefProgram → hypothesis space…"):
             try:
-                program = compile_belief_program(form_data, scenario=scenario)
+                program = compile_belief_program(
+                    form_data, scenario=scenario, backend=_user_backend,
+                )
                 result = belief_program_to_console(program)
             except Exception as exc:  # noqa: BLE001 — show error to user
                 st.error(f"Compilation failed: {exc}")
@@ -3542,6 +3594,9 @@ def _render_drilldown_section(
                         ),
                         user_input=user_input,
                         scenario=scenario,
+                        # Iter #18: respect the user's pinned backend
+                        # for drill-downs too (else fall to default).
+                        backend=_resolve_user_backend(),
                     )
                 except Exception as exc:  # noqa: BLE001
                     st.error(f"Drill-down failed: {exc}")
