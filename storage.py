@@ -750,12 +750,14 @@ def list_overdue_predictions(
     decade-old predictions if storage isn't ever cleaned.
     """
     import re as _re
-    conn = _connect(db_path)
-    try:
+    with db_connect(db_path) as conn:
         # LEFT JOIN — keep predictions with NO matching measurement row.
+        # `user_input_json` is the production column name (the helper
+        # I wrote earlier had a typo: `input_json`). Aliased here so
+        # the local key stays `input_json` for parser-style reads.
         rows = conn.execute(
             "SELECT p.prediction_id, p.user_id, p.scenario, "
-            "       p.created_at, p.input_json "
+            "       p.created_at, p.user_input_json AS input_json "
             "FROM predictions p "
             "LEFT JOIN measurement_updates m "
             "  ON m.prediction_id = p.prediction_id "
@@ -763,8 +765,6 @@ def list_overdue_predictions(
             "ORDER BY p.created_at DESC",
             (user_id,),
         ).fetchall()
-    finally:
-        conn.close()
 
     now = time.time()
     out: list[dict[str, Any]] = []
@@ -862,14 +862,14 @@ def list_recent_measurements_with_predictions(
     measurement is first. ``limit`` caps the list; pass a larger
     value for export-style views.
     """
-    conn = _connect(db_path)
-    try:
+    with db_connect(db_path) as conn:
         q = (
             "SELECT m.update_id, m.prediction_id, m.user_id, "
             "       m.observed_at, m.actual_outcome_json, "
             "       m.calibration_json, m.user_satisfaction, "
             "       m.user_notes, p.created_at AS predicted_at, "
-            "       p.scenario, p.input_json, p.wavefunction_json "
+            "       p.scenario, p.user_input_json AS input_json, "
+            "       p.wavefunction_json "
             "FROM measurement_updates m "
             "JOIN predictions p ON p.prediction_id = m.prediction_id "
         )
@@ -880,8 +880,6 @@ def list_recent_measurements_with_predictions(
         q += "ORDER BY m.observed_at DESC LIMIT ?"
         params.append(int(limit))
         rows = conn.execute(q, params).fetchall()
-    finally:
-        conn.close()
 
     out: list[dict[str, Any]] = []
     for r in rows:
