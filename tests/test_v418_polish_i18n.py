@@ -29,11 +29,17 @@ import _i18n  # noqa: E402
 def test_every_key_has_all_four_languages() -> None:
     """No key may be missing EN / 中 / ES / FR — a missing language
     silently falls back to the key string, which ships untranslated UI.
+
+    Iter #11 (design-self-explains, bug-036 fix): T() now honours
+    INTENTIONALLY EMPTY translations (""). iter #8 emptied
+    `heatmap.cell_hint` × 4 locales to delete the "Hover a cell..."
+    crutch caption; empty-string IS the correct value. Only "key is
+    absent from the entry dict" counts as incomplete now.
     """
     missing: list[str] = []
     for key, entry in _i18n.TRANSLATIONS.items():
         for lang in _i18n.SUPPORTED_LANGS:
-            if lang not in entry or not str(entry[lang]).strip():
+            if lang not in entry:
                 missing.append(f"{key}::{lang}")
     assert not missing, f"incomplete translations: {missing}"
 
