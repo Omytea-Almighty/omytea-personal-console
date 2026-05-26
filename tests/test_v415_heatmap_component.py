@@ -230,8 +230,11 @@ def test_heatmap_grid_is_fine_and_compact() -> None:
     html = _build_html([])
     # prediction / idle: 24 fine time columns, not the old 9.
     assert "var ncols = 24;" in html
-    # narrow left gutter (was 200) keeps the grid wide → cells small.
-    assert "PADX_L = 96" in html
+    # left gutter — was 200 (oversized), then 96 (founder-tight), now
+    # 124 (iter #17: the old 96 forced 11-char label truncation; the
+    # rotated "outcome branch" caption was removed and the gutter
+    # widened so anchor labels read in full without re-ballooning cells.
+    assert "PADX_L = 124" in html
     # short canvas + per-cell height cap keep rows from ballooning.
     assert "SVG_H = 206" in html
     assert "MAX_CELL_H = 30" in html

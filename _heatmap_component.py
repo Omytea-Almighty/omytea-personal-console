@@ -948,7 +948,13 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
   // do not balloon into oversized blocks. The grid stays centred so a
   // few-row prediction does not stretch each cell vertically.
   var SVG_W = 760, SVG_H = 206;
-  var PADX_L = 96, PADX_R = 16, PADY_T = 12, PADY_B = 26;
+  // Left gutter widened 96 -> 124 (iter #17) so branch anchor labels
+  // can actually be read — the previous 96px gutter forced labels to
+  // truncate at ~11 chars, rendering "Thrive at n..." / "Burnout wit..."
+  // The redundant rotated "outcome branch" caption that used to share
+  // this gutter was removed too; the section title above already names
+  // what the rows are, so the caption was duplicate ink.
+  var PADX_L = 124, PADX_R = 16, PADY_T = 12, PADY_B = 26;
   var GRID_W = SVG_W - PADX_L - PADX_R;
   var GRID_H = SVG_H - PADY_T - PADY_B;
   // hard cap on a single cell so a 5-row prediction grid never draws
@@ -1092,14 +1098,19 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
     // dots + the tinted anchor label, not by recolouring the cells.
     var colors = [];
     for (var ci = 0; ci < fineRows; ci++) colors.push("139,140,255");
-    // labels live only on branch anchor rows (v10's rowLabelAt). Kept
-    // short so they clear the rotated y-axis caption in the gutter.
+    // labels live only on branch anchor rows (v10's rowLabelAt).
+    // Iter #17: cap raised 12 -> 18 to actually let users read their
+    // futures — the widened 124px gutter + the removal of the rotated
+    // axis caption fits the new cap with margin. 18 chars covers the
+    // career scenario labels in full ("Thrive at new role", "Burnout
+    // within 6mo", "Counter offer ok", "Stay and thrive") instead of
+    // truncating mid-word.
     var shortLabels = [];
     var rowLabelAt = {{}};
     var rowLabelColor = {{}};
     for (var li = 0; li < n; li++) {{
       var lbl = (branches[li].label || ("Branch " + (li + 1))).trim();
-      if (lbl.length > 12) lbl = lbl.slice(0, 11) + "…";
+      if (lbl.length > 18) lbl = lbl.slice(0, 17) + "…";
       shortLabels.push(lbl);
       rowLabelAt[anchors[li]] = lbl;
       rowLabelColor[anchors[li]] =
@@ -1215,16 +1226,14 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
     var axis = "";
     var grid = "";
 
-    // rotated y-axis caption (v10's .axis-label) — names what the rows
-    // are: the ordered outcome branches. Sits in the far-left gutter,
-    // clear of the (short) anchor labels.
-    var capX = 9;
-    var capY = gy0 + gridH / 2;
-    axis += '<text x="' + capX + '" y="' + capY.toFixed(1) +
-      '" transform="rotate(-90 ' + capX + ' ' + capY.toFixed(1) +
-      ')" text-anchor="middle" font-family="var(--mono)" ' +
-      'font-size="8.5" fill="#76808d" letter-spacing="0.03em">' +
-      STR.yAxisCaption + "</text>";
+    // iter #17: the rotated y-axis caption ("outcome branch") used to
+    // sit in the far-left gutter; we removed it because the section
+    // title above the chart ("LIKELIHOOD BY BRANCH · OVER TIME")
+    // already names what the rows are — the caption was duplicate ink
+    // and was the reason the gutter was kept narrow (96px) and the
+    // anchor labels were truncated to 11 chars. The gutter is now 124px
+    // and the cap is 18 chars; the labels stay tinted by branch_type
+    // and read in full.
 
     // row labels (left) — mono-font, only on rows in rowLabelAt (the
     // branch anchors); each tinted by branch_type (v10's rowLabelAt).
