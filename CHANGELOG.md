@@ -79,6 +79,105 @@ flow; no bugs found).
 - **Live-verification** (iter 27 walked the actual user flow): all
   ships above are confirmed working on the live demo with screenshots.
 
+### v0.4.2-dev arc cont. — measurement-loop closed end-to-end (iter 31–37)
+
+Seven autonomous iterations following the founder's round-2 audit
++ explicit product direction: "把 prediction ID → 日历提醒 → 3 个月
+后回访 → 校准自己当初判断 做成最强主线 (PMF 候选, 不再是 UI 抛光)".
+Closes the calibration loop end-to-end across two entry paths
+(passive .ics calendar reminder + active in-app "Time to score"
+banner), with both per-record diff truth and aggregate trend
+visualization. The PMF-candidate arc the founder identified as
+the value driver.
+
+**The complete loop** (predict → reminder → return → score → see truth):
+
+- **iter 31 — `?score=<id>` URL deep-link**. `_check_score_deeplink()`
+  reads `st.query_params`, normalizes list/single-value Streamlit
+  quirks, consumes the param on first read so reruns don't loop.
+  `main()` short-circuits to `render_measurement_update(preloaded_…)`
+  when the param is present. The `.ics` URL field now carries
+  `?embed=true&score=<id>` so calendar-app "Open URL" actions
+  drop the user directly into Measurement Update pre-loaded —
+  zero friction between calendar tap and "I can score this now."
+
+- **iter 32 — Per-prediction diff cards on Calibration History**.
+  New `storage.list_recent_measurements_with_predictions()` JOINs
+  `measurement_updates` ⋈ `predictions` and reconstructs the
+  per-record story: top predicted branch + probability, actual
+  outcome branch (best-effort from common
+  `actual_outcome_json` keys), and crucially `prob_for_actual`
+  — the probability the user gave at prediction time to the
+  branch that **actually happened**. Single most decision-relevant
+  number per record. Renders as cards under the existing aggregate
+  metrics: "Predicted most likely: _X_ (60%); Actually happened: _Y_;
+  **You gave it 15% in advance**." Empty-state copy upgraded to
+  explain the loop instead of just "no measurements yet."
+
+- **iter 33 — Brier-over-time trend chart**. Single-glance "are
+  you getting more calibrated?" answer. `st.line_chart` of Brier
+  per measurement, oldest→newest, with a directional summary at
+  ≥6 measurements: compares early-third vs recent-third mean
+  Brier and labels as "improving" / "regressing" / "flat" with
+  the actual delta number. Honest threshold `|Δ| > 0.02` so
+  noise doesn't trigger false claims.
+
+- **iter 34 — Active "Time to score" landing banner**. Complement
+  to the passive `.ics` reminder: when the user opens the app
+  (for any reason — including a new prediction) and has predictions
+  past their horizon date without a measurement, a top banner
+  surfaces "📅 Time to score: <decision> — predicted N months ago.
+  [Score now →]". Click writes `?score=<id>` + `st.rerun()` →
+  same iter 31 path → user lands in Measurement Update pre-loaded.
+  Two entry paths, one mechanism. New
+  `storage.list_overdue_predictions()` does the LEFT JOIN ⊥ filter
+  + parses human horizon strings ("3 months" / "1 year" /
+  "6 weeks") via regex, defaults to 3 months when unparseable.
+
+- **iter 35 — storage bugfix (`db_connect` / `user_input_json`)**.
+  Iter 32 + 34's helpers referenced `_connect(db_path)` (no such
+  function) and column `input_json` (real: `user_input_json`).
+  `py_compile` and `import` passed clean — only a real DB query
+  triggers `NameError`, so the Calibration History page + the
+  "Time to score" banner would have crashed on first user hit.
+  **Caught by 9 new regression tests** in
+  `test_iter32_measurement_loop_storage.py`. Bug never reached
+  production traffic. bug-038 logged.
+
+- **iter 36 — live verification of iter 35 fix**. Navigated to
+  Calibration History via the sidebar → page renders cleanly
+  with the new empty-state copy + no traceback. Streamlit Cloud
+  auto-hot-reload picked up the storage.py change without
+  needing a manual reboot. Cerebrum-worthy learning: when
+  Streamlit Cloud's kebab is uncooperative, fall back to
+  "trust the auto-reload + verify by exercising the affected
+  page."
+
+- **iter 37 — `_check_score_deeplink()` contract locked**. 7
+  regression tests in `test_iter31_score_deeplink.py` covering
+  absent param, present id, consume-on-first-read, list-form
+  values, empty-string, whitespace strip, UUID round-trip. Same
+  risk class as iter 35: a future refactor could silently break
+  the measurement-loop's most critical hop with no compile-time
+  signal. The contract is now pinned.
+
+**Test count**: 717 → 724 across the cont. arc (+7 in iter 37);
+combined with iter 35's +9 the measurement-loop arc added 16
+regression tests, all green. Total suite 724/724 with iter 35
+bug-038 caught + fixed before production traffic.
+
+**GitNexus index** refreshed at end-of-arc (iter 37): 27,112
+nodes / 46,094 edges / 583 clusters / 300 flows.
+
+**Cerebrum learnings** logged:
+- Streamlit's flaky kebab UI: fall back to `?embed=true` page
+  navigation + Streamlit's auto-reload.
+- Storage helpers MUST have `tmp_path`-fixture round-trip tests
+  before shipping — pure compile/import doesn't catch wrong DB
+  API references.
+- Per-helper contract tests for measurement-loop entry points
+  prevent the iter 35 / iter 37 class of silent break.
+
 ### Planned for v4.16 (founder direction post-H4 self-test)
 - Wishful best-case branch + worst-case anchor presentation polish
 - Branch drill-down UI
