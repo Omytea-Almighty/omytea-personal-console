@@ -2994,7 +2994,8 @@ def _render_traditional_lens(
         )
         _pcards: list[str] = [
             '<div style="display:grid;'
-            'grid-template-columns:repeat(4,1fr);gap:8px;'
+            'grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));'
+            'gap:8px;'
             'max-width:760px;margin:6px auto 10px;">'
         ]
         for _ptitle, (_st_idx, _br_idx) in _pillars:
