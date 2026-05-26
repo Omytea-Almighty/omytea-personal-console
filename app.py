@@ -4909,6 +4909,59 @@ def render_calibration_history() -> None:
             "than the neutral sample — interpret as ownership bias."
         )
 
+    # Iter #33 — measurement-loop part 3: Brier-over-time trend chart.
+    # The founder thesis is that the user wants to see "am I getting
+    # more calibrated over time?" — a single-glance answer. Brier
+    # score is the canonical measure (0 = perfect, 1 = perfectly
+    # wrong). A simple line chart ordered by observed_at, with one
+    # point per measurement, surfaces the trend directly. Only renders
+    # when there are at least 2 measurements (one point isn't a
+    # trend). The diff cards below this chart provide the per-record
+    # detail.
+    trend_records = storage.list_recent_measurements_with_predictions(
+        user_id=user_id if user_id else None,
+        limit=100,
+    )
+    brier_points = [
+        (rec["observed_at"], rec["brier"])
+        for rec in trend_records
+        if rec.get("brier") is not None
+    ]
+    if len(brier_points) >= 2:
+        st.divider()
+        st.subheader("Calibration trend")
+        st.caption(
+            "Brier score per measurement, oldest → newest. **Down "
+            "and to the right** means you're getting more calibrated "
+            "over time. 0 is perfect; 0.5 is uniform-prior baseline; "
+            "1 is perfectly wrong."
+        )
+        # Sort oldest → newest so the chart reads left-to-right.
+        import datetime as _dt
+        brier_points.sort(key=lambda p: p[0])
+        chart_data = {
+            "Brier score": [pt[1] for pt in brier_points],
+        }
+        st.line_chart(chart_data, height=200)
+        # Quick directional read — first 1/3 vs last 1/3 of points,
+        # only when there are enough points to be honest about it.
+        if len(brier_points) >= 6:
+            third = len(brier_points) // 3
+            early = sum(p[1] for p in brier_points[:third]) / third
+            late = sum(p[1] for p in brier_points[-third:]) / third
+            delta = late - early
+            if delta < -0.02:
+                trend_word = "improving"
+            elif delta > 0.02:
+                trend_word = "regressing"
+            else:
+                trend_word = "flat"
+            st.caption(
+                f"Direction over your scored history: **{trend_word}** "
+                f"(early third Brier ≈ {early:.3f} → recent third ≈ "
+                f"{late:.3f}; delta {delta:+.3f}, negative is good)."
+            )
+
     # Iter #32 — measurement-loop part 2: per-prediction diff cards.
     # Founder thesis: the user's most-wanted view is "what I predicted
     # vs. what happened" per individual prediction, not just
