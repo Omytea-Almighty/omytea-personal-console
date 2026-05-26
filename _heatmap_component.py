@@ -371,6 +371,10 @@ def render_heatmap_camera_component(
         "reading": _html.escape(T("result.heatmap_reading")),
         "head_title": _html.escape(T("heatmap.head_title")),
         "head_hint": _html.escape(T("heatmap.head_hint")),
+        # iter #19 P1.2: idle-mode badge. Shown only when no
+        # prediction has run — labels the placeholder as an example so
+        # casual users do not read it as a real generated result.
+        "preview_badge": _html.escape(T("heatmap.preview_badge")),
         "legend_label": _html.escape(T("heatmap.legend_label")),
         "legend_rare": _html.escape(T("heatmap.legend_rare")),
         "legend_likely": _html.escape(T("heatmap.legend_likely")),
@@ -422,6 +426,7 @@ _TEMPLATE_SLOT_DEFAULTS = {
     "narrative": "",
     "narrative_idle": "",
     "narrative_live": "",
+    "preview_badge": "Example preview",
 }
 
 
@@ -587,6 +592,43 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
   .heat-head .heat-hint {{
     color: var(--ink-3); font-size: 11.5px; margin-left: auto;
   }}
+  /* iter #19 P1.2 — preview badge.
+     The placeholder heatmap on the cold-start screen looks
+     uncomfortably like a real generated result. The user feedback was
+     direct: "首屏上方的 heatmap 在还没输入前就出现，容易让人误以为
+     已经生成了什么". The fix is twofold — (a) a small uppercase
+     "EXAMPLE PREVIEW" badge in the heat-head, immediately readable as
+     "this is illustrative, not a real prediction"; (b) a subtle
+     opacity reduction on the cells when idle, so the placeholder
+     reads softer than a real result without losing its shape. Both
+     activate ONLY when body[data-mode="idle"], set by the JS in
+     updateModeNotes(). Live and prediction modes are untouched. */
+  .heat-head .preview-badge {{
+    display: none;
+    align-items: center;
+    color: var(--accent);
+    background: rgba(94,106,210,0.10);
+    border: 1px solid rgba(94,106,210,0.32);
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    margin-left: 8px;
+  }}
+  body[data-mode="idle"] .heat-head .preview-badge {{
+    display: inline-flex;
+  }}
+  body[data-mode="idle"] .heatmap-cell {{
+    opacity: 0.62;
+  }}
+  body[data-mode="idle"] .heat-card {{
+    /* drop the card-level lift a notch in idle — the placeholder
+       should sit slightly recessed from a real result. */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18),
+      0 1px 0 rgba(255,255,255,0.02) inset;
+  }}
   .heat-card svg {{ width: 100%; display: block; }}
   /* density-shaded cells — bright = high probability mass */
   .heatmap-cell {{ cursor: pointer; transition: opacity 0.3s ease; }}
@@ -708,6 +750,14 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
         <div class="heat-card">
           <div class="heat-head">
             <span class="heat-title">{head_title}</span>
+            <!-- iter #19 P1.2: preview badge — only shown when the
+                 heatmap is in idle mode (no prediction submitted). The
+                 label makes the cold-start state visually unambiguous:
+                 this is an example of what the chart shows, not a
+                 generated result. The CSS rule below shows/hides via
+                 body[data-mode="idle"]; the JS sets that attribute in
+                 updateModeNotes(). -->
+            <span class="preview-badge">{preview_badge}</span>
             <span class="heat-hint">{head_hint}</span>
           </div>
           <svg id="heatmap" viewBox="0 0 760 206"
@@ -1327,6 +1377,10 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
   // swaps per mode — v10's data-derived answer sentence.
   function updateModeNotes() {{
     var mode = heatmapMode();
+    // iter #19 P1.2: surface the mode on <body> so CSS can target it.
+    // The preview-badge + desaturate styles key off body[data-mode=...]
+    // so they activate only on the cold-start idle state.
+    document.body.dataset.mode = mode;
     $("idle-note").classList.toggle("show", mode === "idle");
     $("live-note").classList.toggle("show", mode === "live");
     var narr = $("heat-narrative");

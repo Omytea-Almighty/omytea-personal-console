@@ -1285,6 +1285,16 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
             "webcam en direct depuis la barre latérale."
         ),
     },
+    "heatmap.preview_badge": {
+        # Iteration #19 P1.2: short uppercase label in the heat-head
+        # shown only when the heatmap is in idle mode (no prediction
+        # has been submitted). Makes the cold-start state visually
+        # unambiguous as illustrative rather than a generated result.
+        LANG_EN: "Example preview",
+        LANG_ZH: "示例预览",
+        LANG_ES: "Vista previa de ejemplo",
+        LANG_FR: "Aperçu d'exemple",
+    },
     "heatmap.idle_note": {
         # Iteration #1: shortened from "The grid is uniform — a world
         # with no evidence yet. Run a prediction below..." (text-heavy
