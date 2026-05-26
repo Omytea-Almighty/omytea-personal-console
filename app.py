@@ -164,6 +164,26 @@ st.markdown(
     section[data-testid="stSidebar"] > div {
         background: transparent;
     }
+    /* Iter 18 P0.2 — mobile sidebar default-collapsed.
+       Streamlit's initial_sidebar_state="auto" advertises mobile
+       collapse but in practice the sidebar still paints expanded on
+       common phone widths, covering the workspace. Force-collapse
+       on narrow viewports so first-paint shows "Type a decision /
+       chips / CTA", not a 280px-wide nav rail. Desktop unaffected.
+       The collapse arrow (different testid) stays interactive so
+       the user can open the rail when they actually want it. */
+    @media (max-width: 768px) {
+        section[data-testid="stSidebar"][aria-expanded="true"] {
+            margin-left: -288px !important;
+        }
+        /* On narrow viewports also widen the main content to use
+           the freed horizontal space. */
+        section.main > div.block-container {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+            max-width: 100% !important;
+        }
+    }
     section[data-testid="stSidebar"] .block-container {
         padding-top: 1.6rem;
         padding-left: 1.15rem;
@@ -842,6 +862,86 @@ st.markdown(
     </style>
     """,
     unsafe_allow_html=True,
+)
+
+
+# ============================================================
+# Iter 18 P1.1 — outer-page chrome hide via parent-frame JS hop.
+# ============================================================
+# Streamlit Cloud renders the app inside an iframe at /~/+/. The
+# "Manage app" pill, the Streamlit-Cloud header, and a few other
+# branding fixtures live in the OUTER document — so CSS injected
+# into the Streamlit app's own document (via st.markdown above)
+# cannot reach them; that's why P1.1 hid the inner chrome but the
+# bottom-right "Manage app" pill remained.
+#
+# This components.html block creates a tiny same-origin grandchild
+# iframe that hops up two levels to window.parent.parent.document
+# and hides the outer-page chrome. All three frames share the
+# *.streamlit.app origin so the access is permitted. Wrapped in
+# try/catch and a MutationObserver so a late-mounting pill is also
+# caught. height=0 so the helper iframe doesn't take any visual
+# space.
+#
+# Honest scope: this only works on Streamlit Cloud's same-origin
+# layout. If they ever move chrome cross-origin we degrade
+# silently to whatever the iframe-level CSS already hides.
+components.html(
+    """
+    <script>
+    (function () {
+      var SELECTORS = [
+        '[data-testid="manage-app-button"]',
+        '[data-testid="stAppDeployButton"]',
+        'a[href*="share.streamlit.io"]',
+        'a[href*="streamlit.io/cloud"]',
+        'iframe[title="streamlit_app"] ~ div',
+      ];
+      function hideIn(doc) {
+        if (!doc) return false;
+        var hidAny = false;
+        SELECTORS.forEach(function (s) {
+          var nodes = doc.querySelectorAll(s);
+          nodes.forEach(function (n) {
+            n.style.setProperty("display", "none", "important");
+            hidAny = true;
+          });
+        });
+        return hidAny;
+      }
+      function tryHide() {
+        try {
+          // Two levels up: this iframe -> Streamlit app iframe ->
+          // outer Streamlit-Cloud page.
+          var outer = window.parent && window.parent.parent
+            ? window.parent.parent.document : null;
+          hideIn(outer);
+          // Defensive: also try the immediate parent in case the
+          // app is iframed only once on a future Cloud layout.
+          var direct = window.parent ? window.parent.document : null;
+          hideIn(direct);
+        } catch (e) { /* cross-origin — degrade silently */ }
+      }
+      // Initial sweep on a couple of paint cycles (the pill is
+      // lazy-mounted after first paint).
+      tryHide();
+      setTimeout(tryHide, 250);
+      setTimeout(tryHide, 1500);
+      // Long-tail: a MutationObserver on the outer document
+      // catches re-mounts. Best-effort — silently skipped if the
+      // origin check fails.
+      try {
+        var outer = window.parent && window.parent.parent
+          ? window.parent.parent.document : null;
+        if (outer && outer.body) {
+          var mo = new MutationObserver(function () { tryHide(); });
+          mo.observe(outer.body, { childList: true, subtree: true });
+        }
+      } catch (e) { /* silently skipped */ }
+    })();
+    </script>
+    """,
+    height=0,
 )
 
 
@@ -4029,36 +4129,53 @@ def _render_result(
     st.divider()
     _render_drilldown_section(result, user_input, scenario, prediction_id)
 
-    st.divider()
-
-    # Joint hypothesis off-diagonal
+    # Iter 18 P1.3 — quantum machinery (joint off-diagonal + Lindblad
+    # coherence decay) was rendering directly on the result page,
+    # exposing ρ_ab / γ=0.05/month / "Lindblad decoherence channel" to
+    # first-time users. That copy is a trust hit on the casual path —
+    # research-demo signal, not a calibrated-journal signal. Both
+    # sections are now folded into ONE default-closed expander so the
+    # primary result-page stays story + branches + evidence + revisit;
+    # users who want the math open the expander explicitly.
     if result.joint_offdiag:
-        st.subheader("Joint hypothesis structure (off-diagonal coherence)")
-        st.caption(
-            "How different futures are correlated. Positive coherence = "
-            "tend to co-occur. Negative = mutually exclusive."
-        )
-        for o in result.joint_offdiag:
-            sign = "+" if o.coherence_strength > 0 else ""
-            color = "green" if o.coherence_strength > 0 else "red"
-            with st.container(border=True):
-                cols = st.columns([2, 1, 2, 3])
-                with cols[0]:
-                    st.markdown(f"`{o.branch_a}`")
-                with cols[1]:
-                    st.markdown(f":{color}[{sign}{o.coherence_strength:.2f}]")
-                with cols[2]:
-                    st.markdown(f"`{o.branch_b}`")
-                with cols[3]:
-                    st.caption(o.rationale)
+        st.divider()
+        with st.expander(
+            "Technical details · joint structure & coherence decay",
+            expanded=False,
+        ):
+            st.caption(
+                "Advanced view. Most users can skip this — the story, "
+                "probabilities, and evidence above already answer the "
+                "question. Open this only if you want the underlying "
+                "correlation structure and how it relaxes over time."
+            )
 
-    st.divider()
+            st.subheader("Joint hypothesis correlations")
+            st.caption(
+                "How different futures are correlated. Positive = "
+                "tend to co-occur. Negative = mutually exclusive."
+            )
+            for o in result.joint_offdiag:
+                sign = "+" if o.coherence_strength > 0 else ""
+                color = "green" if o.coherence_strength > 0 else "red"
+                with st.container(border=True):
+                    cols = st.columns([2, 1, 2, 3])
+                    with cols[0]:
+                        st.markdown(f"`{o.branch_a}`")
+                    with cols[1]:
+                        st.markdown(
+                            f":{color}[{sign}{o.coherence_strength:.2f}]"
+                        )
+                    with cols[2]:
+                        st.markdown(f"`{o.branch_b}`")
+                    with cols[3]:
+                        st.caption(o.rationale)
 
-    # ============================================================
-    # C1 — Coherence evolution over time (Lindblad open-system decay)
-    # ============================================================
-    if result.used_omytea_substrate and result.joint_offdiag:
-        _render_coherence_evolution(result, user_input)
+            # C1 — Coherence evolution over time (Lindblad open-system
+            # decay). Stays inside the same expander.
+            if result.used_omytea_substrate:
+                st.divider()
+                _render_coherence_evolution(result, user_input)
 
     # v4.16 P5: recommended evidence in ΔP semantics (percentage-point shift)
     if result.recommended_evidence:
