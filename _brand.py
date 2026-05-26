@@ -29,12 +29,25 @@ BRAND_PRIVACY_URL: str = (
     "https://github.com/Adonyth/omytea-personal-console/blob/main/PRIVACY_POLICY.md"
 )
 BRAND_LIVE_DEMO_URL: str = "https://omytea-personal-console.streamlit.app"
+# Iter #20: Streamlit Cloud's ?embed=true URL parameter hides the
+# outer-page chrome (the "Manage app" pill, the Streamlit-Cloud
+# header) that iter 18's components.html JS hop failed to reach. The
+# bottom-bar reduces to a tiny "Built with Streamlit" + "Fullscreen"
+# link — much cleaner first-paint for a public demo. Live-verified:
+# document.querySelector('[data-testid="manage-app-button"]') →
+# NO_PILL on the ?embed=true URL.
+#
+# BRAND_PUBLIC_URL is what every externally-visible link points at
+# (footer Home link, README, GitHub repo homepage). BRAND_LIVE_DEMO_URL
+# kept as the bare URL for code that needs the canonical without the
+# embed-mode hint (e.g. share links, analytics).
+BRAND_PUBLIC_URL: str = f"{BRAND_LIVE_DEMO_URL}/?embed=true"
 # P0 (bug-037 audit follow-up): the previous BRAND_HOMEPAGE pointed at
 # https://console.omyteaai.com — that subdomain returns a TLS-cert
 # mismatch and the apex https://omyteaai.com returns Cloudflare 520.
-# Until a canonical homepage exists, every "Home" link in the UI
-# points at the live demo itself. One canonical URL > two broken ones.
-BRAND_HOMEPAGE: str = BRAND_LIVE_DEMO_URL
+# Footer Home link now uses the cleaner ?embed=true URL so users who
+# click Home land on the chrome-free version.
+BRAND_HOMEPAGE: str = BRAND_PUBLIC_URL
 
 # Per-mode emoji palette. Centralised so adding a new mode is a
 # one-line change across all surfaces (sidebar, page header, README).
@@ -95,6 +108,7 @@ __all__ = [
     "BRAND_PRIVACY_URL",
     "BRAND_HOMEPAGE",
     "BRAND_LIVE_DEMO_URL",
+    "BRAND_PUBLIC_URL",
     "MODE_EMOJI",
     "footer_markdown",
     "footer_html",

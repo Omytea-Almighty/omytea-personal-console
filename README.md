@@ -1,6 +1,6 @@
 # Omytea Personal Future Console — MVP
 
-**🚀 Live demo: [omytea-personal-console.streamlit.app](https://omytea-personal-console.streamlit.app)** — open the URL, no install required. Mock mode + non-vision modes work fully in-browser. For real video/webcam prediction, follow the install steps below to run locally with Ollama.
+**🚀 Live demo: [omytea-personal-console.streamlit.app](https://omytea-personal-console.streamlit.app/?embed=true)** — open the URL, no install required. Mock mode + non-vision modes work fully in-browser. For real video/webcam prediction, follow the install steps below to run locally with Ollama. *(The `?embed=true` parameter is the canonical public URL — it suppresses Streamlit Cloud's outer chrome for a clean first-paint; the bare URL also works.)*
 
 **A probability-calibrated decision-support tool for personal futures, with local video understanding.**
 
