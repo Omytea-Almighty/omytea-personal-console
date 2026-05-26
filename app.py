@@ -3048,25 +3048,36 @@ def _render_traditional_lens(
     # the U+FE0E variation selector on each ZODIAC sign, so the
     # founder's "emoji 表情的星座星盘" complaint is fixed at the
     # glyph level too.
+    # bug-037 / P0 (revert L7): SYSTEM_ZIWEI was added to the lens loop
+    # by iter L7, but _metaphysics.SYSTEMS deliberately EXCLUDES ziwei
+    # because the 12-palace chart needs a lunar-calendar engine the
+    # module doesn't have yet (honest-fallback discipline, see comment
+    # in _metaphysics.py:67). `compute_all_readings` only populates
+    # readings[k] for k in SYSTEMS — so readings["ziwei"] never
+    # existed, and every prediction's result page crashed with a
+    # KeyError. L7 is reverted here; the `_render_ziwei` renderer in
+    # _clock.py is kept untouched for the future re-enable. The lens
+    # loop is also wrapped in a `readings.get` defensive check, so any
+    # similar SYSTEMS-mismatch in future never crashes — it silently
+    # skips the missing instrument.
     _mod_meta = (
         (_mp.SYSTEM_ICHING, "易经 I CHING",
          "lens.module.iching.title", "lens.module.iching.desc"),
-        # L7: 紫微 12-palace chart was previously computed but never
-        # rendered in the lens — the `_render_ziwei` 4×4 grid already
-        # existed in _clock.py, just not wired here. Now appears as a
-        # sibling instrument; 命宫 highlights via amber accent + a
-        # central MODEL/COMBINED readout sits in the 2×2 court.
-        (_mp.SYSTEM_ZIWEI, "紫微 ZIWEI",
-         "lens.module.ziwei.title", "lens.module.ziwei.desc"),
         (_mp.SYSTEM_TAROT, "塔罗 TAROT",
          "lens.module.tarot.title", "lens.module.tarot.desc"),
         (_mp.SYSTEM_ASTRO, "本命星盘 NATAL",
          "lens.module.astro.title", "lens.module.astro.desc"),
     )
     for sysk, label, title_key, desc_key in _mod_meta:
+        reading_for_sys = readings.get(sysk)
+        if reading_for_sys is None:
+            # Defensive: a system the lens listed but `readings` does
+            # not contain. Skip rather than crash; this is the guard
+            # bug-037 wanted to install permanently.
+            continue
         _mod_header(title_key, desc_key)
         panel_svg = render_reading_svg(
-            readings[sysk], display_branches,
+            reading_for_sys, display_branches,
             center_top_label=T("trad.metric.model_short"),
             center_top_value=model_value,
             center_bottom_label=T("trad.metric.combined_short"),

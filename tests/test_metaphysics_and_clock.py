@@ -448,3 +448,63 @@ def test_render_celestial_svg_handles_missing_natal() -> None:
     assert svg.startswith("<svg ") and svg.endswith("</svg>")
     assert "<image " in svg
     assert "data:image/jpeg;base64," in svg
+
+
+# --------------------------------------------------------------------
+# bug-037 regression — the lens module loop in app.py must only
+# reference systems that compute_all_readings populates.
+# --------------------------------------------------------------------
+
+def test_compute_all_readings_only_populates_SYSTEMS() -> None:
+    """Smoke contract: `compute_all_readings(...)` returns exactly the
+    keys in `SYSTEMS`. Iter L7 violated this by adding `ziwei` to the
+    lens UI loop while `ziwei` is intentionally absent from SYSTEMS
+    (honest-fallback: 12-palace chart needs a lunar engine we lack).
+    Result page crashed with KeyError on every prediction (bug-037).
+    """
+    bd = mp.BirthData(1995, 8, 12, 14)
+    readings = mp.compute_all_readings(birth=bd, seed="bug037-smoke",
+                                       outcome="career_success")
+    assert set(readings.keys()) == set(mp.SYSTEMS)
+    assert "ziwei" not in readings, (
+        "ziwei is intentionally absent from SYSTEMS pending lunar "
+        "calendar; do not surface it in the lens UI until that lands."
+    )
+
+
+def test_lens_loop_uses_subset_of_SYSTEMS() -> None:
+    """The `_mod_meta` tuple inside `_render_traditional_lens` in
+    app.py iterates a list of `(system_key, ...)` tuples and reads
+    `readings[system_key]`. Pin that those keys are a subset of
+    `SYSTEMS` so a future contributor who adds another mismatch
+    will get a fast failure instead of a live KeyError.
+    """
+    import ast
+    import pathlib
+
+    src = pathlib.Path(__file__).resolve().parent.parent / "app.py"
+    tree = ast.parse(src.read_text())
+    # Find the _mod_meta literal inside _render_traditional_lens.
+    found_keys: list[str] = []
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.Assign)
+                and len(node.targets) == 1
+                and isinstance(node.targets[0], ast.Name)
+                and node.targets[0].id == "_mod_meta"
+                and isinstance(node.value, ast.Tuple)):
+            for inner in node.value.elts:
+                if (isinstance(inner, ast.Tuple) and inner.elts
+                        and isinstance(inner.elts[0], ast.Attribute)
+                        and isinstance(inner.elts[0].value, ast.Name)
+                        and inner.elts[0].value.id == "_mp"
+                        and inner.elts[0].attr.startswith("SYSTEM_")):
+                    # _mp.SYSTEM_FOO → "foo" (the canonical key)
+                    attr = inner.elts[0].attr
+                    found_keys.append(getattr(mp, attr))
+            break
+    assert found_keys, "could not locate _mod_meta tuple in app.py"
+    for k in found_keys:
+        assert k in mp.SYSTEMS, (
+            f"lens loop references {k!r} but SYSTEMS = {mp.SYSTEMS}. "
+            f"This is the bug-037 regression class."
+        )
