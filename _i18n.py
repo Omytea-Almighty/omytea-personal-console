@@ -1191,6 +1191,73 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
             "vers votre horizon."
         ),
     },
+    # Iter #21 P1.4 part 1 — per-branch "Why this probability?"
+    # reveal. Founder live-audit: "给每个概率加一句 '为什么是这个概率
+    # / 哪些输入最影响它 / 置信度多高'". Skeleton uses existing
+    # Hypothesis fields; full ΔP-style driver attribution comes later.
+    "result.why_probability_label": {
+        LANG_EN: "Why this probability?",
+        LANG_ZH: "为什么是这个概率？",
+        LANG_ES: "¿Por qué esta probabilidad?",
+        LANG_FR: "Pourquoi cette probabilité ?",
+    },
+    "result.why_hinges_on": {
+        LANG_EN: "Hinges on:",
+        LANG_ZH: "关键不确定性：",
+        LANG_ES: "Depende de:",
+        LANG_FR: "Dépend de :",
+    },
+    "result.why_depends_on": {
+        LANG_EN: "Requires decision:",
+        LANG_ZH: "依赖决策：",
+        LANG_ES: "Requiere decisión:",
+        LANG_FR: "Décision requise :",
+    },
+    "result.why_no_extras": {
+        # Honest fallback when the underlying Hypothesis surfaces
+        # neither a key uncertainty driver nor a decision dependency.
+        # Better than rendering an empty expander or fabricating a
+        # plausible-sounding sentence.
+        LANG_EN: (
+            "No specific driver was surfaced for this branch — its "
+            "probability comes from the base scenario distribution."
+        ),
+        LANG_ZH: (
+            "这条分支没有被识别出特定驱动因子 — 概率来自基础场景分布。"
+        ),
+        LANG_ES: (
+            "No se ha identificado un motor específico para esta rama — "
+            "su probabilidad procede de la distribución base."
+        ),
+        LANG_FR: (
+            "Aucun moteur spécifique n'a été identifié pour cette branche "
+            "— sa probabilité provient de la distribution de base."
+        ),
+    },
+    "result.why_drivers_coming": {
+        # Honest "this is coming" label so the expander says what it
+        # WILL contain in a later iteration, instead of pretending the
+        # numbers are already there. No fabrication.
+        LANG_EN: (
+            "Full driver breakdown — which inputs pushed this up or "
+            "down, and how much would change it — is coming in a "
+            "later release."
+        ),
+        LANG_ZH: (
+            "完整的驱动因子拆解 — 哪些输入把这条概率往上推、哪些往下"
+            "拉、以及多大的变化能改变它 — 将在后续版本中加入。"
+        ),
+        LANG_ES: (
+            "El desglose completo de impulsores — qué entradas la "
+            "subieron o bajaron y cuánto cambiaría — llegará en una "
+            "versión posterior."
+        ),
+        LANG_FR: (
+            "Décomposition complète des moteurs — quels intrants l'ont "
+            "fait monter ou descendre, et de combien — à venir dans "
+            "une prochaine version."
+        ),
+    },
     # -----  Interactive heatmap + camera component (v10 port)  -----
     "heatmap.camera_btn": {
         LANG_EN: "Use my camera",

@@ -3499,7 +3499,18 @@ def _render_story_card(h: Any, kind_tag: str) -> None:
     """v4.16 P4 — narrative-first card. Narrative is the headline;
     probability + label + metadata sit in a smaller footer caption.
     Inverts the previous machine-table priority where label/probability
-    led the visual hierarchy."""
+    led the visual hierarchy.
+
+    Iter #21 P1.4 part 1 — "Why this probability?" reveal.
+    Founder live-audit: "给每个概率加一句 '为什么是这个概率 / 哪些
+    输入最影响它 / 置信度多高'". This phase ships the structural slot
+    + i18n + safe render using fields ALREADY present on the
+    Hypothesis (key_uncertainty_driver, depends_on_decision). It
+    establishes the contract without fabricating ΔP-style driver
+    numbers — that requires per-branch sensitivity attribution which
+    is a later phase. The expander is collapsed by default so the
+    primary scan stays: narrative → probability → metadata.
+    """
     with st.container(border=True):
         st.markdown(
             f"### {kind_tag} {storyform_narrative(h.narrative, h.branch_type)}"
@@ -3513,6 +3524,33 @@ def _render_story_card(h: Any, kind_tag: str) -> None:
         if h.key_uncertainty_driver:
             meta_parts.append(f"hinges on _{h.key_uncertainty_driver}_")
         st.caption(" · ".join(meta_parts))
+
+        # iter #21 P1.4: per-branch "Why this probability?" reveal.
+        # Phase 1 surfaces existing Hypothesis fields in a structured
+        # form + honestly labels the driver-attribution as "coming
+        # later" — no fabricated ΔP numbers. The expander key has the
+        # branch label baked in so multiple cards don't collide.
+        has_extras = bool(h.key_uncertainty_driver) or bool(
+            h.depends_on_decision
+        )
+        with st.expander(T("result.why_probability_label"), expanded=False):
+            if h.key_uncertainty_driver:
+                st.markdown(
+                    f"**{T('result.why_hinges_on')}** "
+                    f"_{h.key_uncertainty_driver}_"
+                )
+            if h.depends_on_decision:
+                st.markdown(
+                    f"**{T('result.why_depends_on')}** "
+                    f"`{h.depends_on_decision}`"
+                )
+            if not has_extras:
+                st.caption(T("result.why_no_extras"))
+            # Honest placeholder for the full driver decomposition
+            # — ships in iter 22+ once per-branch sensitivity
+            # attribution is wired. The caption labels it explicitly
+            # as upcoming, not fabricated.
+            st.caption(T("result.why_drivers_coming"))
 
 
 def _render_story_view(
