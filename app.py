@@ -3618,12 +3618,17 @@ def _render_story_card(
                 1 for rec in recommended_evidence
                 if rec.get("target_branch") == h.label
             )
+        # Iter #26: route the confidence tier through i18n. The iter
+        # 25 ship was English-only — these qualitative labels read
+        # very differently across locales (the ZH "well-calibrated"
+        # in particular needed a literal translation, not a
+        # transliteration). Strings live in _i18n.py:result.confidence_*.
         if n_for_branch >= 2:
-            confidence_tier = "well-calibrated"
+            confidence_tier = T("result.confidence_well_calibrated")
         elif n_for_branch == 1:
-            confidence_tier = "single-source"
+            confidence_tier = T("result.confidence_single_source")
         else:
-            confidence_tier = "soft estimate"
+            confidence_tier = T("result.confidence_soft_estimate")
         meta_parts = [
             f"**{h.probability * 100:.1f}%** probability",
             f"_{confidence_tier}_",

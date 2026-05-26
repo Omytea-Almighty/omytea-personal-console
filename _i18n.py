@@ -1267,6 +1267,31 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_ES: "Principales impulsores para esta rama",
         LANG_FR: "Principaux moteurs de cette branche",
     },
+    # Iter #26 — confidence tier i18n (P1.4 Phase 3 follow-up).
+    # Iter 25 surfaced an English-only qualitative tier next to the
+    # probability in the meta line. These three keys route those
+    # strings through T() so ZH/ES/FR users see the right label.
+    # The wording for each language was chosen so the tier reads as
+    # qualitative meta-info (italicized in the caption) rather than
+    # a competing number.
+    "result.confidence_well_calibrated": {
+        LANG_EN: "well-calibrated",
+        LANG_ZH: "校准充分",
+        LANG_ES: "bien calibrada",
+        LANG_FR: "bien calibrée",
+    },
+    "result.confidence_single_source": {
+        LANG_EN: "single-source",
+        LANG_ZH: "单一来源",
+        LANG_ES: "fuente única",
+        LANG_FR: "source unique",
+    },
+    "result.confidence_soft_estimate": {
+        LANG_EN: "soft estimate",
+        LANG_ZH: "粗略估计",
+        LANG_ES: "estimación blanda",
+        LANG_FR: "estimation floue",
+    },
     "result.why_no_specific_drivers": {
         # Honest soft fallback when key_uncertainty_driver or
         # depends_on_decision IS set but no per-branch evidence items
