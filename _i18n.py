@@ -651,6 +651,15 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_ES: "Compón tu predicción",
         LANG_FR: "Composez votre prédiction",
     },
+    # Iter #30 — composer folds into this expander after a prediction
+    # is rendered, so the result page's attention stays on the
+    # story/evidence/revisit-reminder. Founder round-2 audit ask.
+    "composer.edit_and_rerun": {
+        LANG_EN: "Edit inputs and re-run",
+        LANG_ZH: "编辑输入并重新预测",
+        LANG_ES: "Editar entradas y volver a ejecutar",
+        LANG_FR: "Modifier les entrées et relancer",
+    },
     "composer.scenario": {
         LANG_EN: "Scenario",
         LANG_ZH: "情景",
@@ -1274,44 +1283,51 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
     # The wording for each language was chosen so the tier reads as
     # qualitative meta-info (italicized in the caption) rather than
     # a competing number.
+    # Iter #30 — confidence tier copy made plain-English actionable.
+    # Founder round-2 audit: "soft estimate / single-source 是诚实的,
+    # 但初级用户可能不知道它意味着什么". Now reads as "what does this
+    # mean for me" not as quant jargon.
     "result.confidence_well_calibrated": {
-        LANG_EN: "well-calibrated",
-        LANG_ZH: "校准充分",
-        LANG_ES: "bien calibrada",
-        LANG_FR: "bien calibrée",
+        LANG_EN: "high confidence — multiple levers identified",
+        LANG_ZH: "高置信度 · 已识别多个杠杆",
+        LANG_ES: "alta confianza — varios factores identificados",
+        LANG_FR: "haute confiance — plusieurs leviers identifiés",
     },
     "result.confidence_single_source": {
-        LANG_EN: "single-source",
-        LANG_ZH: "单一来源",
-        LANG_ES: "fuente única",
-        LANG_FR: "source unique",
+        LANG_EN: "medium confidence — based on one signal",
+        LANG_ZH: "中等置信度 · 基于单一信号",
+        LANG_ES: "confianza media — basada en una señal",
+        LANG_FR: "confiance moyenne — basée sur un signal",
     },
     "result.confidence_soft_estimate": {
-        LANG_EN: "soft estimate",
-        LANG_ZH: "粗略估计",
-        LANG_ES: "estimación blanda",
-        LANG_FR: "estimation floue",
+        LANG_EN: "low confidence — collect evidence to sharpen",
+        LANG_ZH: "低置信度 · 收集证据可以更准",
+        LANG_ES: "baja confianza — recopilar evidencia para refinar",
+        LANG_FR: "faible confiance — collecter des preuves pour affiner",
     },
     "result.why_no_specific_drivers": {
-        # Honest soft fallback when key_uncertainty_driver or
-        # depends_on_decision IS set but no per-branch evidence items
-        # were generated. Replaces the cold no_extras message that
-        # would contradict the fields already shown above.
+        # Iter #30 — rewrite. Founder round-2 audit: previous copy
+        # "No specific evidence items were attributed... half-finished
+        # explanation". Now phrased as actionable next step instead of
+        # apology — what the user can DO to sharpen the estimate.
         LANG_EN: (
-            "No specific evidence items were attributed to this branch — "
-            "the fields above are the highest-signal levers we have."
+            "To sharpen this branch's probability, focus on the key "
+            "uncertainty above — that's the lever this estimate is "
+            "most sensitive to."
         ),
         LANG_ZH: (
-            "本次预测没有为这条分支生成具体的证据条目 — 上面的字段是"
-            "我们能给出的最强杠杆。"
+            "想让这条分支的概率更准, 重点看上面那条 \"hinges on\" — "
+            "这是当前估计最敏感的杠杆。"
         ),
         LANG_ES: (
-            "No se han atribuido elementos de evidencia específicos a esta "
-            "rama — los campos anteriores son las palancas más informativas."
+            "Para afinar la probabilidad de esta rama, céntrate en la "
+            "incertidumbre clave de arriba — es la palanca a la que más "
+            "responde la estimación."
         ),
         LANG_FR: (
-            "Aucun élément de preuve spécifique n'a été attribué à cette "
-            "branche — les champs ci-dessus sont les leviers les plus forts."
+            "Pour affiner la probabilité de cette branche, concentrez-vous "
+            "sur l'incertitude clé ci-dessus — c'est le levier auquel "
+            "l'estimation est la plus sensible."
         ),
     },
     # -----  Interactive heatmap + camera component (v10 port)  -----

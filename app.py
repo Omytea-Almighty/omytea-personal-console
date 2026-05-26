@@ -164,21 +164,38 @@ st.markdown(
     section[data-testid="stSidebar"] > div {
         background: transparent;
     }
-    /* Iter 18 P0.2 — mobile sidebar default-collapsed.
-       Streamlit's initial_sidebar_state="auto" advertises mobile
-       collapse but in practice the sidebar still paints expanded on
-       common phone widths, covering the workspace. Force-collapse
-       on narrow viewports so first-paint shows "Type a decision /
-       chips / CTA", not a 280px-wide nav rail. Desktop unaffected.
-       The collapse arrow (different testid) stays interactive so
-       the user can open the rail when they actually want it. */
+    /* Iter 18 P0.2 + iter 30 RE-FIX — mobile sidebar default-collapsed.
+       The iter 18 version gated on aria-expanded="true" + used
+       margin-left, both of which the founder live-test confirmed
+       did NOT work on real mobile devices ("默认 sidebar 覆盖几
+       乎整个首屏"). Streamlit's mobile sidebar uses transform-based
+       positioning, NOT margin, so the original rule was matching
+       the wrong axis. Plus Streamlit may not set aria-expanded
+       reliably on mobile mount.
+
+       This rewrite is aggressive: hide unconditionally on narrow
+       viewports via transform: translateX(-100%) with high
+       specificity + !important. The user can still open the
+       sidebar via Streamlit's built-in hamburger / collapse-arrow
+       button — when the user taps it Streamlit sets
+       aria-expanded="true" which our second rule re-shows the
+       drawer with translateX(0). The transition keeps the open/
+       close animation smooth. Desktop (>768px) unaffected. */
     @media (max-width: 768px) {
-        section[data-testid="stSidebar"][aria-expanded="true"] {
-            margin-left: -288px !important;
+        section[data-testid="stSidebar"] {
+            transform: translateX(-100%) !important;
+            transition: transform 0.28s ease !important;
+            box-shadow: 8px 0 24px rgba(0, 0, 0, 0.4) !important;
+            z-index: 999990 !important;
         }
-        /* On narrow viewports also widen the main content to use
-           the freed horizontal space. */
-        section.main > div.block-container {
+        /* User explicitly opened it via hamburger — show the drawer. */
+        section[data-testid="stSidebar"][aria-expanded="true"] {
+            transform: translateX(0) !important;
+        }
+        /* Main content gets the freed horizontal space when sidebar
+           is hidden. */
+        section.main > div.block-container,
+        div[data-testid="stMain"] > div.block-container {
             padding-left: 1rem !important;
             padding-right: 1rem !important;
             max-width: 100% !important;
@@ -2404,9 +2421,22 @@ def _render_workspace_composer() -> None:
     pane is intentionally the smaller of the two: the output heatmap is
     the centerpiece. The composer markup itself lives in
     ``_render_workspace_composer_body``.
+
+    Iter #30 — when a prediction exists, fold the composer into an
+    expander default-collapsed so the result page's attention stays
+    on the story → evidence → revisit reminder. Founder round-2
+    audit: "结果页不要在故事下面马上把表单又露出来. 生成后用户注意力
+    应该停在结果、证据、回访提醒". The expander lets users tweak
+    inputs and re-run when they want — just not by default.
     """
     with st.container(height=_COMPOSER_PANE_HEIGHT, border=False):
-        _render_workspace_composer_body()
+        if st.session_state.get("current_prediction") is not None:
+            with st.expander(
+                T("composer.edit_and_rerun"), expanded=False,
+            ):
+                _render_workspace_composer_body()
+        else:
+            _render_workspace_composer_body()
 
 
 def _render_composer_field(field: Any) -> Any:
@@ -3581,6 +3611,41 @@ def _build_review_ics(
     return body.encode("utf-8")
 
 
+# Iter #30 — humanize snake_case identifiers for user-visible display.
+# Founder round-2 audit: "Why this probability? 需要更像人话: 不要只
+# 列 branch id / hinge id, 应解释成 '这个概率主要因为三件事...'".
+# The compile step produces snake_case fields like
+# `team_culture_actual_vs_pitch` that read as dev internals when
+# surfaced raw. This helper converts to natural prose on render:
+#   accept_offer → "Accept the offer"
+#   team_culture_actual_vs_pitch → "Team culture: actual vs. pitch"
+#   stay_and_thrive_after_renegotiation → "Stay and thrive after
+#       renegotiation"
+def _humanize_id(identifier: str) -> str:
+    """Convert a snake_case identifier to natural-language prose.
+
+    Empty string returns empty. The transformation is deterministic:
+    - Replace `_` with spaces
+    - Capitalize first letter only (preserves "vs" mid-string as
+      lowercase because that's the natural English form)
+    - Heuristic: `_vs_` becomes ": actual vs." which reads as a
+      contrast clause in user prose
+    """
+    if not identifier:
+        return ""
+    text = str(identifier).strip()
+    # Special-case the common contrast pattern that appears in our
+    # career scenarios: "X_actual_vs_pitch" → "X: actual vs. pitch".
+    text = text.replace("_actual_vs_", ": actual vs. ")
+    text = text.replace("_vs_", " vs. ")
+    # Generic underscore-to-space.
+    text = text.replace("_", " ")
+    # First-letter cap; rest stays as written so "vs." stays lowercase.
+    if text and text[0].islower():
+        text = text[0].upper() + text[1:]
+    return text
+
+
 def _render_story_card(
     h: Any,
     kind_tag: str,
@@ -3629,15 +3694,23 @@ def _render_story_card(
             confidence_tier = T("result.confidence_single_source")
         else:
             confidence_tier = T("result.confidence_soft_estimate")
+        # Iter #30: humanized labels in the meta line. The raw branch
+        # label / decision id / driver id were snake_case dev
+        # internals; founder audit flagged them as un-user-friendly.
+        # `branch` removed from meta (the internal label adds no user
+        # value); decision dep + key uncertainty now read as prose.
         meta_parts = [
             f"**{h.probability * 100:.1f}%** probability",
             f"_{confidence_tier}_",
-            f"branch `{h.label}`",
         ]
         if h.depends_on_decision:
-            meta_parts.append(f"requires decision `{h.depends_on_decision}`")
+            meta_parts.append(
+                f"if you {_humanize_id(h.depends_on_decision).lower()}"
+            )
         if h.key_uncertainty_driver:
-            meta_parts.append(f"hinges on _{h.key_uncertainty_driver}_")
+            meta_parts.append(
+                f"hinges on _{_humanize_id(h.key_uncertainty_driver)}_"
+            )
         st.caption(" · ".join(meta_parts))
 
         # iter #21+22 P1.4: per-branch "Why this probability?" reveal.
@@ -3663,14 +3736,17 @@ def _render_story_card(
         has_drivers = bool(per_branch_evidence)
         with st.expander(T("result.why_probability_label"), expanded=False):
             if h.key_uncertainty_driver:
+                # Iter #30: prose-ify the key uncertainty so users
+                # read "Team culture: actual vs. pitch" instead of
+                # "team_culture_actual_vs_pitch".
                 st.markdown(
                     f"**{T('result.why_hinges_on')}** "
-                    f"_{h.key_uncertainty_driver}_"
+                    f"_{_humanize_id(h.key_uncertainty_driver)}_"
                 )
             if h.depends_on_decision:
                 st.markdown(
                     f"**{T('result.why_depends_on')}** "
-                    f"`{h.depends_on_decision}`"
+                    f"{_humanize_id(h.depends_on_decision)}"
                 )
             if not has_extras and not has_drivers:
                 st.caption(T("result.why_no_extras"))
@@ -3683,8 +3759,11 @@ def _render_story_card(
                 # Cap at 3 to avoid overwhelming the expander; the
                 # full list is still available in the existing
                 # "Recommended evidence to collect" section below.
+                # Iter #30 — evidence labels humanized via _humanize_id
+                # so they read as prose, not snake_case dev internals.
                 for rec in per_branch_evidence[:3]:
-                    label = rec.get("evidence_label", "")
+                    raw_label = rec.get("evidence_label", "")
+                    label = _humanize_id(raw_label) if raw_label else ""
                     dp = rec.get("expected_delta_p", 0.0)
                     rationale = rec.get("rationale", "")
                     pp = int(round(dp))
