@@ -8,6 +8,77 @@ the public-facing version string (`_brand.BRAND_VERSION`).
 
 ## [Unreleased]
 
+### v0.4.2-dev arc — 2026-05-26 founder audit + measurement-loop bridge (iter 17–27)
+
+Eleven autonomous iterations against the 2026-05-26 founder live-audit + the
+product-thesis directive ("calibrated decision journal, not one-shot AI
+future generator"). All six P0/P1 items shipped, plus the calibration-loop
+bridge to the user's external calendar. End-to-end verified live on the
+deploy (iter 27 walked the chip → submit → result-page → expander → .ics
+flow; no bugs found).
+
+- **Audit-item ships**
+  - **P0.1**: Delete `console.omyteaai.com` CNAME (TLS-cert-mismatch dead
+    domain) from both monorepo and mirror; GitHub repo `homepage_url`
+    updated via `gh repo edit` from the dead `omyteaai.com` to the embed
+    URL. (iter 18, 20)
+  - **P0.2**: Force-collapse mobile sidebar on `max-width: 768px`;
+    Streamlit's `initial_sidebar_state="auto"` doesn't reliably collapse
+    on phone widths. (iter 18)
+  - **P1.1**: Surface `?embed=true` as the canonical public URL. Defeats
+    Streamlit Cloud's outer "Manage app" pill that an earlier inner-iframe
+    JS hop could not reach (sandboxed-iframe origin issue). Live-verified
+    `[data-testid="manage-app-button"]` returns NO_PILL on the embed URL.
+    (iter 18, 20)
+  - **P1.2**: Cold-start heatmap reads as preview, not result. Adds
+    "EXAMPLE PREVIEW" badge in heat-head + drops cell opacity to 0.62 +
+    softens card shadow; both gated by `body[data-mode="idle"]`. Real
+    predictions render at full opacity, no badge. (iter 19)
+  - **P1.3**: Fold quantum machinery (`ρ_ab` off-diagonal + Lindblad
+    coherence-decay chart with γ=0.05/month copy) into a default-closed
+    `Technical details · joint structure & coherence decay` expander. The
+    primary result-page path stays story → branches → evidence → revisit.
+    (iter 18)
+  - **P1.4 trio — "Why this probability?" per-branch reveal**. The
+    largest remaining ask, shipped in three phases:
+    - Phase 1: structural expander surfacing `key_uncertainty_driver` +
+      `depends_on_decision` + honest fallback caption when neither is set.
+      (iter 21)
+    - Phase 2: real driver list filtered from `recommended_evidence` by
+      `target_branch == branch.label`, rendering up to 3 top items as
+      "**{evidence_label}** — _+Npp expected shift_". (iter 22)
+    - Phase 3: per-branch confidence tier in the meta line via honest
+      qualitative proxy (≥2 evidence → "well-calibrated", 1 →
+      "single-source", 0 → "soft estimate"), routed through i18n × 4
+      locales. (iter 25, 26)
+- **Heatmap legibility**: Branch labels now read in full where space
+  allows — widened left gutter `PADX_L: 96 → 124`, raised truncation cap
+  `12 → 18` characters, removed the redundant rotated "outcome branch"
+  axis caption (the section title above already names what rows are).
+  (iter 17)
+- **Measurement-update bridge — .ics calendar export**. Direct delivery
+  on the founder product thesis that the value isn't a one-shot
+  prediction but the user coming back to score it. Adds a "📥 Add
+  reminder to my calendar (.ics)" button next to the existing "Come back
+  in N months" reminder. RFC 5545 VCALENDAR/VEVENT, UID derives from
+  prediction_id (re-downloading updates the existing event, no
+  duplicates), DESCRIPTION + URL deep-link back to `BRAND_PUBLIC_URL`.
+  Result page now also shows the computed review month ("around August
+  2026") rather than just the relative interval. (iter 23)
+- **Tooling / infrastructure**
+  - GitNexus index refreshed: 26,982 nodes / 45,837 edges / 578 clusters
+    / 300 flows. Cerebrum learning logged: the post-commit "stale" warning
+    fires after every commit by design; refresh cadence is
+    once-per-major-arc, not per-iter. (iter 24)
+  - 15 new regression tests across two files: `test_iter23_review_ics.py`
+    (9 RFC-5545 contract tests for the calendar bridge) and
+    `test_iter25_confidence_tier.py` (6 tier-selection + i18n
+    contract tests). Plus `datetime.utcnow()` →
+    `datetime.now(timezone.utc)` deprecation fix surfaced during the
+    new tests. Suite count 692 → 707. (iter 24, 27)
+- **Live-verification** (iter 27 walked the actual user flow): all
+  ships above are confirmed working on the live demo with screenshots.
+
 ### Planned for v4.16 (founder direction post-H4 self-test)
 - Wishful best-case branch + worst-case anchor presentation polish
 - Branch drill-down UI
