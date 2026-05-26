@@ -723,6 +723,102 @@ def get_calibration_bias_breakdown(
     }
 
 
+def list_overdue_predictions(
+    user_id: str,
+    horizon_seconds_default: int = 90 * 86400,
+    db_path: Path | None = None,
+) -> list[dict[str, Any]]:
+    """Iter #33 — measurement-loop part 4: predictions past their horizon
+    date without a measurement yet.
+
+    The .ics calendar reminder (iter 23) is passive — the user has to
+    actually open their calendar app at month +3 to act on it. This
+    helper backs the ACTIVE complement: when the user lands in the
+    Omytea app for any reason, surface a banner saying "you have
+    predictions waiting to be scored".
+
+    Returns a list of dicts (newest-overdue-first) with:
+      - prediction_id, decision_label (best-effort excerpt from
+        input_json.decision_options), predicted_at (unix epoch),
+        horizon_label (the raw "3 months" / "6 months" string),
+        due_at (unix epoch when the horizon was reached),
+        scenario.
+
+    horizon_seconds_default fallback: when input_json doesn't carry a
+    `time_horizon` field, assume 3 months — better than treating it
+    as never-due. Cap at one year of "lag" to avoid surfacing
+    decade-old predictions if storage isn't ever cleaned.
+    """
+    import re as _re
+    conn = _connect(db_path)
+    try:
+        # LEFT JOIN — keep predictions with NO matching measurement row.
+        rows = conn.execute(
+            "SELECT p.prediction_id, p.user_id, p.scenario, "
+            "       p.created_at, p.input_json "
+            "FROM predictions p "
+            "LEFT JOIN measurement_updates m "
+            "  ON m.prediction_id = p.prediction_id "
+            "WHERE p.user_id = ? AND m.update_id IS NULL "
+            "ORDER BY p.created_at DESC",
+            (user_id,),
+        ).fetchall()
+    finally:
+        conn.close()
+
+    now = time.time()
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        try:
+            inp = json.loads(r["input_json"] or "{}")
+        except Exception:
+            inp = {}
+        # Parse the human-readable horizon. "3 months" / "6 months" /
+        # "1 year" — extract a numeric month count; fall back to the
+        # default if anything looks wrong.
+        horizon_label = str(inp.get("time_horizon", ""))
+        months: float = 3.0
+        m = _re.match(r"\s*(\d+(?:\.\d+)?)\s*(month|year|week|day)", horizon_label.lower())
+        if m:
+            n = float(m.group(1))
+            unit = m.group(2)
+            if unit == "month":
+                months = n
+            elif unit == "year":
+                months = n * 12.0
+            elif unit == "week":
+                months = n / 4.345
+            elif unit == "day":
+                months = n / 30.44
+        # Cap at 24 months so a malformed entry doesn't surface
+        # decade-old predictions.
+        months = max(0.25, min(months, 24.0))
+        horizon_seconds = months * 30.44 * 86400
+        due_at = float(r["created_at"] or 0.0) + horizon_seconds
+        if due_at >= now:
+            # not yet overdue — skip.
+            continue
+        # decision_label — best-effort.
+        decision_raw = (
+            inp.get("decision_options")
+            or inp.get("decision")
+            or ""
+        )
+        decision_label = str(decision_raw).split("\n")[0][:80]
+        out.append({
+            "prediction_id": str(r["prediction_id"]),
+            "user_id": str(r["user_id"]),
+            "scenario": str(r["scenario"] or ""),
+            "predicted_at": float(r["created_at"] or 0.0),
+            "due_at": due_at,
+            "horizon_label": horizon_label,
+            "decision_label": decision_label,
+        })
+    # Most-recent-due first so the banner shows the freshest item.
+    out.sort(key=lambda d: -d["due_at"])
+    return out
+
+
 def list_recent_measurements_with_predictions(
     user_id: str | None = None,
     limit: int = 20,

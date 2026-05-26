@@ -6078,6 +6078,80 @@ def _check_score_deeplink() -> str | None:
     return pid
 
 
+def _render_score_due_banner() -> None:
+    """Iter #34 — active complement to the passive .ics calendar
+    reminder (iter 23).
+
+    When the user lands in the app for ANY reason, check if any of
+    their past predictions have passed their horizon date without
+    being scored. If so, surface a top banner inviting them to score
+    the freshest one immediately. The button uses the same
+    pre-loaded-prediction mechanism iter 31's deep-link uses, so it
+    drops them into Measurement Update with the prediction ready.
+
+    Honest scoping: only renders if the user actually has an
+    overdue prediction; silent otherwise.
+    """
+    try:
+        uid = session_user_id()
+    except Exception:
+        return
+    if not uid:
+        return
+    try:
+        overdue = storage.list_overdue_predictions(uid)
+    except Exception:
+        return
+    if not overdue:
+        return
+    # Show only the freshest overdue (one banner is non-intrusive;
+    # ten would be noise). User can drill into the full list via the
+    # Calibration History page once they score the first one.
+    top = overdue[0]
+    decision = top.get("decision_label") or "(your prediction)"
+    # How long ago did the user predict?
+    import datetime as _dt
+    try:
+        days_ago = max(1, int((time.time() - top["predicted_at"]) / 86400))
+    except Exception:
+        days_ago = 0
+    if days_ago >= 60:
+        when = f"~{days_ago // 30} months ago"
+    elif days_ago >= 14:
+        when = f"~{days_ago // 7} weeks ago"
+    else:
+        when = f"{days_ago} days ago"
+    cols = st.columns([5, 1])
+    with cols[0]:
+        st.info(
+            f"📅 **Time to score**: {decision} — predicted {when}. "
+            "How did this future actually play out?",
+            icon=None,
+        )
+    with cols[1]:
+        if st.button(
+            "Score now →",
+            key=f"_score_due_btn_{top['prediction_id']}",
+            type="primary",
+            use_container_width=True,
+            help=(
+                "Open the Measurement Update flow pre-loaded with this "
+                "prediction. This is where the calibration loop closes."
+            ),
+        ):
+            # Re-use iter 31's pre-load mechanism by routing via
+            # query_params so the next rerun hits the deep-link branch
+            # of main(). Cleanest path that doesn't require touching
+            # the sidebar route plumbing.
+            try:
+                st.query_params["score"] = top["prediction_id"]
+            except Exception:
+                # Older Streamlit fallback — store in session_state and
+                # let _check_score_deeplink read either source.
+                st.session_state["_score_deeplink_pid"] = top["prediction_id"]
+            st.rerun()
+
+
 def main() -> None:
     _force_sidebar_open()
 
@@ -6093,6 +6167,13 @@ def main() -> None:
         return
 
     kind, payload = render_sidebar()
+
+    # Iter #34 — active "Time to score" banner. Renders only when the
+    # user has predictions past their horizon date without a
+    # measurement, and only on the main workspace route (don't dilute
+    # the banner by showing it on every page).
+    if kind == ROUTE_WORKSPACE:
+        _render_score_due_banner()
 
     if kind == ROUTE_HISTORY:
         # A history-rail click → open that prediction in the
