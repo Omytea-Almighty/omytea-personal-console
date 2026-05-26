@@ -3535,7 +3535,12 @@ def _build_review_ics(
     decision_excerpt = (decision_label or "").strip().replace("\n", " · ")[:80]
     dtstart = review_date.strftime("%Y%m%d")
     dtend = (review_date + _dt.timedelta(days=1)).strftime("%Y%m%d")
-    dtstamp = _dt.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    # Iter 24 follow-up: utcnow() is deprecated in py3.12+; use the
+    # timezone-aware now(UTC) instead. The Z suffix on the formatted
+    # output declares UTC explicitly.
+    dtstamp = _dt.datetime.now(_dt.timezone.utc).strftime(
+        "%Y%m%dT%H%M%SZ"
+    )
     uid = f"omytea-review-{prediction_id}@omytea-personal-console"
     # ICS escapes commas, semicolons, backslashes and newlines.
     def _esc(text: str) -> str:
