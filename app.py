@@ -3495,21 +3495,25 @@ def render_traditional_view() -> None:
     )
 
 
-def _render_story_card(h: Any, kind_tag: str) -> None:
+def _render_story_card(
+    h: Any,
+    kind_tag: str,
+    recommended_evidence: list[dict[str, Any]] | None = None,
+) -> None:
     """v4.16 P4 — narrative-first card. Narrative is the headline;
     probability + label + metadata sit in a smaller footer caption.
     Inverts the previous machine-table priority where label/probability
     led the visual hierarchy.
 
-    Iter #21 P1.4 part 1 — "Why this probability?" reveal.
+    Iter #21+22 P1.4 — "Why this probability?" reveal.
     Founder live-audit: "给每个概率加一句 '为什么是这个概率 / 哪些
-    输入最影响它 / 置信度多高'". This phase ships the structural slot
-    + i18n + safe render using fields ALREADY present on the
-    Hypothesis (key_uncertainty_driver, depends_on_decision). It
-    establishes the contract without fabricating ΔP-style driver
-    numbers — that requires per-branch sensitivity attribution which
-    is a later phase. The expander is collapsed by default so the
-    primary scan stays: narrative → probability → metadata.
+    输入最影响它 / 置信度多高'". Iter 21 shipped the structural slot
+    surfacing existing Hypothesis fields (key_uncertainty_driver,
+    depends_on_decision). Iter 22 (Phase 2) wires REAL driver data —
+    `recommended_evidence` already carries a `target_branch` field
+    that lets us filter the existing evidence list per branch and
+    show "Collect X → expected +Yp shift" entries. No fabrication;
+    the data is already computed by the compile step.
     """
     with st.container(border=True):
         st.markdown(
@@ -3525,14 +3529,27 @@ def _render_story_card(h: Any, kind_tag: str) -> None:
             meta_parts.append(f"hinges on _{h.key_uncertainty_driver}_")
         st.caption(" · ".join(meta_parts))
 
-        # iter #21 P1.4: per-branch "Why this probability?" reveal.
-        # Phase 1 surfaces existing Hypothesis fields in a structured
-        # form + honestly labels the driver-attribution as "coming
-        # later" — no fabricated ΔP numbers. The expander key has the
-        # branch label baked in so multiple cards don't collide.
+        # iter #21+22 P1.4: per-branch "Why this probability?" reveal.
+        # Phase 1 (iter 21) surfaced existing Hypothesis fields.
+        # Phase 2 (iter 22) filters `recommended_evidence` by its
+        # `target_branch` so each branch's expander now contains the
+        # REAL driver list — not just a "coming later" caption. The
+        # data was already computed by compile_belief_program; we're
+        # just routing it per branch.
         has_extras = bool(h.key_uncertainty_driver) or bool(
             h.depends_on_decision
         )
+        # Filter evidence to those whose target_branch matches this
+        # hypothesis. normalize_evidence_list sorts by ΔP descending
+        # so the top driver leads.
+        per_branch_evidence: list[dict[str, Any]] = []
+        if recommended_evidence:
+            normalized = normalize_evidence_list(recommended_evidence)
+            per_branch_evidence = [
+                rec for rec in normalized
+                if rec.get("target_branch") == h.label
+            ]
+        has_drivers = bool(per_branch_evidence)
         with st.expander(T("result.why_probability_label"), expanded=False):
             if h.key_uncertainty_driver:
                 st.markdown(
@@ -3544,13 +3561,36 @@ def _render_story_card(h: Any, kind_tag: str) -> None:
                     f"**{T('result.why_depends_on')}** "
                     f"`{h.depends_on_decision}`"
                 )
-            if not has_extras:
+            if not has_extras and not has_drivers:
                 st.caption(T("result.why_no_extras"))
-            # Honest placeholder for the full driver decomposition
-            # — ships in iter 22+ once per-branch sensitivity
-            # attribution is wired. The caption labels it explicitly
-            # as upcoming, not fabricated.
-            st.caption(T("result.why_drivers_coming"))
+            # Iter #22 P1.4 Phase 2: top drivers — real ΔP-style
+            # evidence items mapped to this branch. The user can see
+            # which evidence collection moves THIS branch the most,
+            # per the founder's "哪些输入最影响它" ask.
+            if has_drivers:
+                st.markdown(f"**{T('result.why_top_drivers')}**")
+                # Cap at 3 to avoid overwhelming the expander; the
+                # full list is still available in the existing
+                # "Recommended evidence to collect" section below.
+                for rec in per_branch_evidence[:3]:
+                    label = rec.get("evidence_label", "")
+                    dp = rec.get("expected_delta_p", 0.0)
+                    rationale = rec.get("rationale", "")
+                    pp = int(round(dp))
+                    sign = "+" if pp >= 0 else ""
+                    delta_str = f"{sign}{pp}pp" if pp != 0 else "≈0pp"
+                    line = (
+                        f"- **{label}** — _{delta_str} expected shift_"
+                    )
+                    if rationale:
+                        line += f". {rationale}"
+                    st.markdown(line)
+            elif has_extras:
+                # Has key_uncertainty_driver/decision but no per-branch
+                # evidence — surface a softer line, not the cold
+                # no-extras message that contradicts what we already
+                # showed.
+                st.caption(T("result.why_no_specific_drivers"))
 
 
 def _render_story_view(
@@ -3558,10 +3598,17 @@ def _render_story_view(
     realistic: list[Any],
     worst: list[Any],
     decision_options: list[str],
+    recommended_evidence: list[dict[str, Any]] | None = None,
 ) -> None:
     """v4.16 P4 — story-view layout: wishful (hope) → realistic
     (likely) → worst (caution). Each branch rendered as a
-    narrative-first card via _render_story_card."""
+    narrative-first card via _render_story_card.
+
+    Iter #22 P1.4 Phase 2 — `recommended_evidence` is threaded
+    through so each story card's "Why this probability?" expander
+    can show per-branch top drivers (filtered by `target_branch`).
+    Default-None keeps every other call site compatible.
+    """
     if wishful:
         st.subheader("🌟 Best plausible case")
         st.caption(
@@ -3570,7 +3617,7 @@ def _render_story_view(
             "actions would shift its probability upward."
         )
         for h in wishful:
-            _render_story_card(h, "🌟")
+            _render_story_card(h, "🌟", recommended_evidence)
 
     if realistic:
         st.subheader("📊 Most-likely futures")
@@ -3579,7 +3626,7 @@ def _render_story_view(
             f"{', '.join(decision_options)}"
         )
         for h in sorted(realistic, key=lambda x: -x.probability):
-            _render_story_card(h, "📊")
+            _render_story_card(h, "📊", recommended_evidence)
 
     if worst:
         st.subheader("⚠️ Worst plausible case")
@@ -3589,7 +3636,7 @@ def _render_story_view(
             "take regardless of which decision you pick."
         )
         for h in worst:
-            _render_story_card(h, "⚠️")
+            _render_story_card(h, "⚠️", recommended_evidence)
 
 
 def _render_comparison_table(result: ConsoleResult) -> None:
@@ -4129,7 +4176,16 @@ def _render_result(
     elif view_mode == "Continuous distribution":
         _render_continuous_distribution(result, user_input)
     else:
-        _render_story_view(wishful, realistic, worst, result.decision_options)
+        # Iter #22 P1.4 Phase 2: thread recommended_evidence through so
+        # each story card's "Why this probability?" expander can render
+        # the per-branch top-driver list (filtered by target_branch).
+        _render_story_view(
+            wishful,
+            realistic,
+            worst,
+            result.decision_options,
+            recommended_evidence=list(result.recommended_evidence),
+        )
 
     # v4.17 P1 — "Time-honored lens".
     # OMY-V415 / M2 / Acceptance #60 — requirement D: when the 玄学 lens

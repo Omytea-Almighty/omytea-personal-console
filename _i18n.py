@@ -1235,9 +1235,9 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         ),
     },
     "result.why_drivers_coming": {
-        # Honest "this is coming" label so the expander says what it
-        # WILL contain in a later iteration, instead of pretending the
-        # numbers are already there. No fabrication.
+        # Iter 21 placeholder, kept for backwards compatibility but
+        # no longer rendered in iter 22+ since the real top-drivers
+        # list now ships (key: result.why_top_drivers).
         LANG_EN: (
             "Full driver breakdown — which inputs pushed this up or "
             "down, and how much would change it — is coming in a "
@@ -1256,6 +1256,37 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
             "Décomposition complète des moteurs — quels intrants l'ont "
             "fait monter ou descendre, et de combien — à venir dans "
             "une prochaine version."
+        ),
+    },
+    # Iter #22 P1.4 Phase 2 — real driver list shipped, filtered from
+    # recommended_evidence by target_branch == branch.label. Each item
+    # carries an evidence_label, an expected_delta_p, and a rationale.
+    "result.why_top_drivers": {
+        LANG_EN: "Top drivers for this branch",
+        LANG_ZH: "影响这条分支的主要因子",
+        LANG_ES: "Principales impulsores para esta rama",
+        LANG_FR: "Principaux moteurs de cette branche",
+    },
+    "result.why_no_specific_drivers": {
+        # Honest soft fallback when key_uncertainty_driver or
+        # depends_on_decision IS set but no per-branch evidence items
+        # were generated. Replaces the cold no_extras message that
+        # would contradict the fields already shown above.
+        LANG_EN: (
+            "No specific evidence items were attributed to this branch — "
+            "the fields above are the highest-signal levers we have."
+        ),
+        LANG_ZH: (
+            "本次预测没有为这条分支生成具体的证据条目 — 上面的字段是"
+            "我们能给出的最强杠杆。"
+        ),
+        LANG_ES: (
+            "No se han atribuido elementos de evidencia específicos a esta "
+            "rama — los campos anteriores son las palancas más informativas."
+        ),
+        LANG_FR: (
+            "Aucun élément de preuve spécifique n'a été attribué à cette "
+            "branche — les champs ci-dessus sont les leviers les plus forts."
         ),
     },
     # -----  Interactive heatmap + camera component (v10 port)  -----
