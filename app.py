@@ -3580,12 +3580,20 @@ def _build_review_ics(
             .replace(";", "\\;")
             .replace("\n", "\\n")
         )
+    # Iter #31 — measurement-loop deep-link. The URL field now
+    # carries `?score=<prediction_id>` so the user clicking through
+    # from their calendar lands DIRECTLY in Measurement Update
+    # pre-loaded with this prediction, not on the new-prediction
+    # composer. _check_score_deeplink() in main() catches it.
+    score_url = (
+        f"{_brand.BRAND_LIVE_DEMO_URL}/?embed=true&score={prediction_id}"
+    )
     description = (
         "Time to score your Omytea prediction against what actually "
         "happened — that's the calibration loop. "
         f"Prediction ID: {prediction_id}. "
-        "Open the live demo and head to the Measurement update tab: "
-        f"{_brand.BRAND_PUBLIC_URL}"
+        "Open this link to land in the Measurement Update flow "
+        f"pre-loaded with this prediction: {score_url}"
     )
     body = (
         "BEGIN:VCALENDAR\r\n"
@@ -3604,7 +3612,9 @@ def _build_review_ics(
         body += f" — {_esc(decision_excerpt)}"
     body += "\r\n"
     body += f"DESCRIPTION:{_esc(description)}\r\n"
-    body += f"URL:{_brand.BRAND_PUBLIC_URL}\r\n"
+    # Iter #31 — URL also carries the score deep-link so a calendar
+    # app's "open URL" action lands directly in Measurement Update.
+    body += f"URL:{score_url}\r\n"
     body += "TRANSP:TRANSPARENT\r\n"
     body += "END:VEVENT\r\n"
     body += "END:VCALENDAR\r\n"
@@ -5859,8 +5869,66 @@ def _force_sidebar_open() -> None:
     )
 
 
+def _check_score_deeplink() -> str | None:
+    """Iter #31 — measurement-loop part 1: detect `?score=<prediction_id>`
+    URL param.
+
+    The founder's product judgment (round-2 audit): the real PMF
+    candidate is the closed loop "prediction → calendar reminder →
+    return in N months → score against reality". Iter 23 shipped the
+    .ics calendar export but the URL field in the event pointed at the
+    bare app — users who clicked the reminder landed on the new-
+    prediction composer, not on the measurement-update flow.
+
+    This helper closes the loop: when the .ics-embedded URL carries
+    `?score=<id>`, main() short-circuits the normal route dispatch and
+    sends the user straight to the Measurement Update page pre-loaded
+    with that prediction. The query param is consumed on first read
+    so subsequent reruns don't re-trigger the route override.
+
+    Returns the prediction_id string if present + non-empty, else None.
+    """
+    try:
+        params = st.query_params
+    except Exception:
+        return None
+    raw = params.get("score") if params else None
+    if not raw:
+        return None
+    # query_params may return a single value or a list depending on
+    # Streamlit version; normalize to the first non-empty entry.
+    if isinstance(raw, (list, tuple)):
+        raw = raw[0] if raw else None
+    if not raw:
+        return None
+    pid = str(raw).strip()
+    if not pid:
+        return None
+    # Consume the param so navigating away inside the app (clicking a
+    # different sidebar entry, opening Settings, etc.) doesn't keep
+    # re-routing back to score-mode. The user's address bar updates
+    # but the prediction is still pre-loaded for this turn.
+    try:
+        del params["score"]
+    except Exception:
+        pass
+    return pid
+
+
 def main() -> None:
     _force_sidebar_open()
+
+    # Iter #31 — measurement-loop deep-link check BEFORE the normal
+    # route dispatch. If the user landed via the .ics calendar
+    # reminder's deep-link (`?score=<prediction_id>`), drop them
+    # straight into Measurement Update with that prediction
+    # pre-loaded — the closed loop the founder identified as the
+    # primary PMF lever.
+    score_pid = _check_score_deeplink()
+    if score_pid:
+        render_measurement_update(preloaded_prediction_id=score_pid)
+        return
+
     kind, payload = render_sidebar()
 
     if kind == ROUTE_HISTORY:

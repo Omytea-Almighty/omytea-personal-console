@@ -175,3 +175,24 @@ def test_build_review_ics_description_carries_prediction_id_and_url() -> None:
     assert "abc-xyz-123" in blob  # prediction ID surfaces
     # URL line should carry the canonical embed URL (iter 20).
     assert "URL:https://omytea-personal-console.streamlit.app/?embed=true" in blob
+
+
+def test_build_review_ics_url_carries_score_deeplink() -> None:
+    """Iter #31 — the URL field in the ics must carry the
+    ?score=<prediction_id> deep-link so that opening it from the
+    calendar lands the user directly in Measurement Update
+    pre-loaded with that prediction (not on the new-prediction
+    composer). Closes the measurement-update loop the founder
+    identified as the primary PMF lever."""
+    from app import _build_review_ics
+
+    blob = _build_review_ics(
+        prediction_id="loop-close-id-456",
+        decision_label="X",
+        review_date=_dt.date(2026, 11, 15),
+    ).decode("utf-8")
+    # URL field must include the &score=<id> deep-link suffix.
+    assert "URL:" in blob
+    assert "score=loop-close-id-456" in blob
+    # Backward-compat: the description still mentions the id directly.
+    assert "Prediction ID: loop-close-id-456" in blob
