@@ -4,7 +4,7 @@ Thanks for considering a contribution. This is an open-source project under Apac
 
 ## Quick links
 
-- **Live demo**: https://console.omyteaai.com
+- **Live demo**: https://omytea-personal-console.streamlit.app
 - **Public repo**: https://github.com/Adonyth/omytea-personal-console
 - **Privacy policy**: [PRIVACY_POLICY.md](PRIVACY_POLICY.md)
 - **Release notes**: [CHANGELOG.md](CHANGELOG.md)
