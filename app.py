@@ -611,9 +611,36 @@ st.markdown(
         border-radius: 8px !important;
     }
 
-    /* ---- Hide Streamlit chrome ---- */
+    /* ---- Hide Streamlit dev chrome ---- (P1.1 / founder audit 2026-05-26)
+       The default Streamlit Cloud chrome (top-right Share/star/pencil/Fork/
+       GitHub icons + the floating bottom-right "Manage app" pill + the
+       "Hosted with Streamlit" viewer badge) ships every visitor a
+       developer-demo first impression. A normal user reads these as
+       "this is open dev infrastructure, not a product." Suppress them
+       so the workspace is the product surface. The sidebar collapse
+       toggle (different testid) is intentionally NOT hidden — users
+       still need a way to open/close the rail.
+    */
     footer { visibility: hidden; }
     #MainMenu { visibility: hidden; }
+    /* Top-right toolbar — Share / star / pencil / Fork / GitHub */
+    [data-testid="stToolbar"] { display: none !important; }
+    [data-testid="stToolbarActions"] { display: none !important; }
+    [data-testid="stActionButtonIcon"] { display: none !important; }
+    /* The thin coloured ribbon Streamlit injects at the very top */
+    [data-testid="stDecoration"] { display: none !important; }
+    /* Bottom-right floating Streamlit Cloud "Manage app" pill */
+    [data-testid="manage-app-button"] { display: none !important; }
+    /* "Made with Streamlit" badge — the canonical hiding selector
+       changed across versions; cover the main variants. */
+    .viewerBadge_container__1QSob,
+    .viewerBadge_link__1S137,
+    a[href*="streamlit.io/cloud"],
+    a[href*="share.streamlit.io"][title*="Made"] {
+        display: none !important;
+    }
+    /* The status-running spinner top-right also reads as dev chrome. */
+    [data-testid="stStatusWidget"] { display: none !important; }
 
     /* ---- Metrics: a large precise value; the container reads as
        a quiet card. ---- */
