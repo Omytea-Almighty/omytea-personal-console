@@ -3605,8 +3605,28 @@ def _render_story_card(
         st.markdown(
             f"### {kind_tag} {storyform_narrative(h.narrative, h.branch_type)}"
         )
+        # Iter #25 P1.4 Phase 3 — per-branch confidence signal.
+        # Founder audit item 3 of the per-probability ask:
+        # "置信度多高". Honest proxy: count recommended_evidence
+        # items that target this specific branch. More levers we
+        # can name → more calibrated the probability. Three tiers
+        # are enough — finer-grained pretend-confidence would be
+        # fabrication.
+        n_for_branch = 0
+        if recommended_evidence:
+            n_for_branch = sum(
+                1 for rec in recommended_evidence
+                if rec.get("target_branch") == h.label
+            )
+        if n_for_branch >= 2:
+            confidence_tier = "well-calibrated"
+        elif n_for_branch == 1:
+            confidence_tier = "single-source"
+        else:
+            confidence_tier = "soft estimate"
         meta_parts = [
             f"**{h.probability * 100:.1f}%** probability",
+            f"_{confidence_tier}_",
             f"branch `{h.label}`",
         ]
         if h.depends_on_decision:
