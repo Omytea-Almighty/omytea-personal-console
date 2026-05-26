@@ -55,7 +55,13 @@ from scenarios.career_decision import (
 st.set_page_config(
     page_title="Omytea Console",
     layout="wide",
-    initial_sidebar_state="expanded",
+    # Founder audit 2026-05-26 P1: on mobile (~390px) the expanded
+    # sidebar dominates the first paint — new users see the
+    # navigation rail instead of the composer. Streamlit's "auto"
+    # mode collapses on narrow viewports and expands on wide ones —
+    # the correct first-paint behaviour. Desktop users still get
+    # the rail; mobile users see the workspace first.
+    initial_sidebar_state="auto",
 )
 
 
@@ -2430,53 +2436,68 @@ def _render_workspace_composer_body() -> None:
                     st.rerun()
 
     # ---- Modality bar: attach (+) · live video · Metaphysics lens ----
-    # Iter #4 (design-self-explains): all three are SECONDARY modifiers
-    # — the primary action is "type your decision → Generate". Shrunk
-    # to the left third (4-col layout with an empty trailing column)
-    # so they no longer compete visually with the form fields below.
-    # Lens stays visible because it's the founder's easter-egg
-    # affordance the user must be able to discover.
-    mod_attach, mod_live, mod_lens, _mod_spacer = st.columns(
-        [1.2, 1.2, 1.2, 2.4]
+    # Iter #21 (founder audit 2026-05-26 P1): the 3 modality controls
+    # used to sit visible in the composer flow, but a stumbled-in user
+    # reads "Live video" and "+ Attach" as "this might want my camera /
+    # uploads" — scary first-paint signals. They're advanced features.
+    # Now folded inside a small `st.expander` labelled "Advanced
+    # options"; the lens toggle is shown next to the expander label so
+    # the easter-egg stays discoverable in one click, the rest hide.
+    # When the user has already opened the expander once (or has
+    # attached a video / enabled live video / enabled the lens), the
+    # row stays open on subsequent reruns so we don't yank the
+    # affordance away from a power user mid-session.
+    _adv_open = bool(
+        st.session_state.get("_composer_live_toggle")
+        or st.session_state.get("_composer_lens_toggle")
+        or st.session_state.get("_composer_video")
+        or st.session_state.get("_composer_files")
+        or st.session_state.get("_composer_advanced_seen")
     )
+    with st.expander("Advanced options", expanded=_adv_open):
+        st.session_state["_composer_advanced_seen"] = True
+        mod_attach, mod_live, mod_lens, _mod_spacer = st.columns(
+            [1.2, 1.2, 1.2, 2.4]
+        )
 
-    with mod_attach:
-        with st.popover(T("composer.attach"), use_container_width=True):
-            st.caption(T("composer.attach.hint"))
-            attached_video = st.file_uploader(
-                T("composer.attach.video"),
-                type=["mp4", "mov", "webm", "avi", "mkv"],
-                accept_multiple_files=False,
-                key="_composer_video",
-            )
-            attached_files = st.file_uploader(
-                T("composer.attach.files"),
-                accept_multiple_files=True,
-                key="_composer_files",
-            )
-            if attached_video is not None:
-                st.success(T("composer.attach.video_ready"))
-            if attached_files:
-                st.success(
-                    f"{len(attached_files)} "
-                    f"{T('composer.attach.files_ready')}"
+        with mod_attach:
+            with st.popover(T("composer.attach"), use_container_width=True):
+                st.caption(T("composer.attach.hint"))
+                attached_video = st.file_uploader(
+                    T("composer.attach.video"),
+                    type=["mp4", "mov", "webm", "avi", "mkv"],
+                    accept_multiple_files=False,
+                    key="_composer_video",
                 )
-    with mod_live:
-        live_on = st.toggle(
-            T("composer.live"),
-            key="_composer_live_toggle",
-            help=T("composer.live.hint"),
-        )
-    with mod_lens:
-        lens_on = st.toggle(
-            T("composer.lens"),
-            key="_composer_lens_toggle",
-            value=st.session_state.get(
-                "_composer_lens_toggle",
-                bool(st.session_state.get("settings_default_lens", False)),
-            ),
-            help=T("composer.lens.hint"),
-        )
+                attached_files = st.file_uploader(
+                    T("composer.attach.files"),
+                    accept_multiple_files=True,
+                    key="_composer_files",
+                )
+                if attached_video is not None:
+                    st.success(T("composer.attach.video_ready"))
+                if attached_files:
+                    st.success(
+                        f"{len(attached_files)} "
+                        f"{T('composer.attach.files_ready')}"
+                    )
+        with mod_live:
+            live_on = st.toggle(
+                T("composer.live"),
+                key="_composer_live_toggle",
+                help=T("composer.live.hint"),
+            )
+        with mod_lens:
+            lens_on = st.toggle(
+                T("composer.lens"),
+                key="_composer_lens_toggle",
+                value=st.session_state.get(
+                    "_composer_lens_toggle",
+                    bool(st.session_state.get(
+                        "settings_default_lens", False)),
+                ),
+                help=T("composer.lens.hint"),
+            )
     # The lens toggle is consumed downstream by _render_result.
     st.session_state["_xuanxue_lens_on"] = bool(lens_on)
 
