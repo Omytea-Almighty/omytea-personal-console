@@ -28,8 +28,13 @@ BRAND_REPO_URL: str = "https://github.com/Adonyth/omytea-personal-console"
 BRAND_PRIVACY_URL: str = (
     "https://github.com/Adonyth/omytea-personal-console/blob/main/PRIVACY_POLICY.md"
 )
-BRAND_HOMEPAGE: str = "https://console.omyteaai.com"
 BRAND_LIVE_DEMO_URL: str = "https://omytea-personal-console.streamlit.app"
+# P0 (bug-037 audit follow-up): the previous BRAND_HOMEPAGE pointed at
+# https://console.omyteaai.com — that subdomain returns a TLS-cert
+# mismatch and the apex https://omyteaai.com returns Cloudflare 520.
+# Until a canonical homepage exists, every "Home" link in the UI
+# points at the live demo itself. One canonical URL > two broken ones.
+BRAND_HOMEPAGE: str = BRAND_LIVE_DEMO_URL
 
 # Per-mode emoji palette. Centralised so adding a new mode is a
 # one-line change across all surfaces (sidebar, page header, README).
