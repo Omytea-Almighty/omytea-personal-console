@@ -1,4 +1,4 @@
-"""SQLite persistence for predictions + measurement updates.
+"""SQLite-compatible persistence for predictions + measurement updates.
 
 Schema versioned via PRAGMA user_version. Tables:
 - predictions: each user prediction snapshot
@@ -11,7 +11,19 @@ Schema versioned via PRAGMA user_version. Tables:
 Migrations are idempotent — opening a legacy DB performs ADD COLUMN
 / CREATE TABLE IF NOT EXISTS as needed and bumps user_version.
 
-Privacy: all data stored locally; nothing leaves the machine.
+Iter #44 — durable backing store. The console can now persist to
+**Turso** (a hosted libSQL service, 100% SQLite-compatible) when
+the env vars ``OMYTEA_TURSO_URL`` + ``OMYTEA_TURSO_AUTH_TOKEN``
+are set. Without them, behavior is unchanged: local SQLite at
+``DEFAULT_DB_PATH``. Streamlit Cloud's filesystem is ephemeral
+so the local-SQLite path **does not survive a redeploy**; Turso
+is what makes the PMF measurement loop (predict → wait → score)
+survive across N months. See ``SETUP_TURSO.md`` at the repo
+root for the founder's ~3-minute setup (turso db create +
+secrets paste).
+
+Privacy: local-SQLite path stays on the local disk; Turso path
+stores rows on Turso's edge (their privacy posture applies).
 """
 
 from __future__ import annotations
@@ -35,6 +47,48 @@ DEFAULT_DB_PATH = Path(
         str(Path.home() / ".omytea-personal-console" / "predictions.db"),
     )
 )
+
+
+# Iter #44 — Turso (libSQL) detection. Env-var gated so the local
+# tests + local dev unchanged. App.py bridges st.secrets → env vars
+# at startup so a Streamlit Cloud deploy with `[turso]` block in
+# secrets.toml automatically uses the durable backing store.
+_TURSO_URL = os.environ.get("OMYTEA_TURSO_URL", "").strip()
+_TURSO_AUTH_TOKEN = os.environ.get("OMYTEA_TURSO_AUTH_TOKEN", "").strip()
+_USING_TURSO = bool(_TURSO_URL)
+
+# libsql_experimental is optional — if the wheel didn't install
+# (which can happen on some platforms) gracefully fall back to
+# local SQLite + emit a one-time stderr warning so the founder
+# sees it in the Streamlit Cloud logs.
+_libsql = None
+if _USING_TURSO:
+    try:
+        import libsql_experimental as _libsql  # type: ignore
+    except ImportError:
+        try:
+            # Fallback module name — the package has been renamed
+            # across versions.
+            import libsql as _libsql  # type: ignore
+        except ImportError:
+            import sys
+            print(
+                "[storage] WARNING: OMYTEA_TURSO_URL is set but "
+                "neither `libsql_experimental` nor `libsql` is "
+                "installed; falling back to local SQLite. The "
+                "demo's data will be ephemeral. Add "
+                "`libsql-experimental` to requirements.txt or "
+                "see SETUP_TURSO.md.",
+                file=sys.stderr,
+            )
+            _USING_TURSO = False
+
+
+def using_turso() -> bool:
+    """Diagnostic — used by the footer + tests to verify durable
+    storage is active. Returns True only when both the env vars
+    are set AND the libsql module imported successfully."""
+    return _USING_TURSO and _libsql is not None
 
 
 @dataclass(frozen=True, slots=True)
@@ -355,7 +409,53 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
 
 @contextmanager
 def db_connect(db_path: Path | None = None) -> Iterator[sqlite3.Connection]:
-    """Open SQLite connection; ensure schema; close on exit."""
+    """Open SQLite-compatible connection; ensure schema; close on exit.
+
+    Iter #44 — durable storage. When ``OMYTEA_TURSO_URL`` is set
+    (and the explicit ``db_path`` override isn't passed by a test),
+    the connection points at Turso's hosted libSQL — same SQL,
+    same Python DB-API, but the rows survive any Streamlit Cloud
+    redeploy. Otherwise the original local-SQLite path runs
+    unchanged.
+
+    Test overrides + the ``db_path`` parameter always bypass the
+    Turso path so unit tests stay deterministic and offline.
+    """
+    if _USING_TURSO and _libsql is not None and db_path is None:
+        # Turso libSQL — the connect() signature is the same as
+        # sqlite3.connect() with an additional auth_token kw.
+        # Connections are network-backed but the Python API matches
+        # sqlite3.Connection closely enough that the existing
+        # cursor / execute / commit calls all work verbatim.
+        conn = _libsql.connect(
+            database=_TURSO_URL,
+            auth_token=_TURSO_AUTH_TOKEN,
+        )
+        try:
+            # libsql_experimental's Connection doesn't accept the
+            # `row_factory = sqlite3.Row` assignment, but its
+            # `.execute()` returns row-objects that behave like
+            # tuples + support index/column-name access — close
+            # enough to sqlite3.Row that downstream code works.
+            try:
+                conn.row_factory = sqlite3.Row  # type: ignore[attr-defined]
+            except Exception:
+                pass
+            _ensure_schema(conn)
+            yield conn
+            try:
+                conn.commit()
+            except Exception:
+                pass
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+        return
+
+    # Local SQLite — unchanged behavior. Test suite always hits
+    # this path because db_path overrides bypass the Turso branch.
     p = db_path or DEFAULT_DB_PATH
     p.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(p))

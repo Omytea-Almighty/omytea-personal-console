@@ -56,3 +56,13 @@ omytea-quantum-substrate>=0.1.1,<1.0
 # binary wheels exist for Linux Python 3.11-3.13). If streamlit-webrtc
 # fails to install, the Mode 6 install-hint fallback engages cleanly.
 streamlit-webrtc>=0.47,<1.0
+
+# Iter #44 — durable persistence on Streamlit Cloud via Turso
+# (hosted libSQL, 100% SQLite-compatible). Optional dependency:
+# the storage layer gracefully falls back to local SQLite if the
+# wheel doesn't install or the env vars OMYTEA_TURSO_URL +
+# OMYTEA_TURSO_AUTH_TOKEN aren't set. See SETUP_TURSO.md for
+# the 3-minute founder setup. Streamlit Cloud's filesystem is
+# ephemeral, so without Turso the calibration loop "predict →
+# wait N months → score" cannot survive a redeploy.
+libsql-experimental>=0.0.30

@@ -19,6 +19,32 @@ from typing import Any
 import streamlit as st
 import streamlit.components.v1 as components
 
+# Iter #44 — bridge `st.secrets[turso]` → env vars BEFORE
+# `import storage` (which reads OMYTEA_TURSO_URL at module-load
+# time to decide whether to use the durable Turso libSQL backend
+# or fall back to the ephemeral local SQLite). Without this
+# bridge, a Streamlit Cloud deploy with `[turso]` configured in
+# secrets.toml would still write to the ephemeral filesystem
+# because the storage module already cached its backend choice
+# at import time. See SETUP_TURSO.md for the founder setup.
+try:
+    if "turso" in st.secrets:
+        _turso_cfg = st.secrets["turso"]
+        if "url" in _turso_cfg:
+            os.environ.setdefault(
+                "OMYTEA_TURSO_URL", str(_turso_cfg["url"])
+            )
+        if "auth_token" in _turso_cfg:
+            os.environ.setdefault(
+                "OMYTEA_TURSO_AUTH_TOKEN",
+                str(_turso_cfg["auth_token"]),
+            )
+except Exception:
+    # secrets.toml missing or malformed — fall back to local
+    # SQLite path. storage.py emits a stderr warning if the env
+    # vars ARE set but libsql failed to import.
+    pass
+
 import _brand
 # Iter #40 phase-1 — measurement-loop helpers were extracted from
 # app.py into their own module to start unblocking the 6208-line
