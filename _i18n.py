@@ -1526,6 +1526,97 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
             "du résultat."
         ),
     },
+    # Iter #46 — restore-from-snapshot widget on Measurement
+    # Update. Closes the snapshot↔restore loop with the iter 43
+    # `💾 Save snapshot` (.json) download on the result page so
+    # beta testers can survive any data wipe (Turso outage,
+    # accidental redeploy, account deletion) by keeping their
+    # .json locally.
+    "measurement.restore_label": {
+        LANG_EN: "Restore from .json snapshot",
+        LANG_ZH: "从 .json 快照恢复",
+        LANG_ES: "Restaurar desde .json",
+        LANG_FR: "Restaurer depuis .json",
+    },
+    "measurement.restore_hint": {
+        LANG_EN: (
+            "Upload the `omytea-prediction-*.json` file you "
+            "downloaded from the result page's **💾 Save snapshot** "
+            "button. Use this if you can't find the prediction in "
+            "the demo's storage anymore."
+        ),
+        LANG_ZH: (
+            "上传你在结果页 **💾 保存快照** 按钮下载的 "
+            "`omytea-prediction-*.json` 文件。"
+            "如果在 demo 存储里找不到那条预测了，用这个恢复。"
+        ),
+        LANG_ES: (
+            "Sube el archivo `omytea-prediction-*.json` que "
+            "descargaste con el botón **💾 Guardar copia** en la "
+            "página de resultados."
+        ),
+        LANG_FR: (
+            "Téléverse le fichier `omytea-prediction-*.json` que tu "
+            "as téléchargé depuis le bouton **💾 Sauvegarder** sur "
+            "la page de résultats."
+        ),
+    },
+    "measurement.restore_upload_label": {
+        LANG_EN: "Drop .json file here (or click to browse)",
+        LANG_ZH: "把 .json 拖到这里 (或点击浏览)",
+        LANG_ES: "Suelta el .json aquí (o haz clic para buscar)",
+        LANG_FR: "Dépose le .json ici (ou clique pour parcourir)",
+    },
+    "measurement.restore_invalid": {
+        LANG_EN: (
+            "This file doesn't look like an Omytea prediction "
+            "snapshot. Re-download from the result page."
+        ),
+        LANG_ZH: (
+            "这个文件不像是 Omytea 预测快照。请重新从结果页下载。"
+        ),
+        LANG_ES: (
+            "Este archivo no parece una instantánea de Omytea. "
+            "Descárgalo de nuevo desde la página de resultados."
+        ),
+        LANG_FR: (
+            "Ce fichier ne ressemble pas à un instantané Omytea. "
+            "Re-télécharge depuis la page de résultats."
+        ),
+    },
+    "measurement.restore_schema_mismatch": {
+        LANG_EN: (
+            "This snapshot uses a different schema version. It may "
+            "be from a future Omytea release; we can't restore it "
+            "automatically. Contact support with the file attached."
+        ),
+        LANG_ZH: (
+            "这份快照使用了不同的 schema 版本。可能来自未来版本的 "
+            "Omytea；无法自动恢复。请把文件发给客服。"
+        ),
+        LANG_ES: (
+            "Esta copia usa una versión de esquema diferente. No "
+            "podemos restaurarla automáticamente. Contacta soporte "
+            "con el archivo adjunto."
+        ),
+        LANG_FR: (
+            "Cette sauvegarde utilise une autre version du schéma. "
+            "Restauration automatique impossible — contacte le "
+            "support avec le fichier en pièce jointe."
+        ),
+    },
+    "measurement.restore_failed": {
+        LANG_EN: "Couldn't restore this prediction",
+        LANG_ZH: "无法恢复这条预测",
+        LANG_ES: "No se pudo restaurar esta predicción",
+        LANG_FR: "Impossible de restaurer cette prédiction",
+    },
+    "measurement.restore_success": {
+        LANG_EN: "Restored — scoring this prediction now",
+        LANG_ZH: "已恢复 — 现在为这条预测打分",
+        LANG_ES: "Restaurada — puntuando esta predicción",
+        LANG_FR: "Restaurée — évaluation en cours",
+    },
     # Iter #42 B3 — Measurement Update PMF required-pick validation
     # messages. Founder round-4 audit: defaults were pre-biased
     # (NPS=5 / Sean Ellis 'Somewhat disappointed' / effort

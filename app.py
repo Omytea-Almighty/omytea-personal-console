@@ -4829,6 +4829,105 @@ def render_measurement_update(
                 placeholder=T("measurement.pid_input_placeholder"),
                 key="_measurement_lookup_pid",
             )
+
+        # Iter #46 — restore-from-snapshot upload. Pairs with the
+        # iter 43 `💾 Save snapshot` (.json) download on the result
+        # page so the full snapshot↔restore loop is closed. If the
+        # demo's data ever gets wiped (Turso outage / account
+        # deletion / accidental redeploy that misses [turso]
+        # secrets), beta testers can drop their .json back in here
+        # and continue scoring — their prediction lives in their
+        # device's filesystem as the durable record. The schema
+        # field on the JSON is checked so future schema changes
+        # can warn the user instead of crashing.
+        restored_from_snapshot = False
+        with st.expander(
+            T("measurement.restore_label"), expanded=False,
+        ):
+            st.caption(T("measurement.restore_hint"))
+            uploaded = st.file_uploader(
+                T("measurement.restore_upload_label"),
+                type=["json"],
+                accept_multiple_files=False,
+                key="_measurement_restore_uploader",
+            )
+            if uploaded is not None:
+                try:
+                    import json as _restore_json
+                    raw = uploaded.read()
+                    blob = _restore_json.loads(raw)
+                    if not isinstance(blob, dict):
+                        st.error(T("measurement.restore_invalid"))
+                    elif blob.get("schema", "").split("/")[0] != (
+                        "omytea-prediction-snapshot"
+                    ):
+                        st.error(T("measurement.restore_schema_mismatch"))
+                    elif not blob.get("prediction_id"):
+                        st.error(T("measurement.restore_invalid"))
+                    else:
+                        restored_pid = str(blob["prediction_id"])
+                        # If the prediction already exists in the DB
+                        # (Turso still has it), just route to it. If
+                        # not, rebuild + save the PredictionRecord
+                        # from the JSON and route.
+                        existing = storage.get_prediction_by_id(
+                            restored_pid,
+                        )
+                        if existing is not None:
+                            pred = existing
+                        else:
+                            try:
+                                rec = storage.PredictionRecord(
+                                    prediction_id=restored_pid,
+                                    user_id=str(blob.get("user_id", "")),
+                                    scenario=str(blob.get("scenario", "")),
+                                    created_at=float(
+                                        blob.get(
+                                            "exported_at_unix",
+                                            storage.now_unix(),
+                                        )
+                                    ),
+                                    user_input=dict(
+                                        blob.get("user_input", {})
+                                    ),
+                                    belief_program={},
+                                    wavefunction_snapshot=dict(
+                                        blob.get(
+                                            "wavefunction_snapshot",
+                                            {"hypotheses": []},
+                                        )
+                                    ),
+                                    joint_offdiag=dict(
+                                        blob.get(
+                                            "joint_offdiag",
+                                            {"entries": []},
+                                        )
+                                    ),
+                                )
+                                storage.save_prediction(rec)
+                                pred = rec
+                            except Exception as _e:  # noqa: BLE001
+                                st.error(
+                                    f"{T('measurement.restore_failed')}: "
+                                    f"{type(_e).__name__}"
+                                )
+                                pred = None
+                        if pred is not None:
+                            user_id = pred.user_id
+                            preloaded_prediction_id = pred.prediction_id
+                            predictions = [pred]
+                            restored_from_snapshot = True
+                            st.success(
+                                f"{T('measurement.restore_success')} · "
+                                f"`{pred.prediction_id[:8]}` · "
+                                f"{pred.scenario}"
+                            )
+                except Exception as _e:  # noqa: BLE001
+                    st.error(
+                        f"{T('measurement.restore_invalid')}: "
+                        f"{type(_e).__name__}"
+                    )
+
         if pasted_pid and pasted_pid.strip():
             pred = storage.get_prediction_by_id(pasted_pid.strip())
             if pred is None:
@@ -4845,6 +4944,8 @@ def render_measurement_update(
             preloaded_prediction_id = pred.prediction_id
             predictions = [pred]
             # Fall through to render path (handled at bottom).
+            user_id_resolved = True
+        elif restored_from_snapshot:
             user_id_resolved = True
         else:
             user_id_resolved = False
