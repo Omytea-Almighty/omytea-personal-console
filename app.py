@@ -178,43 +178,14 @@ st.markdown(
     section[data-testid="stSidebar"] > div {
         background: transparent;
     }
-    /* Iter 18 P0.2 + iter 30 RE-FIX — mobile sidebar default-collapsed.
-       The iter 18 version gated on aria-expanded="true" + used
-       margin-left, both of which the founder live-test confirmed
-       did NOT work on real mobile devices ("默认 sidebar 覆盖几
-       乎整个首屏"). Streamlit's mobile sidebar uses transform-based
-       positioning, NOT margin, so the original rule was matching
-       the wrong axis. Plus Streamlit may not set aria-expanded
-       reliably on mobile mount.
-
-       This rewrite is aggressive: hide unconditionally on narrow
-       viewports via transform: translateX(-100%) with high
-       specificity + !important. The user can still open the
-       sidebar via Streamlit's built-in hamburger / collapse-arrow
-       button — when the user taps it Streamlit sets
-       aria-expanded="true" which our second rule re-shows the
-       drawer with translateX(0). The transition keeps the open/
-       close animation smooth. Desktop (>768px) unaffected. */
-    @media (max-width: 768px) {
-        section[data-testid="stSidebar"] {
-            transform: translateX(-100%) !important;
-            transition: transform 0.28s ease !important;
-            box-shadow: 8px 0 24px rgba(0, 0, 0, 0.4) !important;
-            z-index: 999990 !important;
-        }
-        /* User explicitly opened it via hamburger — show the drawer. */
-        section[data-testid="stSidebar"][aria-expanded="true"] {
-            transform: translateX(0) !important;
-        }
-        /* Main content gets the freed horizontal space when sidebar
-           is hidden. */
-        section.main > div.block-container,
-        div[data-testid="stMain"] > div.block-container {
-            padding-left: 1rem !important;
-            padding-right: 1rem !important;
-            max-width: 100% !important;
-        }
-    }
+    /* Iter 42d — mobile sidebar @media block EXTRACTED to its own
+       dedicated _MOBILE_SIDEBAR_CSS constant + injected via a
+       separate st.markdown call (see render_sidebar()). Cerebrum
+       iter 22 learning: "layout-critical CSS buried in the
+       737-line global <style> can silently never reach the
+       CSSOM" — live-verified iter 43 that this @media block was
+       NOT in document.styleSheets despite being declared here.
+       The smaller, dedicated style block loads reliably. */
     section[data-testid="stSidebar"] .block-container {
         padding-top: 1.6rem;
         padding-left: 1.15rem;
@@ -1443,6 +1414,43 @@ _SIDEBAR_PIN_CSS = (
 )
 
 
+# Iter #42d — mobile-sidebar CSS extracted from the global style
+# block. Cerebrum iter 22 learning: when layout-critical CSS sits
+# inside the 800+ line global <style>, it can silently fail to
+# reach the CSSOM (live verified iter 43 — `document.styleSheets`
+# scan found ZERO `stSidebar` transform rules despite the @media
+# block being declared in app.py). The dedicated small-block
+# pattern (see `_SIDEBAR_PIN_CSS` / `_SETTINGS_CSS` /
+# `_WORKSPACE_CHROME_CSS`) loads reliably.
+#
+# Pairs with `_force_sidebar_open()` JS: on mobile, the JS sets
+# `aria-expanded="false"` (the .click() route is broken — React
+# silently drops synthetic events on Streamlit's collapse button).
+# CSS then slides the off-screen via translateX(-100%). When user
+# explicitly opens the drawer via Streamlit's hamburger, aria
+# becomes "true" and the second rule re-shows it.
+_MOBILE_SIDEBAR_CSS = (
+    "<style>"
+    "@media (max-width: 768px) {"
+    'section[data-testid="stSidebar"]'
+    "{transform:translateX(-100%) !important;"
+    "transition:transform 0.28s ease !important;"
+    "box-shadow:8px 0 24px rgba(0,0,0,0.4) !important;"
+    "z-index:999990 !important;"
+    "position:fixed !important;"
+    "left:0 !important;top:0 !important;"
+    "height:100vh !important;}"
+    'section[data-testid="stSidebar"][aria-expanded="true"]'
+    "{transform:translateX(0) !important;}"
+    "section.main > div.block-container,"
+    'div[data-testid="stMain"] > div.block-container'
+    "{padding-left:1rem !important;padding-right:1rem !important;"
+    "max-width:100% !important;margin-left:0 !important;}"
+    "}"
+    "</style>"
+)
+
+
 def render_sidebar() -> tuple[str, Any]:
     """Sidebar — ChatGPT-shaped navigation: brand → New prediction →
     a date-grouped history of past predictions → a transitional "More"
@@ -1465,6 +1473,11 @@ def render_sidebar() -> tuple[str, Any]:
 
     # Pin the footer + account chip to the sidebar's bottom edge.
     st.markdown(_SIDEBAR_PIN_CSS, unsafe_allow_html=True)
+    # Iter 42d — mobile sidebar collapse, injected as a dedicated
+    # small <style> so the rules actually reach the CSSOM (the
+    # @media block had been buried in the giant global style and
+    # was silently dropped — see iter 22 cerebrum learning).
+    st.markdown(_MOBILE_SIDEBAR_CSS, unsafe_allow_html=True)
 
     # ---- Brand wordmark ----
     # A precise wordmark with a small accent dot as the brand mark
