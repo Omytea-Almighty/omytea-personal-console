@@ -1415,6 +1415,121 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
             "produites."
         ),
     },
+    # Iter #42 B1 — top-of-result CTA row keys. Founder round-4
+    # audit: "Add calendar / Copy ID / Score later" were buried
+    # below the entire result page. Now surfaced right under the
+    # prediction-ID caption.
+    "result.cta.add_calendar": {
+        LANG_EN: "📅  Add to calendar",
+        LANG_ZH: "📅  加日历提醒",
+        LANG_ES: "📅  Añadir al calendario",
+        LANG_FR: "📅  Ajouter au calendrier",
+    },
+    "result.cta.add_calendar.hint": {
+        LANG_EN: (
+            "Downloads a .ics calendar event for the review date so "
+            "the reminder lives in your real calendar — not just "
+            "this app."
+        ),
+        LANG_ZH: (
+            "下载 .ics 日历事件，复盘提醒会进入你真实的日历，"
+            "不止存在 app 里。"
+        ),
+        LANG_ES: (
+            "Descarga un evento de calendario .ics para la fecha de "
+            "revisión — el recordatorio vive en tu calendario real."
+        ),
+        LANG_FR: (
+            "Télécharge un événement .ics pour la date de revue — "
+            "le rappel vit dans votre vrai calendrier."
+        ),
+    },
+    "result.cta.score_later": {
+        LANG_EN: "Score later  →",
+        LANG_ZH: "稍后打分  →",
+        LANG_ES: "Puntuar después  →",
+        LANG_FR: "Évaluer plus tard  →",
+    },
+    "result.cta.score_later.hint": {
+        LANG_EN: (
+            "Opens the Measurement Update flow with this prediction "
+            "pre-loaded — useful if you already know the outcome."
+        ),
+        LANG_ZH: (
+            "打开 Measurement Update 流程并预加载这条预测 — "
+            "如果你已经知道结果可以直接打分。"
+        ),
+        LANG_ES: (
+            "Abre el flujo de Measurement Update con esta predicción "
+            "precargada — útil si ya conoces el resultado."
+        ),
+        LANG_FR: (
+            "Ouvre le flux Measurement Update avec cette prédiction "
+            "préchargée — utile si vous connaissez déjà le résultat."
+        ),
+    },
+    "result.review_anchor": {
+        # Slimmed bottom anchor that replaces the verbose iter-23
+        # st.info card now that the CTAs are at the top.
+        LANG_EN: (
+            "Reminder set for {review_date} (about {horizon} out). "
+            "Calendar download is at the top of this result."
+        ),
+        LANG_ZH: (
+            "提醒已设为 {review_date}（约 {horizon} 后）。"
+            "日历下载在结果页顶部。"
+        ),
+        LANG_ES: (
+            "Recordatorio para {review_date} (a unos {horizon} "
+            "vista). La descarga del calendario está al inicio del "
+            "resultado."
+        ),
+        LANG_FR: (
+            "Rappel prévu pour {review_date} (environ {horizon} "
+            "plus tard). Le téléchargement calendrier est en haut "
+            "du résultat."
+        ),
+    },
+    # Iter #42 B3 — Measurement Update PMF required-pick validation
+    # messages. Founder round-4 audit: defaults were pre-biased
+    # (NPS=5 / Sean Ellis 'Somewhat disappointed' / effort
+    # 'needed_reminder') — change to required explicit pick so the
+    # PMF signal isn't an artifact of users clicking submit
+    # without reading.
+    "measurement.sean_ellis_required": {
+        LANG_EN: (
+            "Please pick one option for the Sean Ellis "
+            "disappointment test before submitting."
+        ),
+        LANG_ZH: (
+            "提交前请为 Sean Ellis 失望测试选择一个选项。"
+        ),
+        LANG_ES: (
+            "Por favor elige una opción del test de decepción de "
+            "Sean Ellis antes de enviar."
+        ),
+        LANG_FR: (
+            "Choisissez une option pour le test de déception de "
+            "Sean Ellis avant de soumettre."
+        ),
+    },
+    "measurement.effort_required": {
+        LANG_EN: (
+            "Please pick one option for the effort test before "
+            "submitting."
+        ),
+        LANG_ZH: (
+            "提交前请为努力测试选择一个选项。"
+        ),
+        LANG_ES: (
+            "Por favor elige una opción del test de esfuerzo antes "
+            "de enviar."
+        ),
+        LANG_FR: (
+            "Choisissez une option pour le test d'effort avant de "
+            "soumettre."
+        ),
+    },
     # Iter #41 — beta test consent banner (founder round-4 P1 #5).
     # Shown above the cold-start composer so first-time visitors
     # understand the data posture before they type anything.

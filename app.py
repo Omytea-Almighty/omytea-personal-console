@@ -998,7 +998,7 @@ ROUTE_SETTINGS = "settings"
 # pages was a redundant SECOND entry point — they were removed from
 # "More". What remains is what the composer has no slot for: scoring a
 # past outcome, the calibration track record, and pricing.
-SECONDARY_MODES = (
+SECONDARY_MODES_ALL = (
     "Measurement update",
     "Calibration history",
     "Pricing & pre-order",
@@ -1008,6 +1008,62 @@ SECONDARY_MODE_I18N = {
     "Calibration history": "mode.calibration_history",
     "Pricing & pre-order": "mode.pricing",
 }
+
+
+# Iter #42 B2 — hide non-PMF surfaces during beta. Founder round-4
+# audit: "Pricing/Live video/Attach toggles OFF by default during
+# beta; session-state toggle for founder to flip back on". During
+# beta we're trying to learn whether the predict→calendar→score
+# loop has PMF — surfacing Pricing (a pre-order page that implies
+# the product is mature enough to monetize) and the modality
+# toggles (live video / file attach are research extensions, not
+# the PMF candidate) muddies the read. The 玄学 lens stays visible
+# because the founder explicitly ratified it as a product surface
+# (2026-05-26 "玄学还是要的" + WORK_PLAN_V415 two-channel framing).
+#
+# Override: append `?dev=1` to the URL to re-enable all surfaces.
+# That's how the founder demos the full product without shipping
+# new code.
+def _show_research_features() -> bool:
+    """Whether the non-PMF surfaces (Pricing / Live video / Attach)
+    are shown. Default False during beta; set True via `?dev=1` URL
+    param OR by setting `_show_research_features` in session_state
+    (founder-only escape hatch).
+    """
+    if bool(st.session_state.get("_show_research_features", False)):
+        return True
+    try:
+        params = st.query_params
+        if params and str(params.get("dev", "")).strip() in ("1", "true", "yes"):
+            # Persist for the rest of the session so the founder
+            # doesn't have to keep the URL param visible.
+            st.session_state["_show_research_features"] = True
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def _secondary_modes() -> tuple[str, ...]:
+    """SECONDARY_MODES filtered to what should be visible right now.
+    During beta we drop "Pricing & pre-order" — selling a pre-order
+    before PMF is the wrong signal to send a beta tester.
+    """
+    if _show_research_features():
+        return SECONDARY_MODES_ALL
+    return tuple(
+        m for m in SECONDARY_MODES_ALL
+        if m != "Pricing & pre-order"
+    )
+
+
+# Back-compat alias — older sites and tests reference the original
+# constant name. Module-level evaluation: when modules import
+# `from app import SECONDARY_MODES`, they get the full tuple (so a
+# test that pre-dates the beta gate still sees all three modes).
+# Runtime call sites use `_secondary_modes()` so dev-mode behavior
+# is captured on every render.
+SECONDARY_MODES = SECONDARY_MODES_ALL
 
 
 def _render_back_bar() -> None:
@@ -1462,9 +1518,12 @@ def render_sidebar() -> tuple[str, Any]:
     route = _render_history_rail(route)
 
     # ---- "More" expander — transitional home for secondary surfaces ----
+    # Iter #42 B2 — Pricing & pre-order is hidden during beta (the
+    # `_secondary_modes()` filter drops it). Founder can re-enable
+    # by appending `?dev=1` to the URL.
     with st.sidebar.expander(T("nav.more"), expanded=False):
         st.caption(T("nav.more.hint"))
-        for mode_key in SECONDARY_MODES:
+        for mode_key in _secondary_modes():
             is_active = (
                 route[0] == ROUTE_SECONDARY and route[1] == mode_key
             )
@@ -2650,50 +2709,81 @@ def _render_workspace_composer_body() -> None:
         or st.session_state.get("_composer_files")
         or st.session_state.get("_composer_advanced_seen")
     )
+    # Iter #42 B2 — during beta, the Advanced expander shows ONLY
+    # the 玄学 lens toggle (founder ratified — opt-in product
+    # surface). Live video + Attach are research extensions and
+    # are hidden behind `?dev=1`. The expander still exists so
+    # the lens toggle stays one click away.
+    _show_research = _show_research_features()
     with st.expander("Advanced options", expanded=_adv_open):
         st.session_state["_composer_advanced_seen"] = True
-        mod_attach, mod_live, mod_lens, _mod_spacer = st.columns(
-            [1.2, 1.2, 1.2, 2.4]
-        )
-
-        with mod_attach:
-            with st.popover(T("composer.attach"), use_container_width=True):
-                st.caption(T("composer.attach.hint"))
-                attached_video = st.file_uploader(
-                    T("composer.attach.video"),
-                    type=["mp4", "mov", "webm", "avi", "mkv"],
-                    accept_multiple_files=False,
-                    key="_composer_video",
-                )
-                attached_files = st.file_uploader(
-                    T("composer.attach.files"),
-                    accept_multiple_files=True,
-                    key="_composer_files",
-                )
-                if attached_video is not None:
-                    st.success(T("composer.attach.video_ready"))
-                if attached_files:
-                    st.success(
-                        f"{len(attached_files)} "
-                        f"{T('composer.attach.files_ready')}"
+        if _show_research:
+            mod_attach, mod_live, mod_lens, _mod_spacer = st.columns(
+                [1.2, 1.2, 1.2, 2.4]
+            )
+            with mod_attach:
+                with st.popover(
+                    T("composer.attach"), use_container_width=True
+                ):
+                    st.caption(T("composer.attach.hint"))
+                    attached_video = st.file_uploader(
+                        T("composer.attach.video"),
+                        type=["mp4", "mov", "webm", "avi", "mkv"],
+                        accept_multiple_files=False,
+                        key="_composer_video",
                     )
-        with mod_live:
-            live_on = st.toggle(
-                T("composer.live"),
-                key="_composer_live_toggle",
-                help=T("composer.live.hint"),
-            )
-        with mod_lens:
-            lens_on = st.toggle(
-                T("composer.lens"),
-                key="_composer_lens_toggle",
-                value=st.session_state.get(
-                    "_composer_lens_toggle",
-                    bool(st.session_state.get(
-                        "settings_default_lens", False)),
-                ),
-                help=T("composer.lens.hint"),
-            )
+                    attached_files = st.file_uploader(
+                        T("composer.attach.files"),
+                        accept_multiple_files=True,
+                        key="_composer_files",
+                    )
+                    if attached_video is not None:
+                        st.success(T("composer.attach.video_ready"))
+                    if attached_files:
+                        st.success(
+                            f"{len(attached_files)} "
+                            f"{T('composer.attach.files_ready')}"
+                        )
+            with mod_live:
+                live_on = st.toggle(
+                    T("composer.live"),
+                    key="_composer_live_toggle",
+                    help=T("composer.live.hint"),
+                )
+            with mod_lens:
+                lens_on = st.toggle(
+                    T("composer.lens"),
+                    key="_composer_lens_toggle",
+                    value=st.session_state.get(
+                        "_composer_lens_toggle",
+                        bool(st.session_state.get(
+                            "settings_default_lens", False)),
+                    ),
+                    help=T("composer.lens.hint"),
+                )
+        else:
+            # Beta path — lens toggle only. Live/Attach hidden;
+            # live_on stays False, attached_video/files stay None.
+            mod_lens, _mod_spacer = st.columns([1.4, 4.6])
+            with mod_lens:
+                lens_on = st.toggle(
+                    T("composer.lens"),
+                    key="_composer_lens_toggle",
+                    value=st.session_state.get(
+                        "_composer_lens_toggle",
+                        bool(st.session_state.get(
+                            "settings_default_lens", False)),
+                    ),
+                    help=T("composer.lens.hint"),
+                )
+            # Defensive: if a leftover session_state has the live
+            # toggle on from a prior `?dev=1` session, force it off
+            # so the output region doesn't try to render the live
+            # video pipeline.
+            if st.session_state.get("_composer_live_toggle"):
+                st.session_state["_composer_live_toggle"] = False
+            attached_video = None
+            attached_files = []
     # The lens toggle is consumed downstream by _render_result.
     st.session_state["_xuanxue_lens_on"] = bool(lens_on)
 
@@ -4288,6 +4378,59 @@ def _render_result(
     # small icon are enough; instruction moves to tooltip.
     st.caption(f"`{prediction_id}` — your prediction ID")
 
+    # Iter #42 B1 — top-of-result CTA row. Founder round-4 audit:
+    # "Add calendar / Copy ID / Score later" were buried at the
+    # BOTTOM of the result page, below story + drill-down + technical
+    # details + recommended evidence — so a user scoring later had
+    # to scroll past everything to find the calendar download. The
+    # 3 measurement-loop CTAs are surfaced HERE, right under the
+    # prediction-ID caption, before the heatmap. The bottom .ics
+    # block is slimmed to a reminder line only (no duplicate
+    # download button). Build the .ics blob early so the top row
+    # can offer it; we re-use the same blob for the bottom reminder
+    # context line.
+    _cta_horizon_str = str(user_input.get("time_horizon", "6 months"))
+    _cta_horizon_months = _parse_time_horizon_to_steps(_cta_horizon_str)
+    _cta_review_date = _dt_today_plus_months(_cta_horizon_months)
+    _cta_review_human = _cta_review_date.strftime("%B %Y")
+    _cta_ics_blob = _build_review_ics(
+        prediction_id=prediction_id,
+        decision_label=str(user_input.get("decision_options", ""))[:80],
+        review_date=_cta_review_date,
+    )
+    _cta_ics_dl, _cta_copy_id, _cta_score_later = st.columns(
+        [1.3, 1.6, 1.3]
+    )
+    with _cta_ics_dl:
+        st.download_button(
+            label=T("result.cta.add_calendar"),
+            data=_cta_ics_blob,
+            file_name=f"omytea-review-{prediction_id[:8]}.ics",
+            mime="text/calendar",
+            key=f"_top_ics_dl_{prediction_id}",
+            use_container_width=True,
+            help=T("result.cta.add_calendar.hint"),
+        )
+    with _cta_copy_id:
+        # st.code has a built-in hover-to-copy icon — that's the
+        # affordance, no extra Copy button needed.
+        st.code(prediction_id, language=None)
+    with _cta_score_later:
+        if st.button(
+            T("result.cta.score_later"),
+            key=f"_top_score_later_{prediction_id}",
+            use_container_width=True,
+            help=T("result.cta.score_later.hint"),
+        ):
+            # Set ?score=<id> URL param + rerun → main()'s
+            # _check_score_deeplink() catches it and routes to
+            # Measurement Update with this prediction pre-loaded.
+            try:
+                st.query_params["score"] = prediction_id
+            except Exception:
+                pass
+            st.rerun()
+
     # v4.16 P1+P4: partition by branch_type for visually distinct anchor
     # display + offer Story (default) vs Comparison-table view.
     wishful = [h for h in result.hypotheses if h.branch_type == "wishful"]
@@ -4456,48 +4599,18 @@ def _render_result(
     # both branches (either passed in by caller, or reassigned to the
     # freshly-created record's id by the inline-persistence fallback
     # above). See tests/test_render_result_unbound_regression.py.
-    # Iter #23 — measurement-update CTA upgraded. The founder's
-    # product thesis: the real value isn't a one-shot prediction —
-    # it's the user coming back in N months to score what actually
-    # happened. That closes the calibration loop, which is the
-    # difference between "fancy ChatGPT wrapper" and "calibrated
-    # decision journal" (per founder audit + FactTune/Hindsyt peer
-    # research). The existing st.info() reminder is correct but
-    # passive — users have to remember to come back.
-    #
-    # The fix: an .ics calendar download. Click → open in macOS
-    # Calendar / Google Calendar / Outlook → the user's real
-    # calendar has the reminder, anchored to the actual horizon
-    # date. The measurement loop now lives outside our app, where
-    # the user actually lives.
-    horizon_str = str(user_input.get("time_horizon", "6 months"))
-    horizon_months_for_cta = _parse_time_horizon_to_steps(horizon_str)
-    review_date = _dt_today_plus_months(horizon_months_for_cta)
-    review_date_human = review_date.strftime("%B %Y")
-    st.info(
-        f"📅 Come back in **{horizon_str}** "
-        f"(around **{review_date_human}**) to score what actually "
-        f"happened — that's where calibration kicks in. Prediction ID "
-        f"`{prediction_id}`."
-    )
-    # The .ics download — encodes a one-shot all-day reminder on
-    # the horizon date with the prediction ID + deep-link back to
-    # the live demo + Measurement-update tab. RFC 5545 compliant.
-    ics_blob = _build_review_ics(
-        prediction_id=prediction_id,
-        decision_label=str(user_input.get("decision_options", ""))[:80],
-        review_date=review_date,
-    )
-    st.download_button(
-        label="📥  Add reminder to my calendar (.ics)",
-        data=ics_blob,
-        file_name=f"omytea-review-{prediction_id[:8]}.ics",
-        mime="text/calendar",
-        key=f"_ics_dl_{prediction_id}",
-        help=(
-            "Downloads a calendar event for the review date so the "
-            "reminder lives in your real calendar, not just this app."
-        ),
+    # Iter #23 → Iter #42 B1 — the .ics download + Copy ID + Score
+    # later CTAs are now at the TOP of the result (right under the
+    # prediction-ID caption) so they're discoverable BEFORE the user
+    # scrolls through story/drill-down/technical details. The bottom
+    # of the page keeps a calm reminder line for context — no
+    # duplicate download button, just the "when to come back"
+    # anchor.
+    st.caption(
+        T("result.review_anchor").format(
+            horizon=_cta_horizon_str,
+            review_date=_cta_review_human,
+        )
     )
 
 
@@ -4705,14 +4818,35 @@ def render_measurement_update(
         )
         actual_outcome[h["label"]] = v
 
-    nps = st.slider(
+    # Iter #42 B3 — PMF default-value de-bias. Founder round-4
+    # audit: "NPS default 5 / Sean Ellis 'Somewhat disappointed' /
+    # effort 'needed_reminder' are all pre-biased — a user who
+    # doesn't read the labels and clicks submit submits the
+    # anchor, polluting our PMF readout. Change all three to
+    # require an explicit pick."
+    #
+    # NPS: st.slider requires a concrete value (no None), so we
+    # use st.number_input with value=None (Streamlit ≥1.27 — our
+    # 1.56 pin honors this) so the field reads as "empty" until
+    # the user picks. The submit gate below rejects None.
+    nps = st.number_input(
         "How likely would you recommend this tool to a friend? (0-10 NPS)",
-        min_value=0, max_value=10, value=5,
+        min_value=0,
+        max_value=10,
+        value=None,
+        step=1,
+        placeholder="—",
+        help=(
+            "Pick a number from 0 (not at all likely) to 10 (extremely "
+            "likely). Leave blank if you'd rather not say."
+        ),
     )
 
     # v4.16 playbook-adopt: Sean Ellis disappointment test.
     # Anthropic founder's playbook §4 (MVP), canonical PMF indicator.
     # >40% "very disappointed" across active users = meaningful PMF.
+    # Iter #42 B3: `index=None` so no option pre-checked; submit
+    # gate below rejects unselected.
     st.divider()
     st.markdown("**Sean Ellis disappointment test** (PMF indicator)")
     sean_ellis_label_map = {
@@ -4724,7 +4858,7 @@ def render_measurement_update(
         "If you could no longer use this prediction tool, how would you feel?",
         options=list(sean_ellis_label_map.keys()),
         format_func=lambda k: sean_ellis_label_map[k],
-        index=1,  # default to middle (somewhat) so we don't anchor anyone
+        index=None,  # no default — force explicit pick (B3 de-bias)
         help=(
             "Standard PMF instrument. We tally the share of users who "
             "say 'very disappointed' — when that share crosses 40% "
@@ -4734,7 +4868,15 @@ def render_measurement_update(
     )
 
     # v4.16 playbook-adopt: effort test (push → pull retention transition).
-    st.markdown("**Effort test** (retention quality over the measurement window)")
+    # Iter #42 B3 + B4: index=None (no default) + horizon copy
+    # binds to THIS prediction's time_horizon, not a hardcoded
+    # "6 weeks" that doesn't match the composer's "3 months"
+    # default.
+    pred_horizon = str(pred.user_input.get("time_horizon", "")).strip()
+    effort_horizon_phrase = pred_horizon or "the measurement window"
+    st.markdown(
+        f"**Effort test** (retention quality over {effort_horizon_phrase})"
+    )
     effort_label_map = {
         "self_returned": (
             "I came back to it on my own initiative "
@@ -4747,10 +4889,11 @@ def render_measurement_update(
         "did_not_return": "I did not return to the tool",
     }
     effort_test_response = st.radio(
-        "Over the past 6 weeks, did you self-return to the tool?",
+        f"Over the past {effort_horizon_phrase}, "
+        f"did you self-return to the tool?",
         options=list(effort_label_map.keys()),
         format_func=lambda k: effort_label_map[k],
-        index=1,  # default to needed_reminder (the honest pre-PMF state)
+        index=None,  # no default — force explicit pick (B3 de-bias)
         help=(
             "Pre-PMF retention requires founder energy pushing users; "
             "post-PMF, the product 'starts doing that work on its "
@@ -4777,6 +4920,19 @@ def render_measurement_update(
             st.error(T("measurement.outcome_validation_error"))
             return
 
+        # Iter #42 B3 — require explicit PMF picks. Defaults are
+        # gone (B3 de-bias); if a user submits without picking, we
+        # block rather than save a None that the storage layer
+        # later coerces to "" + the PMF aggregates silently drop.
+        # NPS is allowed blank (genuinely optional per founder) —
+        # we save None and the storage column tolerates NULL.
+        if sean_ellis_response is None:
+            st.error(T("measurement.sean_ellis_required"))
+            return
+        if effort_test_response is None:
+            st.error(T("measurement.effort_required"))
+            return
+
         # Compute calibration delta
         from console import ConsoleHypothesis
 
@@ -4799,7 +4955,9 @@ def render_measurement_update(
             observed_at=storage.now_unix(),
             actual_outcome=actual_outcome,
             calibration_delta=cal,
-            user_satisfaction=nps,
+            # B3: nps may be None (genuinely optional); the storage
+            # column is INTEGER NULL so None is the correct value.
+            user_satisfaction=(int(nps) if nps is not None else None),
             user_notes=notes,
             sean_ellis_response=sean_ellis_response,
             effort_test_response=effort_test_response,
@@ -6186,6 +6344,13 @@ def main() -> None:
         elif payload == "Calibration history":
             render_calibration_history()
         elif payload == "Pricing & pre-order":
+            # Iter #42 B2 — guard: if the user deep-linked to
+            # Pricing while beta-hide is active (e.g. an old
+            # bookmark), bounce them back to workspace so they
+            # don't see a pre-order page during PMF discovery.
+            if not _show_research_features():
+                st.session_state._route = (ROUTE_WORKSPACE, None)
+                st.rerun()
             render_pricing_and_preorder()
         else:
             render_new_prediction()

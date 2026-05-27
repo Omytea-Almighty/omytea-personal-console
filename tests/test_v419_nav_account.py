@@ -47,17 +47,23 @@ def _func(name: str) -> ast.FunctionDef:
 # --------------------------------------------------------------------
 
 def test_secondary_modes_trimmed_to_standalone() -> None:
-    """SECONDARY_MODES keeps only the surfaces with no composer home —
+    """SECONDARY_MODES_ALL keeps only the surfaces with no composer home —
     outcome scoring, calibration history, pricing. The 玄学 / video /
-    webcam entries (which ARE the composer) are removed."""
+    webcam entries (which ARE the composer) are removed.
+
+    Iter #42 B2: `SECONDARY_MODES` is now a back-compat alias for
+    `SECONDARY_MODES_ALL` (a tuple literal — the source of truth);
+    at runtime the sidebar uses `_secondary_modes()` which can
+    filter Pricing during beta. This test reads the literal.
+    """
     modes = None
     for node in APP_TREE.body:
         if isinstance(node, ast.Assign) and any(
-            isinstance(t, ast.Name) and t.id == "SECONDARY_MODES"
+            isinstance(t, ast.Name) and t.id == "SECONDARY_MODES_ALL"
             for t in node.targets
         ):
             modes = ast.literal_eval(node.value)
-    assert modes is not None, "SECONDARY_MODES not found"
+    assert modes is not None, "SECONDARY_MODES_ALL not found"
     assert set(modes) == {
         "Measurement update", "Calibration history", "Pricing & pre-order",
     }
