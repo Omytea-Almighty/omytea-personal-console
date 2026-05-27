@@ -2514,6 +2514,31 @@ def _render_workspace_composer_body() -> None:
     # prediction created here appears in the sidebar immediately.
     session_user_id()
 
+    # Iter #41 — beta-research consent banner (founder round-4 P1
+    # #5). Shown ONCE per session above the cold-start composer
+    # so first-time visitors understand: (a) it's a beta gathering
+    # calibration data, (b) prefer desktop for first try, (c) no
+    # sensitive info, (d) save the prediction ID + add the calendar
+    # reminder, (e) data lives on the demo server not the device.
+    # Dismissed via session_state once the user clicks "Got it" so
+    # returning users aren't nagged. Hidden once any prediction
+    # exists (the user clearly engaged with the product already).
+    if (
+        st.session_state.get("current_prediction") is None
+        and not st.session_state.get("_beta_banner_dismissed", False)
+    ):
+        with st.container(border=True):
+            st.markdown(f"**{T('beta.banner_title')}**")
+            st.markdown(T("beta.banner_body"))
+            if st.button(
+                "Got it — continue",
+                key="_beta_banner_dismiss_btn",
+                type="primary",
+                use_container_width=False,
+            ):
+                st.session_state["_beta_banner_dismissed"] = True
+                st.rerun()
+
     # ---- Quick-start suggestion chips (iteration #1 — design-self-
     # explains) ----
     # ChatGPT-/Claude.ai-style examples on a fresh load: 3 one-click
@@ -4578,34 +4603,70 @@ def render_measurement_update(
     )
 
     if preloaded_prediction_id:
-        # History-rail path: resolve the prediction directly by id.
-        # The rail only ever lists the session user's predictions, so
-        # the session id is the right scope to search.
-        user_id = session_user_id()
-        predictions = storage.list_user_predictions(user_id)
-        pred = next(
-            (p for p in predictions
-             if p.prediction_id == preloaded_prediction_id),
-            None,
-        )
+        # Iter #41 cross-device deep-link fix (founder round-4 P0
+        # #2): the previous version called session_user_id() and
+        # then filtered by id, which BROKE the .ics-calendar-→-
+        # different-device flow because anonymous handles are random
+        # per-session `tester-xxxx`. Now resolves directly by id via
+        # get_prediction_by_id with no user filter, so opening from
+        # ANY browser/device with the .ics link works.
+        pred = storage.get_prediction_by_id(preloaded_prediction_id)
         if pred is None:
             st.warning(T("measurement.not_found"))
             return
+        # Use the prediction's stored user_id (the original predictor)
+        # for the measurement record, not the current session — so the
+        # measurement is correctly attributed to the original prediction
+        # owner, not the cross-device session.
+        user_id = pred.user_id
         st.caption(
             f"{T('measurement.opened_from_history')} · "
             f"`{pred.prediction_id[:8]}` · {pred.scenario}"
         )
     else:
-        user_id = st.text_input(
-            "Your handle",
-        )
-        if not user_id:
-            return
+        # Iter #41 (founder round-4 P0 #3): standalone path now
+        # supports prediction_id lookup directly — the .ics calendar
+        # invite gives users a UUID; they should be able to paste it
+        # in here even if they don't remember their handle.
+        with st.expander(
+            T("measurement.lookup_by_id_label"), expanded=True,
+        ):
+            pasted_pid = st.text_input(
+                T("measurement.pid_input_label"),
+                placeholder=T("measurement.pid_input_placeholder"),
+                key="_measurement_lookup_pid",
+            )
+        if pasted_pid and pasted_pid.strip():
+            pred = storage.get_prediction_by_id(pasted_pid.strip())
+            if pred is None:
+                st.warning(T("measurement.not_found_by_id"))
+                return
+            user_id = pred.user_id
+            st.caption(
+                f"{T('measurement.found_by_id')} · "
+                f"`{pred.prediction_id[:8]}` · {pred.scenario}"
+            )
+            # Branch to the same single-prediction render path as
+            # the deep-link by reassigning preloaded_prediction_id
+            # and short-circuiting the handle-then-list logic.
+            preloaded_prediction_id = pred.prediction_id
+            predictions = [pred]
+            # Fall through to render path (handled at bottom).
+            user_id_resolved = True
+        else:
+            user_id_resolved = False
 
-        predictions = storage.list_user_predictions(user_id)
-        if not predictions:
-            st.warning(f"No predictions found for user `{user_id}`.")
-            return
+        if not user_id_resolved:
+            user_id = st.text_input(
+                T("measurement.handle_label"),
+            )
+            if not user_id:
+                return
+
+            predictions = storage.list_user_predictions(user_id)
+            if not predictions:
+                st.warning(f"No predictions found for user `{user_id}`.")
+                return
 
         pred_labels = [
             f"{i + 1}. [{p.scenario}] {p.prediction_id[:8]}… "
@@ -4701,6 +4762,21 @@ def render_measurement_update(
     notes = st.text_area("Notes (optional)")
 
     if st.button("Submit measurement update"):
+        # Iter #41 P0 #4 — slider validation. Founder round-4 audit:
+        # "测量提交可以产生无效数据. 每个实际结果 slider 默认 0.0;
+        # 用户如果不理解直接提交, actual_outcome 总和为 0,
+        # compute_calibration_delta 会返回 brier=1.0、log_loss=inf.
+        # 这会污染 H3/H4 数据."
+        # Reject submission when ALL sliders are 0 — that's the
+        # garbage-in case. The total-mass-normalization message
+        # explains the contract.
+        total_outcome = sum(
+            float(v) for v in actual_outcome.values() if v is not None
+        )
+        if total_outcome <= 0.0:
+            st.error(T("measurement.outcome_validation_error"))
+            return
+
         # Compute calibration delta
         from console import ConsoleHypothesis
 
@@ -5923,33 +5999,73 @@ def render_live_webcam(embedded: bool = False) -> None:
 
 
 def _force_sidebar_open() -> None:
-    """Keep the history-rail sidebar visible on load.
+    """Iter #41 root-cause fix — viewport-aware sidebar nudge.
 
-    Streamlit Community Cloud can paint the app with the sidebar
-    collapsed (a width race in the embedding iframe) even though
-    ``initial_sidebar_state`` is "expanded". The sidebar IS the
-    navigation — it must not start hidden. This injects a 0-height
-    helper that clicks the expand control once if the sidebar loaded
-    collapsed. Worst case (control absent / cross-origin) it no-ops.
+    **Why this exists at all**: Streamlit Community Cloud can paint
+    the app with the sidebar collapsed on DESKTOP (a width race in
+    the embedding iframe) even though ``initial_sidebar_state`` is
+    "expanded". The sidebar IS the navigation — on a 1440px monitor
+    it must not start hidden.
+
+    **What was wrong (iter 18+30 mobile CSS never worked)**: the old
+    version of this helper unconditionally clicked the expand button
+    on every load. On mobile (<768px) Streamlit's auto-collapse was
+    being immediately defeated by our JS, and the @media CSS rules
+    that iter 18/30 added to translate the sidebar off-screen got
+    overridden because the React state said "expanded". Founder
+    round-4 reproduced this at 390px: `aria-expanded="true"` set,
+    `transform: none` (CSS lost the cascade fight), full 300px
+    drawer covering the workspace.
+
+    **The fix**: branch on viewport width.
+      - **Desktop (>=768px)**: behavior unchanged — if sidebar
+        loaded with `aria-expanded="false"`, click expand. This
+        keeps the original "don't let Streamlit collapse the rail
+        on desktop" intent intact.
+      - **Mobile (<768px)**: invert the rule — if sidebar loaded
+        with `aria-expanded="true"`, click the collapse button.
+        The user can still open via Streamlit's hamburger; we just
+        don't FORCE it open on first paint.
+
+    Worst case (control absent / cross-origin / viewport unknown):
+    no-op. Matches the original try/catch posture.
     """
     components.html(
         """
         <script>
         (function () {
-          function openSb() {
+          function nudgeSb() {
             try {
               var d = window.parent && window.parent.document;
               if (!d) return;
               var sb = d.querySelector('section[data-testid="stSidebar"]');
-              if (!sb || sb.getAttribute('aria-expanded') !== 'false') return;
-              var c = d.querySelector(
-                '[data-testid="stExpandSidebarButton"]');
-              if (c) { c.click(); }
+              if (!sb) return;
+              var aria = sb.getAttribute('aria-expanded');
+              // Read viewport width from the OUTER document (not
+              // our 0-height helper iframe).
+              var w = (window.parent && window.parent.innerWidth) || 9999;
+              if (w < 768) {
+                // Mobile: actively COLLAPSE if currently expanded.
+                // The collapse button is the one inside the
+                // sidebar header (stSidebarCollapseButton).
+                if (aria === 'true') {
+                  var collapseBtn = d.querySelector(
+                    '[data-testid="stSidebarCollapseButton"]');
+                  if (collapseBtn) { collapseBtn.click(); }
+                }
+              } else {
+                // Desktop: original behavior — ensure expanded.
+                if (aria === 'false') {
+                  var expandBtn = d.querySelector(
+                    '[data-testid="stExpandSidebarButton"]');
+                  if (expandBtn) { expandBtn.click(); }
+                }
+              }
             } catch (e) {}
           }
-          setTimeout(openSb, 150);
-          setTimeout(openSb, 700);
-          setTimeout(openSb, 1600);
+          setTimeout(nudgeSb, 150);
+          setTimeout(nudgeSb, 700);
+          setTimeout(nudgeSb, 1600);
         })();
         </script>
         """,

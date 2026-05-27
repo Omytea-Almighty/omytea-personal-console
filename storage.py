@@ -723,6 +723,62 @@ def get_calibration_bias_breakdown(
     }
 
 
+def get_prediction_by_id(
+    prediction_id: str,
+    db_path: Path | None = None,
+) -> PredictionRecord | None:
+    """Iter #41 — cross-device deep-link lookup.
+
+    Founder round-4 audit P0: `?score=<id>` URL deep-link only worked
+    on the same browser session because the lookup went through
+    `session_user_id()` which is a random `tester-xxxx` per anonymous
+    session. A user who clicked the .ics calendar reminder from
+    another device (e.g. opened from email on phone vs. predicted on
+    laptop) would land on "prediction not found" — silently breaking
+    the entire measurement-loop arc.
+
+    This helper does a direct prediction_id → record lookup with NO
+    user_id filter. Used by `render_measurement_update` when called
+    via the `?score=<id>` deep-link path so the cross-device case
+    works regardless of session state.
+
+    Privacy posture: prediction_id is a UUID, so this is effectively
+    unguessable in practice — exposing the function is no worse than
+    sharing the .ics calendar invite, which already contains the id.
+    Returns None when the id is unknown.
+    """
+    with db_connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT * FROM predictions WHERE prediction_id = ?",
+            (prediction_id,),
+        ).fetchone()
+        if not row:
+            return None
+        owner_flag = 0
+        try:
+            owner_flag = int(row["is_owner_bias_flagged"] or 0)
+        except (IndexError, KeyError):
+            owner_flag = 0
+        category_id = None
+        try:
+            category_id = row["category_id"]
+        except (IndexError, KeyError):
+            category_id = None
+        return PredictionRecord(
+            prediction_id=row["prediction_id"],
+            user_id=row["user_id"],
+            scenario=row["scenario"],
+            created_at=row["created_at"],
+            user_input=json.loads(row["user_input_json"]),
+            belief_program=json.loads(row["belief_program_json"]),
+            wavefunction_snapshot=json.loads(row["wavefunction_json"]),
+            joint_offdiag=json.loads(row["joint_offdiag_json"]),
+            notes=row["notes"] or "",
+            is_owner_bias_flagged=bool(owner_flag),
+            category_id=category_id,
+        )
+
+
 def list_overdue_predictions(
     user_id: str,
     horizon_seconds_default: int = 90 * 86400,

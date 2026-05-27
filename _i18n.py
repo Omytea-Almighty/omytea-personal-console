@@ -1341,6 +1341,127 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_ES: "ajustado por usuario (modificado manualmente)",
         LANG_FR: "ajusté par l'utilisateur (modification manuelle)",
     },
+    # Iter #41 — Measurement-Update prediction_id input field (founder
+    # round-4 P0 #3). Users arriving from a .ics calendar link on a
+    # different device can paste the prediction ID directly without
+    # remembering their original `tester-xxxx` handle.
+    "measurement.lookup_by_id_label": {
+        LANG_EN: "Have a prediction ID? Paste it here",
+        LANG_ZH: "有 prediction ID? 粘贴在这里",
+        LANG_ES: "¿Tienes un ID de predicción? Pégalo aquí",
+        LANG_FR: "Vous avez un ID de prédiction ? Collez-le ici",
+    },
+    "measurement.pid_input_label": {
+        LANG_EN: "Prediction ID (from your calendar reminder)",
+        LANG_ZH: "Prediction ID (从日历提醒里复制)",
+        LANG_ES: "ID de predicción (del recordatorio de calendario)",
+        LANG_FR: "ID de prédiction (depuis votre rappel calendrier)",
+    },
+    "measurement.pid_input_placeholder": {
+        LANG_EN: "abc12345-...",
+        LANG_ZH: "abc12345-...",
+        LANG_ES: "abc12345-...",
+        LANG_FR: "abc12345-...",
+    },
+    "measurement.not_found_by_id": {
+        LANG_EN: (
+            "No prediction found for that ID. Double-check the UUID "
+            "from your calendar reminder."
+        ),
+        LANG_ZH: (
+            "没找到这个 ID 对应的预测. 请核对日历提醒里的 UUID."
+        ),
+        LANG_ES: (
+            "No se encontró ninguna predicción para ese ID. Revisa "
+            "el UUID en tu recordatorio."
+        ),
+        LANG_FR: (
+            "Aucune prédiction trouvée pour cet ID. Vérifiez l'UUID "
+            "dans votre rappel."
+        ),
+    },
+    "measurement.found_by_id": {
+        LANG_EN: "Opened by prediction ID",
+        LANG_ZH: "通过 prediction ID 打开",
+        LANG_ES: "Abierto por ID de predicción",
+        LANG_FR: "Ouvert par ID de prédiction",
+    },
+    "measurement.handle_label": {
+        LANG_EN: "Your handle (if you remember it)",
+        LANG_ZH: "你的 handle (如果记得)",
+        LANG_ES: "Tu identificador (si lo recuerdas)",
+        LANG_FR: "Votre identifiant (si vous vous en souvenez)",
+    },
+    "measurement.outcome_validation_error": {
+        LANG_EN: (
+            "Set at least one outcome above 0 — leaving everything "
+            "at 0 means 'no outcome reported', which pollutes "
+            "calibration data. Move the slider(s) for whichever "
+            "branch(es) actually materialized."
+        ),
+        LANG_ZH: (
+            "请将至少一个分支调到 0 以上 — 全部为 0 表示\"没有任何"
+            "结果\", 会污染校准数据. 把实际发生的分支滑块移动一下."
+        ),
+        LANG_ES: (
+            "Pon al menos un resultado por encima de 0 — dejar todo "
+            "en 0 contamina los datos de calibración. Mueve los "
+            "deslizadores para las ramas que realmente ocurrieron."
+        ),
+        LANG_FR: (
+            "Mettez au moins un résultat au-dessus de 0 — tout laisser "
+            "à 0 pollue les données de calibration. Déplacez les "
+            "curseurs pour les branches qui se sont réellement "
+            "produites."
+        ),
+    },
+    # Iter #41 — beta test consent banner (founder round-4 P1 #5).
+    # Shown above the cold-start composer so first-time visitors
+    # understand the data posture before they type anything.
+    "beta.banner_title": {
+        LANG_EN: "Research beta — please read",
+        LANG_ZH: "研究 beta — 请先阅读",
+        LANG_ES: "Beta de investigación — por favor lee",
+        LANG_FR: "Bêta de recherche — à lire",
+    },
+    "beta.banner_body": {
+        LANG_EN: (
+            "This is an early beta gathering calibration data on "
+            "personal decisions. **Please use a desktop browser** "
+            "for the first try (mobile works but is rougher). "
+            "**Don't paste sensitive info** (financial account "
+            "numbers, passport, SSN, full names of third parties). "
+            "**Save your prediction ID + add the calendar reminder** "
+            "— you'll need them to score the prediction in ~3 months. "
+            "Data is stored on the demo server (not your device); "
+            "see Privacy for what's collected and how to delete it."
+        ),
+        LANG_ZH: (
+            "这是收集个人决策校准数据的早期 beta. **请优先用桌面浏览器** "
+            "首次试用 (手机能用但体验粗糙). **不要输入敏感信息** "
+            "(银行账号、护照、SSN、第三方全名). **保存你的 prediction "
+            "ID + 加日历提醒** — 三个月后你需要它们回来打分. 数据存在 "
+            "demo 服务器 (不在你的设备); 隐私政策说明收集什么、如何删除."
+        ),
+        LANG_ES: (
+            "Esta es una beta temprana que recopila datos de "
+            "calibración sobre decisiones personales. **Usa un "
+            "navegador de escritorio** para la primera prueba. **No "
+            "pegues información sensible**. **Guarda tu ID de "
+            "predicción + añade el recordatorio al calendario** — los "
+            "necesitarás para puntuar en ~3 meses. Los datos se "
+            "almacenan en el servidor demo."
+        ),
+        LANG_FR: (
+            "Ceci est une bêta précoce collectant des données de "
+            "calibration sur les décisions personnelles. **Utilisez "
+            "un navigateur de bureau** pour le premier essai. "
+            "**Ne collez pas d'informations sensibles**. **Sauvegardez "
+            "votre ID de prédiction + ajoutez le rappel calendrier** "
+            "— vous en aurez besoin pour noter dans ~3 mois. Les "
+            "données sont stockées sur le serveur démo."
+        ),
+    },
     "result.why_no_specific_drivers": {
         # Iter #30 — rewrite. Founder round-2 audit: previous copy
         # "No specific evidence items were attributed... half-finished
