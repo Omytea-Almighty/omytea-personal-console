@@ -97,6 +97,121 @@ def using_turso() -> bool:
     return _USING_TURSO and _libsql is not None
 
 
+# Iter #45 — libsql/Turso adapter shim.
+# libsql (the actively-maintained Python wrapper) returns plain
+# tuples from .fetchall() / .fetchone() and does NOT support the
+# `row_factory = sqlite3.Row` assignment that sqlite3 honors. The
+# storage layer here uses dict-style access (`r["prediction_id"]`)
+# in ~15 places (`_column_exists`, `list_user_predictions`,
+# `get_prediction_by_id`, calibration aggregates, etc.). Rather
+# than rewrite every read to positional indexing, we install a
+# thin adapter: when Turso is active, `db_connect()` returns a
+# Connection whose `.execute()` wraps the libsql cursor so that
+# fetched rows expose both index AND column-name access (matching
+# sqlite3.Row semantics closely enough for downstream code).
+class _LibsqlRow:
+    """Minimal sqlite3.Row look-alike — wraps a libsql tuple +
+    column names. Supports `r["col"]`, `r[idx]`, and iteration.
+    """
+    __slots__ = ("_tup", "_cols", "_idx")
+
+    def __init__(self, tup: tuple, cols: list[str]) -> None:
+        self._tup = tup
+        self._cols = cols
+        self._idx = {c: i for i, c in enumerate(cols)}
+
+    def __getitem__(self, key):
+        if isinstance(key, str):
+            return self._tup[self._idx[key]]
+        return self._tup[key]
+
+    def __iter__(self):
+        return iter(self._tup)
+
+    def __len__(self) -> int:
+        return len(self._tup)
+
+    def keys(self) -> list[str]:
+        return list(self._cols)
+
+
+class _LibsqlCursorAdapter:
+    """Cursor wrapper that converts fetched tuples to
+    ``_LibsqlRow`` so call sites using ``r["col"]`` work.
+    Other cursor methods pass through unchanged.
+    """
+    __slots__ = ("_cur",)
+
+    def __init__(self, cur) -> None:
+        self._cur = cur
+
+    def __getattr__(self, name: str):
+        return getattr(self._cur, name)
+
+    def _cols(self) -> list[str]:
+        desc = self._cur.description
+        return [d[0] for d in desc] if desc else []
+
+    def fetchall(self) -> list[_LibsqlRow]:
+        cols = self._cols()
+        return [_LibsqlRow(r, cols) for r in self._cur.fetchall()]
+
+    def fetchone(self):
+        r = self._cur.fetchone()
+        if r is None:
+            return None
+        return _LibsqlRow(r, self._cols())
+
+    def __iter__(self):
+        cols = self._cols()
+        for r in self._cur:
+            yield _LibsqlRow(r, cols)
+
+
+class _LibsqlConnAdapter:
+    """Wraps a libsql Connection so `.execute()` / `.cursor()`
+    return adapted cursors that yield dict-accessible rows.
+
+    libsql's Rust-extension Connection has read-only attributes
+    (we can't monkey-patch `.execute` directly), so we proxy via
+    `__getattr__`. Storage call sites use `with db_connect() as
+    conn: conn.execute(...)` — that path hits this wrapper's
+    `.execute()` and the rows come back as `_LibsqlRow`s.
+    """
+    __slots__ = ("_conn",)
+
+    def __init__(self, conn) -> None:
+        self._conn = conn
+
+    def __getattr__(self, name: str):
+        return getattr(self._conn, name)
+
+    def execute(self, sql, params=()):
+        return _LibsqlCursorAdapter(self._conn.execute(sql, params))
+
+    def cursor(self):
+        return _LibsqlCursorAdapter(self._conn.cursor())
+
+    def commit(self) -> None:
+        try:
+            self._conn.commit()
+        except Exception:
+            pass
+
+    def close(self) -> None:
+        try:
+            self._conn.close()
+        except Exception:
+            pass
+
+
+def _wrap_libsql_conn(conn):
+    """Return an adapter that exposes a sqlite3-Connection-shaped
+    surface on top of the libsql Connection. Storage call sites
+    don't know they're talking to a wrapper."""
+    return _LibsqlConnAdapter(conn)
+
+
 @dataclass(frozen=True, slots=True)
 class PredictionRecord:
     """One user prediction snapshot.
@@ -409,7 +524,19 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
         "ON prediction_labels(label)"
     )
 
-    cur.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+    # Turso rejects `PRAGMA user_version = N` (SQL_PARSE_ERROR
+    # "SQL not allowed statement"). Schema is idempotent via the
+    # `CREATE TABLE IF NOT EXISTS` + `_column_exists()` checks
+    # above, so user_version is informational only — skip it on
+    # Turso to avoid the error. Local SQLite still gets it.
+    if not (_USING_TURSO and _libsql is not None):
+        try:
+            cur.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        except Exception:
+            # Some libsql-shaped backends also reject this PRAGMA
+            # variant — silent skip is safe (schema is otherwise
+            # complete).
+            pass
     conn.commit()
 
 
@@ -428,25 +555,17 @@ def db_connect(db_path: Path | None = None) -> Iterator[sqlite3.Connection]:
     Turso path so unit tests stay deterministic and offline.
     """
     if _USING_TURSO and _libsql is not None and db_path is None:
-        # Turso libSQL — the connect() signature is the same as
-        # sqlite3.connect() with an additional auth_token kw.
-        # Connections are network-backed but the Python API matches
-        # sqlite3.Connection closely enough that the existing
-        # cursor / execute / commit calls all work verbatim.
+        # Turso libSQL — the connect() signature accepts
+        # database= + auth_token=. The libsql package does NOT
+        # support row_factory; instead we patch the connection
+        # via `_wrap_libsql_conn()` so `.execute()` returns rows
+        # that support both `r[idx]` and `r["col"]` access.
         conn = _libsql.connect(
             database=_TURSO_URL,
             auth_token=_TURSO_AUTH_TOKEN,
         )
+        conn = _wrap_libsql_conn(conn)
         try:
-            # libsql_experimental's Connection doesn't accept the
-            # `row_factory = sqlite3.Row` assignment, but its
-            # `.execute()` returns row-objects that behave like
-            # tuples + support index/column-name access — close
-            # enough to sqlite3.Row that downstream code works.
-            try:
-                conn.row_factory = sqlite3.Row  # type: ignore[attr-defined]
-            except Exception:
-                pass
             _ensure_schema(conn)
             yield conn
             try:
