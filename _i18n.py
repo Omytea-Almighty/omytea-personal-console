@@ -1305,6 +1305,42 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_ES: "baja confianza — recopilar evidencia para refinar",
         LANG_FR: "faible confiance — collecter des preuves pour affiner",
     },
+    # Iter #40 — probability_provenance labels (founder round-3 #2).
+    # The "Source:" tag tells the user WHERE the probability number
+    # came from — orthogonal to the confidence tier which answers HOW
+    # STRONG the signal is. Together they prevent "soft estimate"
+    # being misread as statistical confidence (the founder's
+    # specific concern). 4 values × 4 locales.
+    "result.provenance_source_label": {
+        LANG_EN: "Source:",
+        LANG_ZH: "来源:",
+        LANG_ES: "Fuente:",
+        LANG_FR: "Source :",
+    },
+    "result.provenance_llm_estimate": {
+        LANG_EN: "LLM estimate (no calibration history yet)",
+        LANG_ZH: "LLM 估算 (尚无校准历史)",
+        LANG_ES: "estimación de LLM (sin historial calibrado)",
+        LANG_FR: "estimation LLM (pas encore d'historique calibré)",
+    },
+    "result.provenance_evidence_proxy": {
+        LANG_EN: "evidence-weighted (driver count proxies signal strength)",
+        LANG_ZH: "证据加权 (用驱动因子数量代理信号强度)",
+        LANG_ES: "ponderado por evidencia (recuento de impulsores)",
+        LANG_FR: "pondéré par preuves (nombre de moteurs identifiés)",
+    },
+    "result.provenance_historical_calibrated": {
+        LANG_EN: "historically calibrated (your prior measurements)",
+        LANG_ZH: "历史校准 (基于你过去的打分记录)",
+        LANG_ES: "calibrado históricamente (mediciones previas)",
+        LANG_FR: "calibré historiquement (vos mesures antérieures)",
+    },
+    "result.provenance_user_adjusted": {
+        LANG_EN: "user-adjusted (you nudged this manually)",
+        LANG_ZH: "用户调整 (你手动改过)",
+        LANG_ES: "ajustado por usuario (modificado manualmente)",
+        LANG_FR: "ajusté par l'utilisateur (modification manuelle)",
+    },
     "result.why_no_specific_drivers": {
         # Iter #30 — rewrite. Founder round-2 audit: previous copy
         # "No specific evidence items were attributed... half-finished

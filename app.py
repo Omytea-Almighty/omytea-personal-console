@@ -3744,7 +3744,39 @@ def _render_story_card(
                 if rec.get("target_branch") == h.label
             ]
         has_drivers = bool(per_branch_evidence)
+        # Iter #40 (founder round-3 #2): derive provenance label from
+        # the available signals. Default ConsoleHypothesis carries
+        # `probability_provenance="llm_estimate"`; the render layer
+        # promotes it to "evidence_proxy" when ≥1 evidence item is
+        # mapped to this branch (the same signal the confidence tier
+        # reads). Future code path will set "historical_calibrated"
+        # once enough measurement_updates exist; "user_adjusted" is
+        # reserved for a future "nudge the probability" affordance.
+        provenance_field = getattr(
+            h, "probability_provenance", "llm_estimate",
+        )
+        if provenance_field == "llm_estimate" and n_for_branch >= 1:
+            # Promote at render — backend hasn't set it yet but the
+            # evidence-count signal warrants the upgraded tag.
+            provenance_field = "evidence_proxy"
+        provenance_i18n_key = {
+            "llm_estimate": "result.provenance_llm_estimate",
+            "evidence_proxy": "result.provenance_evidence_proxy",
+            "historical_calibrated": (
+                "result.provenance_historical_calibrated"
+            ),
+            "user_adjusted": "result.provenance_user_adjusted",
+        }.get(provenance_field, "result.provenance_llm_estimate")
         with st.expander(T("result.why_probability_label"), expanded=False):
+            # Provenance comes FIRST in the expander — answers "where
+            # does this probability come from" before "what would
+            # change it". The founder audit ask was specifically to
+            # prevent the confidence tier being misread as
+            # statistical confidence; provenance disambiguates that.
+            st.markdown(
+                f"**{T('result.provenance_source_label')}** "
+                f"_{T(provenance_i18n_key)}_"
+            )
             if h.key_uncertainty_driver:
                 # Iter #30: prose-ify the key uncertainty so users
                 # read "Team culture: actual vs. pitch" instead of

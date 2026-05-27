@@ -77,6 +77,26 @@ class ConsoleHypothesis:
     key_uncertainty_driver: str
     depends_on_decision: str | None  # Pearl rung-2 action_arm marker
     branch_type: str = "realistic"  # "wishful" | "worst" | "realistic"
+    # Iter #40 (founder round-3 #2): explicit provenance for the
+    # probability number so users can't misread "soft estimate" as
+    # statistical confidence. One of four values:
+    #   - "llm_estimate"      : compiled directly from LLM output;
+    #                           the current default until historical
+    #                           calibration kicks in (≥N measurements).
+    #   - "evidence_proxy"    : adjusted by evidence-count tier (the
+    #                           well-calibrated / single-source / soft
+    #                           bucket signal from recommended_evidence).
+    #   - "historical_calibrated" : derived from prior measurements
+    #                           on the same scenario+user; only valid
+    #                           once enough calibration history exists.
+    #   - "user_adjusted"     : the user manually nudged the probability
+    #                           via a future "I think it's actually X%"
+    #                           edit affordance (not yet shipped).
+    # The UI renders this as a small tooltip-tagged label in the meta
+    # caption so the qualitative tier reads as honest provenance, not
+    # opaque jargon. Default "llm_estimate" since that's what the
+    # current compile step produces.
+    probability_provenance: str = "llm_estimate"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -85,6 +105,7 @@ class ConsoleHypothesis:
             "probability": self.probability,
             "key_uncertainty_driver": self.key_uncertainty_driver,
             "depends_on_decision": self.depends_on_decision,
+            "probability_provenance": self.probability_provenance,
             "branch_type": self.branch_type,
         }
 
