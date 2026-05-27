@@ -6201,7 +6201,7 @@ def render_live_webcam(embedded: bool = False) -> None:
 
 
 def _force_sidebar_open() -> None:
-    """Iter #41 root-cause fix — viewport-aware sidebar nudge.
+    """Iter #42c real-real fix — viewport-aware sidebar nudge.
 
     **Why this exists at all**: Streamlit Community Cloud can paint
     the app with the sidebar collapsed on DESKTOP (a width race in
@@ -6209,28 +6209,42 @@ def _force_sidebar_open() -> None:
     "expanded". The sidebar IS the navigation — on a 1440px monitor
     it must not start hidden.
 
-    **What was wrong (iter 18+30 mobile CSS never worked)**: the old
-    version of this helper unconditionally clicked the expand button
-    on every load. On mobile (<768px) Streamlit's auto-collapse was
-    being immediately defeated by our JS, and the @media CSS rules
-    that iter 18/30 added to translate the sidebar off-screen got
-    overridden because the React state said "expanded". Founder
-    round-4 reproduced this at 390px: `aria-expanded="true"` set,
-    `transform: none` (CSS lost the cascade fight), full 300px
-    drawer covering the workspace.
+    **History — iter 41 "fix" was broken in production**: the iter
+    41 attempt called `collapseBtn.click()` on mobile to retract the
+    drawer. Live verification iter 43 reproduced the bug: at 610px
+    viewport, after multiple `click()` and pointerdown/pointerup/
+    click `dispatchEvent` sequences, React's collapse handler was
+    NOT invoked — `aria-expanded` stayed "true" and the sidebar kept
+    covering half the workspace. Synthetic clicks on Streamlit's
+    React buttons are silently dropped (likely because Streamlit
+    uses Pointer Events internally and the synthetic MouseEvent
+    isn't trusted). Bug-039 reopened, bug-040 logged for the
+    failed-fix.
 
-    **The fix**: branch on viewport width.
-      - **Desktop (>=768px)**: behavior unchanged — if sidebar
-        loaded with `aria-expanded="false"`, click expand. This
-        keeps the original "don't let Streamlit collapse the rail
-        on desktop" intent intact.
-      - **Mobile (<768px)**: invert the rule — if sidebar loaded
-        with `aria-expanded="true"`, click the collapse button.
-        The user can still open via Streamlit's hamburger; we just
-        don't FORCE it open on first paint.
+    **The real fix (iter 42c)**: drive the sidebar state via the
+    DOM attribute directly, NOT via clicking React's button.
+    `aria-expanded` is the attribute that the @media CSS rule keys
+    off (see lines ~198-217: `[aria-expanded="false"]` →
+    `translateX(-100%)` slides off-screen; default rule + the
+    sibling `[aria-expanded="true"]` show it). Setting the attribute
+    bypasses React entirely; CSS does the visual update. Verified
+    live: `setAttribute('aria-expanded', 'false')` → transform
+    becomes `matrix(1,0,0,1,-300,0)` → workspace gets full viewport
+    width within ~200ms.
 
-    Worst case (control absent / cross-origin / viewport unknown):
-    no-op. Matches the original try/catch posture.
+    Behavior matrix:
+      - **Desktop (>=768px)**: if sidebar `aria-expanded="false"`,
+        set it to "true" + the @media rule doesn't apply so it
+        naturally shows. Preserves the original desktop intent.
+      - **Mobile (<768px)**: if sidebar `aria-expanded="true"`,
+        set it to "false". The CSS @media rule then slides it off-
+        screen with the smooth transition. User can still re-open
+        via Streamlit's hamburger.
+
+    Caveat: Streamlit might reset aria on its own next rerun. The
+    re-fire schedule (150/700/1600/3000 ms) re-asserts the attribute
+    if Streamlit overwrites it. Worst case (no parent / no sidebar /
+    cross-origin): silent no-op.
     """
     components.html(
         """
@@ -6247,20 +6261,19 @@ def _force_sidebar_open() -> None:
               // our 0-height helper iframe).
               var w = (window.parent && window.parent.innerWidth) || 9999;
               if (w < 768) {
-                // Mobile: actively COLLAPSE if currently expanded.
-                // The collapse button is the one inside the
-                // sidebar header (stSidebarCollapseButton).
-                if (aria === 'true') {
-                  var collapseBtn = d.querySelector(
-                    '[data-testid="stSidebarCollapseButton"]');
-                  if (collapseBtn) { collapseBtn.click(); }
+                // Mobile: set aria-expanded="false" directly.
+                // The @media CSS rule does the visual collapse.
+                // React-button .click() does NOT work here (iter
+                // 41 bug); setAttribute on the DOM does.
+                if (aria !== 'false') {
+                  sb.setAttribute('aria-expanded', 'false');
                 }
               } else {
-                // Desktop: original behavior — ensure expanded.
-                if (aria === 'false') {
-                  var expandBtn = d.querySelector(
-                    '[data-testid="stExpandSidebarButton"]');
-                  if (expandBtn) { expandBtn.click(); }
+                // Desktop: ensure expanded. Same DOM-attribute
+                // strategy for symmetry — though the desktop
+                // race condition is rarer, the same fix works.
+                if (aria !== 'true') {
+                  sb.setAttribute('aria-expanded', 'true');
                 }
               }
             } catch (e) {}
@@ -6268,6 +6281,7 @@ def _force_sidebar_open() -> None:
           setTimeout(nudgeSb, 150);
           setTimeout(nudgeSb, 700);
           setTimeout(nudgeSb, 1600);
+          setTimeout(nudgeSb, 3000);
         })();
         </script>
         """,
