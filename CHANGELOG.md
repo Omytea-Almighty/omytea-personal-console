@@ -8,6 +8,24 @@ the public-facing version string (`_brand.BRAND_VERSION`).
 
 ## [Unreleased]
 
+### Planned for v0.4.3+
+- `probability_provenance` per branch (LLM estimate / evidence-count proxy / historical calibrated / user-adjusted) — keep users from misreading "soft estimate" as statistical confidence.
+- `app.py` split into `measurement_loop.py` / `result_rendering.py` / `routing.py` / `ics.py` — the monolith is now 6208 lines after the v0.4.2 arc; further additions need decomposition before they're safe.
+- H2 paper restraint: hold strong claims until real `operator.evolve()` + trained Hamiltonian + scenario-derived γ_kl + N=200 (per `PROJECT_STATE.md`).
+- Plan-drift reconciliation: WORK_PLAN_V415 still bans fortune/tarot framing but the live console ships a Traditional × Calibrated lens (founder-authorized iter 60-73). Either amend plan or tighten lens copy.
+
+## [0.4.2] — 2026-05-26
+
+The "founder-audit + measurement-loop closure" release. Two-arc cycle:
+iter 17–27 closed the 2026-05-26 P0/P1 audit and shipped the .ics
+calendar export bridge; iter 31–37 closed the calibration loop
+end-to-end (`?score=<id>` deep-link, per-prediction diff cards,
+Brier-over-time trend chart, active "Time to score" landing banner).
+Honest framing: the Console now COLLECTS calibration data, it is
+not itself a historical-calibrated model. The PMF-candidate
+"calibrated decision journal" arc is shipped, tested (724/724
+green, +32 new regression tests across the cycle), live-verified.
+
 ### v0.4.2-dev arc — 2026-05-26 founder audit + measurement-loop bridge (iter 17–27)
 
 Eleven autonomous iterations against the 2026-05-26 founder live-audit + the
