@@ -4798,8 +4798,22 @@ def render_measurement_update(
 
     st.divider()
     st.subheader("Original prediction branches")
+    # Iter #42 — snake_case residue cleanup (founder round-4 audit
+    # P2). The Measurement Update flow was rendering the raw
+    # snake_case label keys (e.g. `accept_offer`) — that's a
+    # dev-internal signal leaking onto a user-facing surface. The
+    # `_humanize_id()` helper already exists for this exact case
+    # (used everywhere on the result page since iter 30); the
+    # measurement-update branch list + outcome sliders just
+    # hadn't been threaded through it. Slider KEYS still use the
+    # raw label (that's what the `actual_outcome` dict + storage
+    # layer key off — never touch the storage contract).
     for h in pred.wavefunction_snapshot.get("hypotheses", []):
-        st.markdown(f"- `{h['label']}` — {h['probability'] * 100:.1f}%: {h['narrative']}")
+        human_label = _humanize_id(h["label"])
+        st.markdown(
+            f"- **{human_label}** — {h['probability'] * 100:.1f}%: "
+            f"{h['narrative']}"
+        )
 
     st.divider()
     st.subheader("What actually happened?")
@@ -4812,9 +4826,14 @@ def render_measurement_update(
     actual_outcome: dict[str, float] = {}
     for h in pred.wavefunction_snapshot.get("hypotheses", []):
         v = st.slider(
-            f"`{h['label']}`",
+            _humanize_id(h["label"]),
             min_value=0.0, max_value=1.0, value=0.0, step=0.1,
             help=h.get("narrative", ""),
+            # Iter #42 — keep the slider's session-state key
+            # stable across humanize toggles (the raw label is
+            # the storage contract; the visible label is
+            # cosmetic).
+            key=f"_outcome_slider_{pred.prediction_id}_{h['label']}",
         )
         actual_outcome[h["label"]] = v
 
@@ -4986,9 +5005,34 @@ def render_calibration_history() -> None:
         unsafe_allow_html=True,
     )
 
+    # Iter #42 — calibration-history default-handle fix (founder
+    # round-4 audit P1: "empty default handle is confusing").
+    # Previously the input defaulted to "" and an empty handle
+    # was treated as "show GLOBAL stats". A user landing on this
+    # page expected to see THEIR calibration record, not a
+    # mystery aggregate across every demo visitor. The default
+    # now prefills `session_user_id()` (the same handle that
+    # composer uses) so the user sees their own data
+    # immediately; clearing the field reveals the global stats
+    # (with an explicit "across all demo users" caption so the
+    # mode shift is visible).
+    _default_handle = session_user_id()
+    if "_calibration_handle_seeded" not in st.session_state:
+        st.session_state["_calibration_handle"] = _default_handle
+        st.session_state["_calibration_handle_seeded"] = True
     user_id = st.text_input(
-        "User handle", value="",
+        "User handle",
+        key="_calibration_handle",
+        help=(
+            "Defaults to your session handle. Clear the field to "
+            "see aggregate calibration across all demo users."
+        ),
     )
+    if not user_id:
+        st.caption(
+            "Showing aggregate calibration across **all** demo "
+            "users (no handle entered)."
+        )
     breakdown = storage.get_calibration_bias_breakdown(
         user_id=user_id if user_id else None,
     )
