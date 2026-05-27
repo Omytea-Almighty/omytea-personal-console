@@ -57,28 +57,34 @@ _TURSO_URL = os.environ.get("OMYTEA_TURSO_URL", "").strip()
 _TURSO_AUTH_TOKEN = os.environ.get("OMYTEA_TURSO_AUTH_TOKEN", "").strip()
 _USING_TURSO = bool(_TURSO_URL)
 
-# libsql_experimental is optional — if the wheel didn't install
-# (which can happen on some platforms) gracefully fall back to
-# local SQLite + emit a one-time stderr warning so the founder
-# sees it in the Streamlit Cloud logs.
+# libsql is optional — if the wheel didn't install (which can
+# happen on some platforms / Python versions) gracefully fall
+# back to local SQLite + emit a one-time stderr warning so the
+# founder sees it in the Streamlit Cloud logs. Iter #44b: try
+# `libsql` (newer, actively maintained, broader wheel coverage)
+# first; fall back to legacy `libsql_experimental` if only the
+# old wheel is available. Streamlit Cloud Python 3.14 lacks
+# `libsql_experimental` wheels (iter 45 install failure) so
+# `libsql>=0.1.0` is the canonical requirement in
+# requirements.txt now.
 _libsql = None
 if _USING_TURSO:
     try:
-        import libsql_experimental as _libsql  # type: ignore
+        import libsql as _libsql  # type: ignore
     except ImportError:
         try:
-            # Fallback module name — the package has been renamed
-            # across versions.
-            import libsql as _libsql  # type: ignore
+            # Legacy module name — older Python versions /
+            # pre-rename installs.
+            import libsql_experimental as _libsql  # type: ignore
         except ImportError:
             import sys
             print(
                 "[storage] WARNING: OMYTEA_TURSO_URL is set but "
-                "neither `libsql_experimental` nor `libsql` is "
+                "neither `libsql` nor `libsql_experimental` is "
                 "installed; falling back to local SQLite. The "
                 "demo's data will be ephemeral. Add "
-                "`libsql-experimental` to requirements.txt or "
-                "see SETUP_TURSO.md.",
+                "`libsql>=0.1.0` to requirements.txt or see "
+                "SETUP_TURSO.md.",
                 file=sys.stderr,
             )
             _USING_TURSO = False

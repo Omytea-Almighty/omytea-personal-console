@@ -65,4 +65,14 @@ streamlit-webrtc>=0.47,<1.0
 # the 3-minute founder setup. Streamlit Cloud's filesystem is
 # ephemeral, so without Turso the calibration loop "predict →
 # wait N months → score" cannot survive a redeploy.
-libsql-experimental>=0.0.30
+#
+# Iter #44b — pkg name swap: `libsql-experimental` was the
+# original Python wrapper; ~0.0.55 latest, lagging Python wheel
+# coverage. The actively-maintained successor is `libsql`
+# (~0.1.11 latest, broader manylinux/Python 3.13/3.14 wheels).
+# storage.py imports both names (libsql_experimental first,
+# then libsql) so swapping requirement doesn't need code change.
+# Streamlit Cloud bootlog iter 45 surfaced
+# "Error installing requirements" on `libsql-experimental`
+# (Python 3.14 missing-wheel); switching to `libsql` unblocks.
+libsql>=0.1.0
