@@ -4411,8 +4411,39 @@ def _render_result(
         decision_label=str(user_input.get("decision_options", ""))[:80],
         review_date=_cta_review_date,
     )
-    _cta_ics_dl, _cta_copy_id, _cta_score_later = st.columns(
-        [1.3, 1.6, 1.3]
+    # Iter #43 — JSON snapshot download. Direct mitigation for the
+    # ephemeral-storage finding (storage.DEFAULT_DB_PATH lives on
+    # Streamlit Cloud's wipeable filesystem; user predictions can
+    # vanish on any redeploy). With this button the user owns their
+    # own durable copy. The PMF-loop "predict → wait 3 months →
+    # score" is no longer at the mercy of the demo server's
+    # lifespan — even if the DB wipes, the user can email me their
+    # `.json` to restore. Snapshot fields match the schema in
+    # `storage.PredictionRecord` so a future restore-from-upload
+    # path can rebuild the record verbatim.
+    import json as _json
+    import time as _time
+    _cta_snapshot = {
+        "schema": "omytea-prediction-snapshot/v1",
+        "exported_at_unix": _time.time(),
+        "prediction_id": prediction_id,
+        "user_id": user_id,
+        "scenario": scenario,
+        "user_input": user_input,
+        "wavefunction_snapshot": {
+            "hypotheses": [h.to_dict() for h in result.hypotheses],
+        },
+        "joint_offdiag": {
+            "entries": [o.to_dict() for o in result.joint_offdiag],
+        },
+        "console_version": _brand.BRAND_VERSION,
+    }
+    _cta_snapshot_blob = _json.dumps(
+        _cta_snapshot, indent=2, ensure_ascii=False, default=str,
+    ).encode("utf-8")
+
+    _cta_ics_dl, _cta_copy_id, _cta_score_later, _cta_snapshot_dl = (
+        st.columns([1.3, 1.6, 1.3, 1.3])
     )
     with _cta_ics_dl:
         st.download_button(
@@ -4443,6 +4474,16 @@ def _render_result(
             except Exception:
                 pass
             st.rerun()
+    with _cta_snapshot_dl:
+        st.download_button(
+            label=T("result.cta.save_snapshot"),
+            data=_cta_snapshot_blob,
+            file_name=f"omytea-prediction-{prediction_id[:8]}.json",
+            mime="application/json",
+            key=f"_top_snapshot_dl_{prediction_id}",
+            use_container_width=True,
+            help=T("result.cta.save_snapshot.hint"),
+        )
 
     # v4.16 P1+P4: partition by branch_type for visually distinct anchor
     # display + offer Story (default) vs Comparison-table view.

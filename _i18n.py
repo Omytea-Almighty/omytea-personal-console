@@ -1468,6 +1468,42 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
             "préchargée — utile si vous connaissez déjà le résultat."
         ),
     },
+    # Iter #43 — JSON snapshot download (ephemeral-storage
+    # mitigation). The demo DB sits on Streamlit Cloud's
+    # ephemeral filesystem; offering the user a `.json` they can
+    # keep locally means their PMF data survives any redeploy.
+    "result.cta.save_snapshot": {
+        LANG_EN: "💾  Save snapshot",
+        LANG_ZH: "💾  保存快照",
+        LANG_ES: "💾  Guardar copia",
+        LANG_FR: "💾  Sauvegarder",
+    },
+    "result.cta.save_snapshot.hint": {
+        LANG_EN: (
+            "Downloads a .json copy of this prediction to your "
+            "device. The demo's server storage is ephemeral — "
+            "keeping the snapshot means you can restore the "
+            "prediction (or send it to us to restore) if our DB "
+            "is wiped before you score it."
+        ),
+        LANG_ZH: (
+            "下载这条预测的 .json 副本到你的设备。Demo 服务器存储是"
+            "易失的 — 留一份本地快照，万一服务器在你打分前被清空，"
+            "你仍能恢复这条预测（或发回给我们恢复）。"
+        ),
+        LANG_ES: (
+            "Descarga una copia .json de esta predicción a tu "
+            "dispositivo. El almacenamiento del servidor demo es "
+            "efímero — guardar la copia permite restaurar la "
+            "predicción si la base de datos se borra."
+        ),
+        LANG_FR: (
+            "Télécharge une copie .json de cette prédiction sur "
+            "votre appareil. Le stockage du serveur démo est "
+            "éphémère — garder la copie permet de restaurer la "
+            "prédiction si la base de données est effacée."
+        ),
+    },
     "result.review_anchor": {
         # Slimmed bottom anchor that replaces the verbose iter-23
         # st.info card now that the CTAs are at the top.
