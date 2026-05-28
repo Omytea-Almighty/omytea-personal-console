@@ -1533,12 +1533,32 @@ def render_sidebar() -> tuple[str, Any]:
     )
 
     # ---- New prediction button — always returns to the composer ----
+    # Iter #47 bug-041 fix: a beta tester clicked "New prediction"
+    # on the workspace and saw "no reaction" → concluded the app
+    # was a dead UI. Root cause: when already on ROUTE_WORKSPACE,
+    # re-setting the same route is a visual no-op. Now the button
+    # ALSO (a) clears any current prediction so a returning user
+    # sees the composer reset to a fresh state (a visible change),
+    # and (b) clears the composer input fields + dismisses the
+    # cold-start banner so the user lands on a clean, ready-to-type
+    # form. This makes the most prominent CTA never silently
+    # do nothing.
     if st.sidebar.button(
         T("nav.new_prediction"),
         use_container_width=True,
         type="primary",
         key="_nav_new_prediction",
     ):
+        # Clear the last prediction → output region resets from a
+        # result back to the idle composer-first cold start.
+        st.session_state.pop("current_prediction", None)
+        # Clear the composer input fields so "New prediction" reads
+        # as "start fresh", not "nothing happened".
+        for _k in list(st.session_state.keys()):
+            if isinstance(_k, str) and _k.startswith("input_"):
+                st.session_state.pop(_k, None)
+        # Keep the beta banner dismissed if they already saw it —
+        # don't re-nag. (We do NOT reset _beta_banner_dismissed.)
         route = (ROUTE_WORKSPACE, None)
         st.session_state._route = route
         st.rerun()
@@ -3010,10 +3030,29 @@ def render_new_prediction() -> None:
     # panes fit one screen.
     st.markdown(_WORKSPACE_CHROME_CSS, unsafe_allow_html=True)
 
-    # OUTPUT region on top (the quantum heatmap centerpiece / live video
-    # / 玄学 view — output only), INPUT composer directly below it.
-    _render_workspace_output()
-    _render_workspace_composer()
+    # Iter #47 bug-041 fix — first-paint ordering. A beta tester
+    # landed, saw the EXAMPLE-PREVIEW heatmap + the full beta banner,
+    # never scrolled past them to the input form below, and concluded
+    # the app "does nothing". Root cause: on cold start the output
+    # region (a placeholder preview) was rendered ON TOP, burying the
+    # actual composer.
+    #
+    # Fix: branch on whether a prediction exists.
+    #   • No prediction yet (cold start) → lead with the COMPOSER so
+    #     the decision input + suggestion chips are the first thing a
+    #     visitor sees ("here's where you type"). The example-preview
+    #     heatmap renders BELOW as a "this is what you'll get" teaser.
+    #   • Prediction exists → lead with the OUTPUT (the real result
+    #     heatmap + CTA row), composer below for re-runs. Matches the
+    #     user's mental model: empty → input-first; filled → result-
+    #     first.
+    _has_prediction = st.session_state.get("current_prediction") is not None
+    if _has_prediction:
+        _render_workspace_output()
+        _render_workspace_composer()
+    else:
+        _render_workspace_composer()
+        _render_workspace_output()
 
 
 # ============================================================
