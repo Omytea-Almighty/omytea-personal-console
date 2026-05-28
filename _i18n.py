@@ -1163,6 +1163,61 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_FR: "Hypothèses jointes",
     },
     # -----  Result render  -----
+    # -----  Engine receipt (iter #51) — prove a real model computed this  -----
+    "result.engine.headline": {
+        LANG_EN: "Computed live by the Omytea world-model engine — not a template.",
+        LANG_ZH: "由 Omytea 世界模型引擎实时计算——不是套模板。",
+        LANG_ES: "Calculado en vivo por el motor de modelo del mundo de Omytea — no es una plantilla.",
+        LANG_FR: "Calculé en direct par le moteur de modèle du monde d'Omytea — pas un gabarit.",
+    },
+    "result.engine.m_branches": {
+        LANG_EN: "Futures mapped",
+        LANG_ZH: "推演的未来",
+        LANG_ES: "Futuros mapeados",
+        LANG_FR: "Futurs cartographiés",
+    },
+    "result.engine.m_links": {
+        LANG_EN: "Correlated links",
+        LANG_ZH: "关联链接",
+        LANG_ES: "Vínculos correlados",
+        LANG_FR: "Liens corrélés",
+    },
+    "result.engine.m_substrate": {
+        LANG_EN: "Engine",
+        LANG_ZH: "引擎",
+        LANG_ES: "Motor",
+        LANG_FR: "Moteur",
+    },
+    "result.engine.substrate_on": {
+        LANG_EN: "Omytea ρ",
+        LANG_ZH: "Omytea ρ",
+        LANG_ES: "Omytea ρ",
+        LANG_FR: "Omytea ρ",
+    },
+    "result.engine.substrate_off": {
+        LANG_EN: "Omytea",
+        LANG_ZH: "Omytea",
+        LANG_ES: "Omytea",
+        LANG_FR: "Omytea",
+    },
+    "result.engine.expander": {
+        LANG_EN: "See the engine — the real computation",
+        LANG_ZH: "查看引擎——真实的计算过程",
+        LANG_ES: "Ver el motor — el cálculo real",
+        LANG_FR: "Voir le moteur — le calcul réel",
+    },
+    "result.engine.belief_state": {
+        LANG_EN: "Belief state — probability mass per future (the ρ diagonal)",
+        LANG_ZH: "信念状态——每个未来的概率质量（ρ 对角线）",
+        LANG_ES: "Estado de creencia — masa de probabilidad por futuro (la diagonal ρ)",
+        LANG_FR: "État de croyance — masse de probabilité par futur (la diagonale ρ)",
+    },
+    "result.engine.compiled_note": {
+        LANG_EN: "Your plain-language decision was compiled into a structured belief program of {n} futures — each tied to a decision path and its key uncertainty — then evolved across your horizon with decoherence. {m} correlated-future links were detected (shown below). This is a live world-model computation, not a static list.",
+        LANG_ZH: "你的自然语言决策被编译成一个包含 {n} 个未来的结构化信念程序——每个未来都关联到一条决策路径及其关键不确定性——再沿你的时间跨度做退相干演化。检测到 {m} 条关联未来链接（见下方）。这是实时的世界模型计算，不是静态列表。",
+        LANG_ES: "Tu decisión en lenguaje natural se compiló en un programa de creencia estructurado de {n} futuros — cada uno ligado a una ruta de decisión y su incertidumbre clave — y luego evolucionó por tu horizonte con decoherencia. Se detectaron {m} vínculos de futuros correlados (abajo). Es un cálculo de modelo del mundo en vivo, no una lista estática.",
+        LANG_FR: "Votre décision en langage naturel a été compilée en un programme de croyance structuré de {n} futurs — chacun lié à une voie de décision et à son incertitude clé — puis évolué sur votre horizon avec décohérence. {m} liens de futurs corrélés ont été détectés (ci-dessous). C'est un calcul de modèle du monde en direct, pas une liste statique.",
+    },
     "result.heatmap_title": {
         # Iter #3 (design-self-explains): "Probability mass across
         # futures" is jargon a first-time visitor doesn't parse — the

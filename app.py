@@ -1141,6 +1141,52 @@ def _date_bucket(created_at: float) -> str:
     return then.strftime("%Y-%m")
 
 
+# ----------------------------------------------------------------------
+# Iter #51 — history-rail read cache (the single biggest per-click
+# latency win). The rail re-queries Turso on EVERY rerun: 4 separate
+# network round-trips (predictions / categories / labels / label-map) to
+# us-east-1, each opening a fresh libSQL connection. Read-only reruns
+# (every button click, toggle, expander) are the common case and do NOT
+# change this data — only a save / category edit / label edit does. So we
+# cache the reads (60s TTL backstop) and explicitly invalidate on those
+# writes. Founder report: "clicking any button is very slow." This turns
+# the typical click from 4 network round-trips into a cache hit.
+@st.cache_data(ttl=60, show_spinner=False)
+def _cached_user_predictions(uid: str) -> Any:
+    return storage.list_user_predictions(uid)
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def _cached_categories(uid: str) -> Any:
+    return storage.list_categories(uid)
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def _cached_user_labels(uid: str) -> Any:
+    return storage.list_user_labels(uid)
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def _cached_label_map(pred_ids: tuple[str, ...]) -> Any:
+    return storage.labels_for_predictions(list(pred_ids))
+
+
+def _invalidate_history_cache() -> None:
+    """Drop the cached history reads so the next rerun reflects a write
+    immediately (a just-saved prediction must appear in the rail at once,
+    not after the TTL)."""
+    for _fn in (
+        _cached_user_predictions,
+        _cached_categories,
+        _cached_user_labels,
+        _cached_label_map,
+    ):
+        try:
+            _fn.clear()
+        except Exception:  # noqa: BLE001 — cache clear must never crash a write
+            pass
+
+
 def _render_history_rail(route: tuple[str, Any]) -> tuple[str, Any]:
     """The user-organized history tree (Stage 4).
 
@@ -1153,11 +1199,11 @@ def _render_history_rail(route: tuple[str, Any]) -> tuple[str, Any]:
     """
     uid = session_user_id()
     try:
-        predictions = storage.list_user_predictions(uid)
-        categories = storage.list_categories(uid)
-        all_labels = storage.list_user_labels(uid)
-        label_map = storage.labels_for_predictions(
-            [p.prediction_id for p in predictions]
+        predictions = _cached_user_predictions(uid)
+        categories = _cached_categories(uid)
+        all_labels = _cached_user_labels(uid)
+        label_map = _cached_label_map(
+            tuple(p.prediction_id for p in predictions)
         )
     except Exception:  # noqa: BLE001 — a broken DB must not blank the app
         predictions, categories, all_labels, label_map = [], [], [], {}
@@ -1176,6 +1222,7 @@ def _render_history_rail(route: tuple[str, Any]) -> tuple[str, Any]:
         ):
             if new_cat.strip():
                 storage.create_category(uid, new_cat.strip())
+                _invalidate_history_cache()
                 st.session_state["_new_category_name"] = ""
                 st.rerun()
         # rename / delete each existing category
@@ -1195,9 +1242,11 @@ def _render_history_rail(route: tuple[str, Any]) -> tuple[str, Any]:
                     help=T("history.delete_category"),
                 ):
                     storage.delete_category(cat.category_id)
+                    _invalidate_history_cache()
                     st.rerun()
             if renamed.strip() and renamed.strip() != cat.name:
                 storage.rename_category(cat.category_id, renamed.strip())
+                _invalidate_history_cache()
                 st.rerun()
 
     # ---- Label filter ----
@@ -3045,6 +3094,7 @@ def _render_workspace_composer_body() -> None:
                 ),
             )
             storage.save_prediction(rec)
+            _invalidate_history_cache()
             st.session_state.current_prediction = {
                 "prediction_id": rec.prediction_id,
                 "result": result,
@@ -4510,6 +4560,70 @@ def _render_result(
     # small icon are enough; instruction moves to tooltip.
     st.caption(f"`{prediction_id}` — your prediction ID")
 
+    # Iter #51 — "Engine receipt": make the real computation undeniable.
+    # Founder feedback — the result reads like "just a UI" with no
+    # backend engineering. Master Plan §9 + §15 Rule #6: the demo MUST
+    # show real data flow, not disconnected visuals. So the FIRST thing
+    # on the result surfaces the actual engine work — how many futures
+    # the belief program compiled, how many correlated-future links were
+    # found, which substrate computed it — every number straight off
+    # `result`, nothing fabricated. The expander exposes the real
+    # belief-state distribution (ρ diagonal, the user's OWN branch
+    # labels — not generic "Option 1-5") + the compile→decohere
+    # mechanism in plain language.
+    _eng_n = len(result.hypotheses)
+    _eng_m = len(result.joint_offdiag)
+    _eng_sub = (
+        T("result.engine.substrate_on")
+        if result.used_omytea_substrate
+        else T("result.engine.substrate_off")
+    )
+    st.markdown(
+        "<div style='display:flex;align-items:center;gap:8px;"
+        "margin:0 0 10px;font-size:13px;color:#c9cdd6;line-height:1.4;'>"
+        "<span style='color:#8b7cf0;font-size:16px;'>✦</span>"
+        f"<span>{T('result.engine.headline')}</span></div>",
+        unsafe_allow_html=True,
+    )
+    _ec1, _ec2, _ec3 = st.columns(3)
+    _ec1.metric(T("result.engine.m_branches"), _eng_n)
+    _ec2.metric(T("result.engine.m_links"), _eng_m)
+    _ec3.metric(T("result.engine.m_substrate"), _eng_sub)
+    with st.expander(T("result.engine.expander"), expanded=False):
+        st.caption(T("result.engine.belief_state"))
+        for _h in sorted(
+            result.hypotheses,
+            key=lambda _x: float(getattr(_x, "probability", 0.0) or 0.0),
+            reverse=True,
+        ):
+            _p = float(getattr(_h, "probability", 0.0) or 0.0)
+            _p = 0.0 if _p < 0 else (1.0 if _p > 1 else _p)
+            _lab = _humanize_id(getattr(_h, "label", "") or "future")
+            _bt = getattr(_h, "branch_type", "") or ""
+            _bt_html = (
+                f" <span style='color:#6b7280;font-size:11px;'>· "
+                f"{_esc_html(_bt)}</span>"
+                if _bt else ""
+            )
+            st.markdown(
+                "<div style='margin:4px 0;'>"
+                "<div style='display:flex;justify-content:space-between;"
+                "font-size:12.5px;color:#d0d6e0;'>"
+                f"<span>{_esc_html(_lab)}{_bt_html}</span>"
+                f"<span style='color:#8b7cf0;font-weight:600;'>"
+                f"{_p*100:.0f}%</span></div>"
+                "<div style='height:5px;border-radius:3px;background:#1c1d22;"
+                "margin-top:3px;'>"
+                f"<div style='height:5px;border-radius:3px;"
+                f"width:{_p*100:.1f}%;background:linear-gradient("
+                "90deg,#6b8fff,#b47eff);'></div>"
+                "</div></div>",
+                unsafe_allow_html=True,
+            )
+        st.caption(
+            T("result.engine.compiled_note").format(n=_eng_n, m=_eng_m)
+        )
+
     # Iter #42 B1 — top-of-result CTA row. Founder round-4 audit:
     # "Add calendar / Copy ID / Score later" were buried at the
     # BOTTOM of the result page, below story + drill-down + technical
@@ -4841,6 +4955,7 @@ def _render_prediction_organizer(
                         use_container_width=True,
                     ):
                         storage.remove_label(pred.prediction_id, lab)
+                        _invalidate_history_cache()
                         st.rerun()
         else:
             st.caption(T("organizer.no_labels"))
@@ -4855,6 +4970,7 @@ def _render_prediction_organizer(
         ):
             if new_label.strip():
                 storage.add_label(pred.prediction_id, new_label.strip())
+                _invalidate_history_cache()
                 st.rerun()
 
 
