@@ -2757,6 +2757,22 @@ def _render_workspace_composer_body() -> None:
                     st.session_state["input_current_role"] = role
                     st.session_state["input_why_considering_change"] = why
                     st.session_state["input_user_id"] = session_user_id()
+                    # Iter #48 — immediate feedback + scroll. On the
+                    # free-tier server the rerun that fills the form
+                    # takes 10-15s to paint; without feedback a user
+                    # thinks the chip "did nothing", clicks again, or
+                    # worse hits "See my futures →" before the fields
+                    # commit → "Missing required field: A little about
+                    # you" (a confusing error for someone who clicked
+                    # an example). A toast confirms the click landed,
+                    # and `_focus_composer` scrolls the now-filled
+                    # decision field into view so the user SEES the
+                    # example loaded and naturally proceeds to Generate.
+                    try:
+                        st.toast(T("composer.chip_loaded"))
+                    except Exception:
+                        pass
+                    st.session_state["_focus_composer"] = True
                     st.rerun()
 
     # ---- Modality bar: attach (+) · live video · Metaphysics lens ----

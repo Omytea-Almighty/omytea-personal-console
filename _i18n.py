@@ -803,6 +803,17 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_ES: "Lente",
         LANG_FR: "Loupe",
     },
+    # Iter #48 — chip-loaded toast. Immediate confirmation a
+    # suggestion chip filled the form, so a user on the slow
+    # free-tier server doesn't click again or submit before the
+    # fields paint (which caused a confusing "Missing required
+    # field" error).
+    "composer.chip_loaded": {
+        LANG_EN: "✓ Example loaded — review below, then “See my futures →”",
+        LANG_ZH: "✓ 示例已填入 — 往下看一眼，再点“See my futures →”",
+        LANG_ES: "✓ Ejemplo cargado — revisa abajo y pulsa “See my futures →”",
+        LANG_FR: "✓ Exemple chargé — vérifiez ci-dessous, puis « See my futures → »",
+    },
     "composer.more_fields": {
         LANG_EN: "More details (optional)",
         LANG_ZH: "更多字段（可选）",
