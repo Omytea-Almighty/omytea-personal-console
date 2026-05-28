@@ -3011,7 +3011,7 @@ def _render_workspace_composer_body() -> None:
         # & API and supplied a key, use it; else None falls through
         # to the env-var-driven default rotation.
         _user_backend = _resolve_user_backend()
-        with st.spinner("Compiling input → BeliefProgram → hypothesis space…"):
+        with st.spinner(T("new.generating")):
             try:
                 program = compile_belief_program(
                     form_data, scenario=scenario, backend=_user_backend,
@@ -3021,33 +3021,38 @@ def _render_workspace_composer_body() -> None:
                 st.error(f"Compilation failed: {exc}")
                 return
 
-        # Persist + freeze the snapshot in session_state for re-render.
-        rec = storage.PredictionRecord(
-            prediction_id=storage.new_prediction_id(),
-            user_id=user_id,
-            scenario=scenario,
-            created_at=storage.now_unix(),
-            user_input=form_data,
-            belief_program=program.raw,
-            wavefunction_snapshot={
-                "hypotheses": [h.to_dict() for h in result.hypotheses],
-            },
-            joint_offdiag={
-                "entries": [o.to_dict() for o in result.joint_offdiag],
-            },
-            is_owner_bias_flagged=bool(
-                form_data.get("is_owner_bias_flagged", False)
-            ),
-        )
-        storage.save_prediction(rec)
-        st.session_state.current_prediction = {
-            "prediction_id": rec.prediction_id,
-            "result": result,
-            "form_data": form_data,
-            "scenario": scenario,
-            "user_id": user_id,
-            "program": program,
-        }
+            # Persist + freeze the snapshot in session_state for re-render.
+            # Iter #50: the Turso write stays INSIDE the spinner so the
+            # whole heavy step reads as one legible "working…" wait,
+            # rather than the spinner vanishing while the form sits
+            # frozen during the network save (the slow-tail "looks dead"
+            # window on the free-tier host).
+            rec = storage.PredictionRecord(
+                prediction_id=storage.new_prediction_id(),
+                user_id=user_id,
+                scenario=scenario,
+                created_at=storage.now_unix(),
+                user_input=form_data,
+                belief_program=program.raw,
+                wavefunction_snapshot={
+                    "hypotheses": [h.to_dict() for h in result.hypotheses],
+                },
+                joint_offdiag={
+                    "entries": [o.to_dict() for o in result.joint_offdiag],
+                },
+                is_owner_bias_flagged=bool(
+                    form_data.get("is_owner_bias_flagged", False)
+                ),
+            )
+            storage.save_prediction(rec)
+            st.session_state.current_prediction = {
+                "prediction_id": rec.prediction_id,
+                "result": result,
+                "form_data": form_data,
+                "scenario": scenario,
+                "user_id": user_id,
+                "program": program,
+            }
         # Chatbox layout: rerun so the TOP output region resolves the
         # heatmap from idle uniform → the real distribution.
         st.rerun()

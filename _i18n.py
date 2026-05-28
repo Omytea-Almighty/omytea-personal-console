@@ -1018,6 +1018,18 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_ES: "Ver mis futuros →",
         LANG_FR: "Voir mes futurs →",
     },
+    "new.generating": {
+        # Iter #50: the generate wait is 10-25s on the free-tier host.
+        # The old hard-coded English spinner ("Compiling input →
+        # BeliefProgram → hypothesis space…") leaked internal jargon and
+        # was never localised, so a non-EN beta tester saw English tech-
+        # speak freeze for 15s and read it as broken. Plain language +
+        # "a few seconds" sets the expectation that the wait is normal.
+        LANG_EN: "Reading your inputs and simulating the futures — this can take a few seconds…",
+        LANG_ZH: "正在读取你的输入、推演各种未来——可能需要几秒钟……",
+        LANG_ES: "Leyendo tus datos y simulando los futuros — esto puede tardar unos segundos…",
+        LANG_FR: "Lecture de vos données et simulation des futurs — cela peut prendre quelques secondes…",
+    },
     "new.howto.title": {
         LANG_EN: "How this works · 30 seconds",
         LANG_ZH: "30 秒读懂用法",
