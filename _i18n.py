@@ -1666,42 +1666,35 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_ES: "Beta de investigación — por favor lee",
         LANG_FR: "Bêta de recherche — à lire",
     },
+    # Iter #48 — compacted to ~2 lines so the cold-start fold leads
+    # with the actionable input (chips + decision field) instead of
+    # a 5-line wall of text. Keeps the load-bearing consent (beta /
+    # don't-paste-sensitive / data-on-server / desktop); the
+    # save-the-ID + 3-month detail is reinforced on the result
+    # page's CTA row + reminder, so it's dropped from first paint.
     "beta.banner_body": {
         LANG_EN: (
-            "This is an early beta gathering calibration data on "
-            "personal decisions. **Please use a desktop browser** "
-            "for the first try (mobile works but is rougher). "
-            "**Don't paste sensitive info** (financial account "
-            "numbers, passport, SSN, full names of third parties). "
-            "**Save your prediction ID + add the calendar reminder** "
-            "— you'll need them to score the prediction in ~3 months. "
-            "Data is stored on the demo server (not your device); "
-            "see Privacy for what's collected and how to delete it."
+            "Early research beta — best on desktop. **Don't paste "
+            "sensitive info** (bank, passport, SSN, other people's "
+            "full names). Predictions save to the demo server; see "
+            "Privacy for details."
         ),
         LANG_ZH: (
-            "这是收集个人决策校准数据的早期 beta. **请优先用桌面浏览器** "
-            "首次试用 (手机能用但体验粗糙). **不要输入敏感信息** "
-            "(银行账号、护照、SSN、第三方全名). **保存你的 prediction "
-            "ID + 加日历提醒** — 三个月后你需要它们回来打分. 数据存在 "
-            "demo 服务器 (不在你的设备); 隐私政策说明收集什么、如何删除."
+            "早期研究 beta，建议用桌面浏览器。**不要输入敏感信息**"
+            "（银行账号、护照、SSN、第三方全名）。预测会存到 demo "
+            "服务器；详见隐私政策。"
         ),
         LANG_ES: (
-            "Esta es una beta temprana que recopila datos de "
-            "calibración sobre decisiones personales. **Usa un "
-            "navegador de escritorio** para la primera prueba. **No "
-            "pegues información sensible**. **Guarda tu ID de "
-            "predicción + añade el recordatorio al calendario** — los "
-            "necesitarás para puntuar en ~3 meses. Los datos se "
-            "almacenan en el servidor demo."
+            "Beta de investigación temprana — mejor en escritorio. "
+            "**No pegues información sensible** (banco, pasaporte, "
+            "SSN, nombres de terceros). Las predicciones se guardan "
+            "en el servidor demo; ver Privacidad."
         ),
         LANG_FR: (
-            "Ceci est une bêta précoce collectant des données de "
-            "calibration sur les décisions personnelles. **Utilisez "
-            "un navigateur de bureau** pour le premier essai. "
-            "**Ne collez pas d'informations sensibles**. **Sauvegardez "
-            "votre ID de prédiction + ajoutez le rappel calendrier** "
-            "— vous en aurez besoin pour noter dans ~3 mois. Les "
-            "données sont stockées sur le serveur démo."
+            "Bêta de recherche précoce — préférez un ordinateur. "
+            "**Ne collez pas d'informations sensibles** (banque, "
+            "passeport, noms de tiers). Les prédictions sont "
+            "enregistrées sur le serveur démo ; voir Confidentialité."
         ),
     },
     "result.why_no_specific_drivers": {
