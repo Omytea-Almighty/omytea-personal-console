@@ -1201,22 +1201,46 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_FR: "Omytea",
     },
     "result.engine.expander": {
-        LANG_EN: "See the engine — the real computation",
-        LANG_ZH: "查看引擎——真实的计算过程",
-        LANG_ES: "Ver el motor — el cálculo real",
-        LANG_FR: "Voir le moteur — le calcul réel",
+        LANG_EN: "How we worked this out",
+        LANG_ZH: "我们是怎么算出来的",
+        LANG_ES: "Cómo lo calculamos",
+        LANG_FR: "Comment nous avons calculé cela",
+    },
+    "result.lead.most_likely": {
+        LANG_EN: "Most likely:",
+        LANG_ZH: "最可能：",
+        LANG_ES: "Lo más probable:",
+        LANG_FR: "Le plus probable :",
+    },
+    "result.lead.hinges": {
+        LANG_EN: "It mostly hinges on {driver}.",
+        LANG_ZH: "主要取决于{driver}。",
+        LANG_ES: "Depende sobre todo de {driver}.",
+        LANG_FR: "Cela dépend surtout de {driver}.",
+    },
+    "result.lead.mapped": {
+        LANG_EN: "We mapped {n} realistic ways this could go and weighed them against your situation.",
+        LANG_ZH: "我们推演了 {n} 种现实的发展方式，并结合你的具体情况做了权衡。",
+        LANG_ES: "Mapeamos {n} formas realistas en que esto podría ir y las sopesamos según tu situación.",
+        LANG_FR: "Nous avons cartographié {n} évolutions réalistes possibles et les avons pondérées selon votre situation.",
+    },
+    "result.engine.tech_footnote": {
+        LANG_EN: "For the curious: each path is a diagonal of the belief state ρ; the links are off-diagonal coherences; the time axis is decoherence.",
+        LANG_ZH: "给好奇的人：每条路径是信念态 ρ 的对角元；关联是非对角相干项；时间轴是退相干。",
+        LANG_ES: "Para curiosos: cada camino es una diagonal del estado de creencia ρ; los vínculos son coherencias fuera de diagonal; el eje del tiempo es decoherencia.",
+        LANG_FR: "Pour les curieux : chaque voie est une diagonale de l'état de croyance ρ ; les liens sont des cohérences hors-diagonale ; l'axe temporel est la décohérence.",
     },
     "result.engine.belief_state": {
-        LANG_EN: "Belief state — probability mass per future (the ρ diagonal)",
-        LANG_ZH: "信念状态——每个未来的概率质量（ρ 对角线）",
-        LANG_ES: "Estado de creencia — masa de probabilidad por futuro (la diagonal ρ)",
-        LANG_FR: "État de croyance — masse de probabilité par futur (la diagonale ρ)",
+        LANG_EN: "How likely we think each path is",
+        LANG_ZH: "我们认为每条路径的可能性",
+        LANG_ES: "Qué probabilidad damos a cada camino",
+        LANG_FR: "La probabilité que nous donnons à chaque voie",
     },
     "result.engine.compiled_note": {
-        LANG_EN: "Your plain-language decision was compiled into a structured belief program of {n} futures — each tied to a decision path and its key uncertainty — then evolved across your horizon with decoherence. {m} correlated-future links were detected (shown below). This is a live world-model computation, not a static list.",
-        LANG_ZH: "你的自然语言决策被编译成一个包含 {n} 个未来的结构化信念程序——每个未来都关联到一条决策路径及其关键不确定性——再沿你的时间跨度做退相干演化。检测到 {m} 条关联未来链接（见下方）。这是实时的世界模型计算，不是静态列表。",
-        LANG_ES: "Tu decisión en lenguaje natural se compiló en un programa de creencia estructurado de {n} futuros — cada uno ligado a una ruta de decisión y su incertidumbre clave — y luego evolucionó por tu horizonte con decoherencia. Se detectaron {m} vínculos de futuros correlados (abajo). Es un cálculo de modelo del mundo en vivo, no una lista estática.",
-        LANG_FR: "Votre décision en langage naturel a été compilée en un programme de croyance structuré de {n} futurs — chacun lié à une voie de décision et à son incertitude clé — puis évolué sur votre horizon avec décohérence. {m} liens de futurs corrélés ont été détectés (ci-dessous). C'est un calcul de modèle du monde en direct, pas une liste statique.",
+        LANG_EN: "We weighed {n} possible paths against your specific situation, looked at which outcomes tend to move together ({m} links found), and how the odds shift as time passes — that's the chart above.",
+        LANG_ZH: "我们把 {n} 条可能的路径结合你的具体情况做了权衡，看了哪些结果往往会一起发生（发现 {m} 处关联），以及随时间推移概率如何变化——也就是上面那张图。",
+        LANG_ES: "Sopesamos {n} caminos posibles según tu situación, vimos qué resultados tienden a ir juntos ({m} vínculos) y cómo cambian las probabilidades con el tiempo — ese es el gráfico de arriba.",
+        LANG_FR: "Nous avons pondéré {n} voies possibles selon votre situation, observé quels résultats vont souvent ensemble ({m} liens) et comment les probabilités évoluent avec le temps — c'est le graphique ci-dessus.",
     },
     "result.heatmap_title": {
         # Iter #3 (design-self-explains): "Probability mass across
@@ -1942,10 +1966,10 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
     "heatmap.head_title": {
         # Iter #3 — same de-jargonization as the outer title; the
         # heatmap's branch rows + horizon columns already SAY this.
-        LANG_EN: "Likelihood by branch · over time",
-        LANG_ZH: "每个分支的概率 · 沿时间",
-        LANG_ES: "Probabilidad por rama · en el tiempo",
-        LANG_FR: "Probabilité par branche · dans le temps",
+        LANG_EN: "How likely each path is · over time",
+        LANG_ZH: "每条路径的可能性 · 随时间变化",
+        LANG_ES: "Qué probable es cada camino · en el tiempo",
+        LANG_FR: "Probabilité de chaque voie · dans le temps",
     },
     "heatmap.head_hint": {
         LANG_EN: "click a cell for detail",

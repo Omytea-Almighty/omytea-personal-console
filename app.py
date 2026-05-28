@@ -4560,56 +4560,55 @@ def _render_result(
     # small icon are enough; instruction moves to tooltip.
     st.caption(f"`{prediction_id}` — your prediction ID")
 
-    # Iter #51 — "Engine receipt": make the real computation undeniable.
-    # Founder feedback — the result reads like "just a UI" with no
-    # backend engineering. Master Plan §9 + §15 Rule #6: the demo MUST
-    # show real data flow, not disconnected visuals. So the FIRST thing
-    # on the result surfaces the actual engine work — how many futures
-    # the belief program compiled, how many correlated-future links were
-    # found, which substrate computed it — every number straight off
-    # `result`, nothing fabricated. The expander exposes the real
-    # belief-state distribution (ρ diagonal, the user's OWN branch
-    # labels — not generic "Option 1-5") + the compile→decohere
-    # mechanism in plain language.
+    # Iter #51 (revised) — PLAIN result lead-in for a NON-technical user.
+    # Founder: most users can't parse ρ / "correlated links" /
+    # "decoherence" — show the engine's VALUE in human words, not its
+    # math. Default = a one-line takeaway anyone gets (most-likely path +
+    # what it hinges on) + a plain note that real per-situation analysis
+    # happened. The genuine technical depth (ρ diagonal, off-diagonal
+    # correlations, decoherence) lives only in the optional, skippable
+    # "How we worked this out" — invisible to a normal user, there for
+    # the curious. Master Plan §9/§15 Rule#6 reconciled with design-for-
+    # the-non-expert: the engine shows up as plain, specific value.
     _eng_n = len(result.hypotheses)
     _eng_m = len(result.joint_offdiag)
-    _eng_sub = (
-        T("result.engine.substrate_on")
-        if result.used_omytea_substrate
-        else T("result.engine.substrate_off")
+    _ranked = sorted(
+        result.hypotheses,
+        key=lambda _x: float(getattr(_x, "probability", 0.0) or 0.0),
+        reverse=True,
     )
-    st.markdown(
-        "<div style='display:flex;align-items:center;gap:8px;"
-        "margin:0 0 10px;font-size:13px;color:#c9cdd6;line-height:1.4;'>"
-        "<span style='color:#8b7cf0;font-size:16px;'>✦</span>"
-        f"<span>{T('result.engine.headline')}</span></div>",
-        unsafe_allow_html=True,
-    )
-    _ec1, _ec2, _ec3 = st.columns(3)
-    _ec1.metric(T("result.engine.m_branches"), _eng_n)
-    _ec2.metric(T("result.engine.m_links"), _eng_m)
-    _ec3.metric(T("result.engine.m_substrate"), _eng_sub)
+    if _ranked:
+        _top = _ranked[0]
+        _top_lab = _humanize_id(getattr(_top, "label", "") or "this path")
+        _top_p = float(getattr(_top, "probability", 0.0) or 0.0)
+        _top_p = 0.0 if _top_p < 0 else (1.0 if _top_p > 1 else _top_p)
+        _top_drv = getattr(_top, "key_uncertainty_driver", "") or ""
+        _hinge = (
+            T("result.lead.hinges").format(driver=_humanize_id(_top_drv))
+            if _top_drv else ""
+        )
+        _mapped = T("result.lead.mapped").format(n=_eng_n)
+        st.markdown(
+            "<div style='margin:2px 0 4px;font-size:15px;color:#f2f4f8;'>"
+            f"{_esc_html(T('result.lead.most_likely'))} "
+            f"<b>{_esc_html(_top_lab)}</b>"
+            f"<span style='color:#8b7cf0;'> · {_top_p*100:.0f}%</span></div>"
+            "<div style='margin:0 0 12px;font-size:13px;color:#9aa0aa;"
+            f"line-height:1.45;'>"
+            f"{_esc_html((_hinge + ' ' + _mapped).strip())}</div>",
+            unsafe_allow_html=True,
+        )
     with st.expander(T("result.engine.expander"), expanded=False):
         st.caption(T("result.engine.belief_state"))
-        for _h in sorted(
-            result.hypotheses,
-            key=lambda _x: float(getattr(_x, "probability", 0.0) or 0.0),
-            reverse=True,
-        ):
+        for _h in _ranked:
             _p = float(getattr(_h, "probability", 0.0) or 0.0)
             _p = 0.0 if _p < 0 else (1.0 if _p > 1 else _p)
             _lab = _humanize_id(getattr(_h, "label", "") or "future")
-            _bt = getattr(_h, "branch_type", "") or ""
-            _bt_html = (
-                f" <span style='color:#6b7280;font-size:11px;'>· "
-                f"{_esc_html(_bt)}</span>"
-                if _bt else ""
-            )
             st.markdown(
                 "<div style='margin:4px 0;'>"
                 "<div style='display:flex;justify-content:space-between;"
                 "font-size:12.5px;color:#d0d6e0;'>"
-                f"<span>{_esc_html(_lab)}{_bt_html}</span>"
+                f"<span>{_esc_html(_lab)}</span>"
                 f"<span style='color:#8b7cf0;font-weight:600;'>"
                 f"{_p*100:.0f}%</span></div>"
                 "<div style='height:5px;border-radius:3px;background:#1c1d22;"
@@ -4620,9 +4619,8 @@ def _render_result(
                 "</div></div>",
                 unsafe_allow_html=True,
             )
-        st.caption(
-            T("result.engine.compiled_note").format(n=_eng_n, m=_eng_m)
-        )
+        st.caption(T("result.engine.compiled_note").format(n=_eng_n, m=_eng_m))
+        st.caption(T("result.engine.tech_footnote"))
 
     # Iter #42 B1 — top-of-result CTA row. Founder round-4 audit:
     # "Add calendar / Copy ID / Score later" were buried at the
