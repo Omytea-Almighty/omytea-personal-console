@@ -168,6 +168,12 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_ES: "←  Volver al espacio de trabajo",
         LANG_FR: "←  Retour à l'espace de travail",
     },
+    "nav.settings_here": {
+        LANG_EN: "⚙  You're in Settings",
+        LANG_ZH: "⚙  已在设置页",
+        LANG_ES: "⚙  Ya estás en Ajustes",
+        LANG_FR: "⚙  Déjà dans les Paramètres",
+    },
     # -----  Account / sign-in (sidebar bottom-left)  -----
     "account.login": {
         LANG_EN: "Log in  /  Sign up",

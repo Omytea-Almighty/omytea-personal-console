@@ -1404,14 +1404,30 @@ def _render_account_area() -> None:
                     st.login()
 
     with gear_col:
+        # Iter #49 — every-button-works: the gear is the Settings entry,
+        # but it stays visible (sidebar) once you're ON Settings. A plain
+        # re-route to the same route would re-render the same page →
+        # reads as a dead no-op (same class as the old "New prediction"
+        # bug). So: highlight the gear as active when on Settings (mirrors
+        # the "More" items), and on an already-here click give visible
+        # feedback (toast + scroll-to-top) instead of a silent rerun.
+        _on_settings = (
+            st.session_state.get("_route", (ROUTE_WORKSPACE, None))[0]
+            == ROUTE_SETTINGS
+        )
         if st.button(
             "⚙",
             key="_acct_settings_gear",
             help=T("nav.settings"),
             use_container_width=True,
+            type="primary" if _on_settings else "secondary",
         ):
-            st.session_state._route = (ROUTE_SETTINGS, None)
-            st.rerun()
+            if _on_settings:
+                st.toast(T("nav.settings_here"))
+                _scroll_main_top()
+            else:
+                st.session_state._route = (ROUTE_SETTINGS, None)
+                st.rerun()
 
 
 # Pins the footer + account chip to the sidebar's bottom edge (Claude /
@@ -6488,6 +6504,41 @@ def _scroll_focus_composer() -> None:
           setTimeout(focusComposer, 200);
           setTimeout(focusComposer, 650);
           setTimeout(focusComposer, 1300);
+        })();
+        </script>
+        """,
+        height=0,
+    )
+
+
+def _scroll_main_top() -> None:
+    """Iter #49 — scroll the main content area to the top.
+
+    Visible feedback for a nav control clicked while the user is
+    already on its target page: a silent re-route to the same route
+    looks dead (the "New prediction" / Settings-gear no-op class the
+    founder flagged — every button must do something sensible + visible
+    in every state). Same `window.parent` injection idiom as
+    `_scroll_focus_composer`; worst case (no parent / cross-origin) is a
+    silent no-op.
+    """
+    components.html(
+        """
+        <script>
+        (function () {
+          function toTop() {
+            try {
+              var d = window.parent && window.parent.document;
+              if (!d) return;
+              var el = d.querySelector('section[data-testid="stMain"]')
+                || d.querySelector('[data-testid="stAppViewContainer"] section.main')
+                || d.querySelector('section.main');
+              if (el) el.scrollTo({top: 0, behavior: 'smooth'});
+              try { window.parent.scrollTo({top: 0, behavior: 'smooth'}); } catch (e) {}
+            } catch (e) {}
+          }
+          setTimeout(toTop, 60);
+          setTimeout(toTop, 300);
         })();
         </script>
         """,
