@@ -1559,6 +1559,16 @@ def render_sidebar() -> tuple[str, Any]:
                 st.session_state.pop(_k, None)
         # Keep the beta banner dismissed if they already saw it —
         # don't re-nag. (We do NOT reset _beta_banner_dismissed.)
+        # Iter #48 (founder principle: every button must do something
+        # visible + sensible in EVERY state). On cold start the
+        # composer is already fresh, so clearing alone changes
+        # nothing the eye can see → the button felt dead. Set a
+        # one-shot flag so the next render scrolls the decision input
+        # into view + focuses it. Now "New prediction" ALWAYS lands
+        # the user at the input ready to type, regardless of prior
+        # state (fresh composer, a result showing, or a secondary
+        # page).
+        st.session_state["_focus_composer"] = True
         route = (ROUTE_WORKSPACE, None)
         st.session_state._route = route
         st.rerun()
@@ -3053,6 +3063,13 @@ def render_new_prediction() -> None:
     else:
         _render_workspace_composer()
         _render_workspace_output()
+
+    # Iter #48 — "New prediction" visible-feedback: if the user just
+    # clicked it, scroll the decision input into view + focus it so
+    # the click always produces an obvious, sensible result (land at
+    # the input, ready to type). One-shot flag, consumed here.
+    if st.session_state.pop("_focus_composer", False):
+        _scroll_focus_composer()
 
 
 # ============================================================
@@ -6418,6 +6435,48 @@ def render_live_webcam(embedded: bool = False) -> None:
             "are enabled when the host has the parent Omytea package "
             "available."
         )
+
+
+def _scroll_focus_composer() -> None:
+    """Iter #48 — scroll the composer's decision input into view +
+    focus it, so the "New prediction" button always produces a
+    visible, sensible result (land at the input, ready to type) in
+    EVERY state — not a silent no-op on an already-fresh composer.
+
+    Injects a tiny client-side script (same window.parent pattern as
+    `_force_sidebar_open`). Targets the decision textarea by its
+    Streamlit key-class (`st-key-input_decision_options`) with a
+    generic stTextArea fallback. Re-fires on a short schedule because
+    the element mounts a beat after the rerun. Worst case (element
+    absent / cross-origin) is a silent no-op.
+    """
+    components.html(
+        """
+        <script>
+        (function () {
+          function focusComposer() {
+            try {
+              var d = window.parent && window.parent.document;
+              if (!d) return;
+              var el = d.querySelector(
+                '[class*="st-key-input_decision_options"] textarea')
+                || d.querySelector('[class*="st-key-input_decision_options"] input')
+                || d.querySelector('[data-testid="stTextArea"] textarea');
+              if (!el) return;
+              el.scrollIntoView({behavior: 'smooth', block: 'center'});
+              // Focus after the scroll settles so the caret lands
+              // in-view (and, on desktop, the user can type at once).
+              setTimeout(function () { try { el.focus(); } catch (e) {} }, 350);
+            } catch (e) {}
+          }
+          setTimeout(focusComposer, 200);
+          setTimeout(focusComposer, 650);
+          setTimeout(focusComposer, 1300);
+        })();
+        </script>
+        """,
+        height=0,
+    )
 
 
 def _force_sidebar_open() -> None:
