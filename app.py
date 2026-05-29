@@ -1573,7 +1573,8 @@ _TYPOGRAPHY_CSS = (
     # (NOT a bright accent button). Reads as a clean list, not cards.
     'section[data-testid="stSidebar"] [class*="st-key-_hist_"] button{'
     "text-align:left!important;justify-content:flex-start!important;"
-    "padding:6px 9px!important;min-height:0!important;height:auto!important;"
+    "padding:3px 9px!important;min-height:0!important;height:auto!important;"
+    "line-height:1.3!important;"
     "background:transparent!important;border:1px solid transparent!important;"
     "box-shadow:none!important;border-radius:7px!important;}"
     'section[data-testid="stSidebar"] [class*="st-key-_hist_"] button:hover{'
