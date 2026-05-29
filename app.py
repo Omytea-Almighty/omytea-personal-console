@@ -1583,12 +1583,14 @@ _TYPOGRAPHY_CSS = (
     'section[data-testid="stSidebar"] [class*="st-key-_hist_"] '
     'button[kind="primary"] p{color:#f2f4f8!important;}'
     # Tight row pitch (founder: 历史记录字间距太宽 — Claude's list is
-    # dense). The sidebar's vertical block sets gap:16px between rows
-    # (≈47px pitch for a 31px row); a negative top margin on each history
-    # element-container pulls consecutive rows to a ~5px gap = a tight,
-    # Claude-like list. Also tightens the date-header → first-row gap.
+    # dense). The sidebar's vertical block sets gap:16px between the
+    # history element-containers (rows are 31px tall → ~47px pitch, far
+    # too loose). A negative top margin on each row pulls the pitch down;
+    # LIVE-MEASURED in the running app: -13px → pitch 34px = a ~3px gap,
+    # a tight Claude/ChatGPT list (pitch = 47 − |margin|). Also tightens
+    # the date-header → first-row gap.
     'section[data-testid="stSidebar"] [class*="st-key-_hist_"]'
-    "{margin-top:-11px!important;}"
+    "{margin-top:-13px!important;}"
     # --- Suggestion chips: one line, smaller, ellipsis
     '[class*="st-key-_quick_chip_"] button{overflow:hidden!important;}'
     '[class*="st-key-_quick_chip_"] button '
