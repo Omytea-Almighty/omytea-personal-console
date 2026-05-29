@@ -1604,6 +1604,15 @@ _TYPOGRAPHY_CSS = (
     # their own top margins, so groups still breathe).
     'section[data-testid="stSidebar"] [class*="st-key-omy_hist_list"] '
     '[data-testid="stVerticalBlock"]{gap:4px!important;}'
+    # Option B (founder: 还松, after container approach didn't visibly
+    # take) — DECISIVE, geometry-guaranteed: set the gap on EVERY sidebar
+    # vertical block. The history rows are flex children of one of these
+    # blocks, so this selector cannot miss them (unlike the keyed-
+    # container rule above, whose class may not have deployed). 5px = a
+    # dense Claude-style sidebar; section headers keep their own margins
+    # so groups still read. Scoped to the sidebar — main area untouched.
+    'section[data-testid="stSidebar"] [data-testid="stVerticalBlock"]'
+    "{gap:5px!important;}"
     # --- Suggestion chips: one line, smaller, ellipsis
     '[class*="st-key-_quick_chip_"] button{overflow:hidden!important;}'
     '[class*="st-key-_quick_chip_"] button '
