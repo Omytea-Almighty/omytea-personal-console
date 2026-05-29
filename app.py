@@ -1556,18 +1556,32 @@ _MOBILE_SIDEBAR_CSS = (
 _TYPOGRAPHY_CSS = (
     "<style>"
     # --- History rail rows: one line, left-aligned, smaller, ellipsis
+    # Borderless Claude-style list rows (founder: 历史记录边框太重) — no
+    # box/hairline, transparent fill, subtle hover, quiet selected-fill
+    # (NOT a bright accent button). Reads as a clean list, not cards.
     'section[data-testid="stSidebar"] [class*="st-key-_hist_"] button{'
     "text-align:left!important;justify-content:flex-start!important;"
-    "padding-top:7px!important;padding-bottom:7px!important;"
-    "min-height:0!important;height:auto!important;}"
+    "padding:6px 9px!important;min-height:0!important;height:auto!important;"
+    "background:transparent!important;border:1px solid transparent!important;"
+    "box-shadow:none!important;border-radius:7px!important;}"
+    'section[data-testid="stSidebar"] [class*="st-key-_hist_"] button:hover{'
+    "background:rgba(255,255,255,0.055)!important;"
+    "border-color:transparent!important;}"
+    'section[data-testid="stSidebar"] [class*="st-key-_hist_"] '
+    'button[kind="primary"]{background:rgba(255,255,255,0.09)!important;'
+    "border-color:transparent!important;box-shadow:none!important;}"
+    'section[data-testid="stSidebar"] [class*="st-key-_hist_"] '
+    'button[kind="primary"]:hover{background:rgba(255,255,255,0.13)!important;}'
     'section[data-testid="stSidebar"] [class*="st-key-_hist_"] button '
     '[data-testid="stMarkdownContainer"]{width:100%!important;'
     "min-width:0!important;}"
     'section[data-testid="stSidebar"] [class*="st-key-_hist_"] button p{'
-    "font-size:12.5px!important;line-height:1.35!important;"
+    "font-size:12.5px!important;line-height:1.35!important;color:#aeb4be!important;"
     "white-space:nowrap!important;overflow:hidden!important;"
     "text-overflow:ellipsis!important;display:block!important;"
     "width:100%!important;text-align:left!important;margin:0!important;}"
+    'section[data-testid="stSidebar"] [class*="st-key-_hist_"] '
+    'button[kind="primary"] p{color:#f2f4f8!important;}'
     # --- Suggestion chips: one line, smaller, ellipsis
     '[class*="st-key-_quick_chip_"] button{overflow:hidden!important;}'
     '[class*="st-key-_quick_chip_"] button '
