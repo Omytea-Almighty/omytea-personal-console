@@ -1577,6 +1577,10 @@ _TYPOGRAPHY_CSS = (
     "white-space:nowrap!important;overflow:hidden!important;"
     "text-overflow:ellipsis!important;display:block!important;"
     "width:100%!important;margin:0!important;}"
+    # --- Widget field labels (composer "What decision…" / "A little
+    # about you" + Settings fields): Claude-dense, reliable testid
+    # (the legacy `.stTextArea label` selector can miss modern DOM).
+    '[data-testid="stWidgetLabel"] p{font-size:13px!important;}'
     "</style>"
 )
 
@@ -2763,8 +2767,22 @@ def _render_workspace_composer_body() -> None:
         and not st.session_state.get("_beta_banner_dismissed", False)
     ):
         with st.container(border=True):
-            st.markdown(f"**{T('beta.banner_title')}**")
-            st.markdown(T("beta.banner_body"))
+            # Iter #51 — smaller, denser banner (founder: 字体太大). Render
+            # as one HTML block at 13px/12px instead of default ~16px
+            # markdown; keep the **bold** safety span by converting it
+            # to <b>. The "Don't paste sensitive info" emphasis stays.
+            import re as _re
+            _b_body = _re.sub(
+                r"\*\*(.+?)\*\*", r"<b>\1</b>", T("beta.banner_body")
+            )
+            st.markdown(
+                "<div style='font-size:13px;font-weight:600;color:#e8eaed;"
+                "margin:0 0 3px;'>"
+                f"{_esc_html(T('beta.banner_title'))}</div>"
+                "<div style='font-size:12px;line-height:1.55;color:#aab0ba;'>"
+                f"{_b_body}</div>",
+                unsafe_allow_html=True,
+            )
             if st.button(
                 "Got it — continue",
                 key="_beta_banner_dismiss_btn",
