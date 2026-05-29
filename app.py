@@ -1293,7 +1293,10 @@ def _render_history_rail(route: tuple[str, Any]) -> tuple[str, Any]:
         labels = label_map.get(rec.prediction_id, [])
         label_suffix = ("  · " + " ".join(f"#{x}" for x in labels[:2])
                         if labels else "")
-        if st.sidebar.button(
+        # `st.button` (not `st.sidebar.button`) so the row lands inside
+        # whatever container context is active — here the keyed
+        # `omy_hist_list` container whose tight gap controls row pitch.
+        if st.button(
             _history_item_label(rec) + label_suffix,
             key=f"_hist_{rec.prediction_id}",
             use_container_width=True,
@@ -1304,53 +1307,62 @@ def _render_history_rail(route: tuple[str, Any]) -> tuple[str, Any]:
             return new_route
         return route
 
-    if categories:
-        # ---- Category-grouped tree ----
-        cat_by_id = {c.category_id: c for c in categories}
-        for cat in categories:
-            members = [
-                p for p in predictions if p.category_id == cat.category_id
-            ]
-            st.sidebar.markdown(
-                f"<div style='color:#8a8f98;font-size:10.5px;"
-                f"letter-spacing:0.04em;margin:12px 0 2px;"
-                f"font-weight:600;'>{_esc_html(cat.name)} "
-                f"<span style='color:#62666d;font-weight:400;'>"
-                f"({len(members)})</span></div>",
-                unsafe_allow_html=True,
-            )
-            for rec in members:
-                route = _emit_item(rec)
-        # uncategorized bucket
-        loose = [
-            p for p in predictions
-            if not p.category_id or p.category_id not in cat_by_id
-        ]
-        if loose:
-            st.sidebar.markdown(
-                f"<div style='color:#62666d;font-size:10.5px;"
-                f"letter-spacing:0.04em;margin:12px 0 2px;'>"
-                f"{T('history.uncategorized')} "
-                f"<span style='color:#62666d;'>({len(loose)})</span>"
-                f"</div>",
-                unsafe_allow_html=True,
-            )
-            for rec in loose:
-                route = _emit_item(rec)
-    else:
-        # ---- Flat date-grouped list (no categories created yet) ----
-        last_bucket = None
-        for rec in predictions:
-            bucket = _date_bucket(rec.created_at)
-            if bucket != last_bucket:
-                st.sidebar.markdown(
-                    f"<div style='color:#62666d;font-size:10px;"
-                    f"letter-spacing:0.04em;margin:10px 0 2px;'>"
-                    f"{bucket}</div>",
+    # Iter #51 — the row list lives in its OWN keyed container so its
+    # pitch is set by THIS container's gap, independent of the sidebar's
+    # global 16px flex gap and of CSS load order (the per-row negative-
+    # margin approach was unreliable on the deployed build). `_TYPOGRAPHY
+    # _CSS` sets `st-key-omy_hist_list` inner stVerticalBlock gap → tight
+    # Claude-style list. Headers go in via `st.markdown` (not
+    # `st.sidebar.markdown`) so they share the container context.
+    with st.sidebar.container(key="omy_hist_list"):
+        if categories:
+            # ---- Category-grouped tree ----
+            cat_by_id = {c.category_id: c for c in categories}
+            for cat in categories:
+                members = [
+                    p for p in predictions
+                    if p.category_id == cat.category_id
+                ]
+                st.markdown(
+                    f"<div style='color:#8a8f98;font-size:10.5px;"
+                    f"letter-spacing:0.04em;margin:12px 0 2px;"
+                    f"font-weight:600;'>{_esc_html(cat.name)} "
+                    f"<span style='color:#62666d;font-weight:400;'>"
+                    f"({len(members)})</span></div>",
                     unsafe_allow_html=True,
                 )
-                last_bucket = bucket
-            route = _emit_item(rec)
+                for rec in members:
+                    route = _emit_item(rec)
+            # uncategorized bucket
+            loose = [
+                p for p in predictions
+                if not p.category_id or p.category_id not in cat_by_id
+            ]
+            if loose:
+                st.markdown(
+                    f"<div style='color:#62666d;font-size:10.5px;"
+                    f"letter-spacing:0.04em;margin:12px 0 2px;'>"
+                    f"{T('history.uncategorized')} "
+                    f"<span style='color:#62666d;'>({len(loose)})</span>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+                for rec in loose:
+                    route = _emit_item(rec)
+        else:
+            # ---- Flat date-grouped list (no categories created yet) ----
+            last_bucket = None
+            for rec in predictions:
+                bucket = _date_bucket(rec.created_at)
+                if bucket != last_bucket:
+                    st.markdown(
+                        f"<div style='color:#62666d;font-size:10px;"
+                        f"letter-spacing:0.04em;margin:10px 0 2px;'>"
+                        f"{bucket}</div>",
+                        unsafe_allow_html=True,
+                    )
+                    last_bucket = bucket
+                route = _emit_item(rec)
 
     return route
 
@@ -1583,14 +1595,15 @@ _TYPOGRAPHY_CSS = (
     'section[data-testid="stSidebar"] [class*="st-key-_hist_"] '
     'button[kind="primary"] p{color:#f2f4f8!important;}'
     # Tight row pitch (founder: 历史记录字间距太宽 — Claude's list is
-    # dense). The sidebar's vertical block sets gap:16px between the
-    # history element-containers (rows are 31px tall → ~47px pitch, far
-    # too loose). A negative top margin on each row pulls the pitch down;
-    # LIVE-MEASURED in the running app: -13px → pitch 34px = a ~3px gap,
-    # a tight Claude/ChatGPT list (pitch = 47 − |margin|). Also tightens
-    # the date-header → first-row gap.
-    'section[data-testid="stSidebar"] [class*="st-key-_hist_"]'
-    "{margin-top:-13px!important;}"
+    # dense). DETERMINISTIC approach: the history rows render inside a
+    # dedicated keyed container `omy_hist_list`; set the gap on THAT
+    # container's inner vertical block directly. Unlike the per-row
+    # negative margin (which didn't reliably take on the deployed build),
+    # a `gap` on the actual flex container is geometric and load-order-
+    # independent. 4px = a tight Claude/ChatGPT list (date headers keep
+    # their own top margins, so groups still breathe).
+    'section[data-testid="stSidebar"] [class*="st-key-omy_hist_list"] '
+    '[data-testid="stVerticalBlock"]{gap:4px!important;}'
     # --- Suggestion chips: one line, smaller, ellipsis
     '[class*="st-key-_quick_chip_"] button{overflow:hidden!important;}'
     '[class*="st-key-_quick_chip_"] button '
