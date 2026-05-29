@@ -1542,6 +1542,45 @@ _MOBILE_SIDEBAR_CSS = (
 )
 
 
+# Iter #51 — typography. Founder: "字体太大了 + 一行装不下别换第二行"
+# (fonts too big; labels that don't fit must NOT wrap to a 2nd line).
+# Claude/ChatGPT pattern: small dense fonts, and an overflowing label
+# truncates to ONE line with an ellipsis — never two lines. Dedicated
+# small <style> so the rules reliably reach the CSSOM (bug-034: layout
+# CSS buried in the 800-line global block was silently dropped).
+# Targets the two named offenders by Streamlit key-class: the sidebar
+# history rows (st-key-_hist_) and the suggestion chips
+# (st-key-_quick_chip_). `min-width:0` on the flex child + `width:100%`
+# on the <p> are what make text-overflow:ellipsis actually fire inside
+# Streamlit's flex button.
+_TYPOGRAPHY_CSS = (
+    "<style>"
+    # --- History rail rows: one line, left-aligned, smaller, ellipsis
+    'section[data-testid="stSidebar"] [class*="st-key-_hist_"] button{'
+    "text-align:left!important;justify-content:flex-start!important;"
+    "padding-top:7px!important;padding-bottom:7px!important;"
+    "min-height:0!important;height:auto!important;}"
+    'section[data-testid="stSidebar"] [class*="st-key-_hist_"] button '
+    '[data-testid="stMarkdownContainer"]{width:100%!important;'
+    "min-width:0!important;}"
+    'section[data-testid="stSidebar"] [class*="st-key-_hist_"] button p{'
+    "font-size:12.5px!important;line-height:1.35!important;"
+    "white-space:nowrap!important;overflow:hidden!important;"
+    "text-overflow:ellipsis!important;display:block!important;"
+    "width:100%!important;text-align:left!important;margin:0!important;}"
+    # --- Suggestion chips: one line, smaller, ellipsis
+    '[class*="st-key-_quick_chip_"] button{overflow:hidden!important;}'
+    '[class*="st-key-_quick_chip_"] button '
+    '[data-testid="stMarkdownContainer"]{width:100%!important;'
+    "min-width:0!important;}"
+    '[class*="st-key-_quick_chip_"] button p{font-size:13px!important;'
+    "white-space:nowrap!important;overflow:hidden!important;"
+    "text-overflow:ellipsis!important;display:block!important;"
+    "width:100%!important;margin:0!important;}"
+    "</style>"
+)
+
+
 def render_sidebar() -> tuple[str, Any]:
     """Sidebar — ChatGPT-shaped navigation: brand → New prediction →
     a date-grouped history of past predictions → a transitional "More"
@@ -1569,6 +1608,9 @@ def render_sidebar() -> tuple[str, Any]:
     # @media block had been buried in the giant global style and
     # was silently dropped — see iter 22 cerebrum learning).
     st.markdown(_MOBILE_SIDEBAR_CSS, unsafe_allow_html=True)
+    # Iter 51 — single-line ellipsis + smaller fonts for history rows
+    # and chips (founder: too big + must not wrap to a 2nd line).
+    st.markdown(_TYPOGRAPHY_CSS, unsafe_allow_html=True)
 
     # ---- Brand wordmark ----
     # A precise wordmark with a small accent dot as the brand mark
