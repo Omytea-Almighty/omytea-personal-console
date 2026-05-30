@@ -2542,6 +2542,16 @@ _WORKSPACE_CHROME_CSS = (
     "box-shadow:none!important;}"
     ".block-container{padding-top:0.6rem!important;"
     "padding-bottom:0.3rem!important;}"
+    # Iter #52 — genuinely SHRINK the cold-start preview heatmap (founder:
+    # don't truncate it). The full chart renders inside the keyed
+    # `omy_idle_preview` container; a CSS scale transform shrinks the
+    # WHOLE component proportionally (grid + axis + legend all stay
+    # visible, just smaller), and the wrapper is clipped to the scaled
+    # height so there's no empty gap below before the input.
+    '[class*="st-key-omy_idle_preview"]{height:250px!important;'
+    "overflow:hidden!important;}"
+    '[class*="st-key-omy_idle_preview"] iframe{'
+    "transform:scale(0.62)!important;transform-origin:top center!important;}"
     "</style>"
 )
 
@@ -2690,7 +2700,7 @@ def _render_workspace_output() -> None:
         and not _live_video_enabled()
         and not _ow_lens
     )
-    _ow_pane_h = 248 if _ow_compact else _OUTPUT_PANE_HEIGHT
+    _ow_pane_h = 300 if _ow_compact else _OUTPUT_PANE_HEIGHT
     with st.container(height=_ow_pane_h, border=False):
         # Acceptance #65 — live video on: the output surface becomes the
         # v10 app embedded whole. Checked before the 玄学 view toggle and
@@ -2742,10 +2752,18 @@ def _render_workspace_output() -> None:
             _step_label(
                 T("workspace.step2.title"), T("workspace.step2.sub_idle")
             )
-            _render_probability_heatmap(
-                [], horizon_label="",
-                height=(196 if _ow_compact else None),
-            )
+            if _ow_compact:
+                # Iter #52 (founder caught it): passing a smaller height
+                # to the heatmap CLIPS it (truncates legend/axis), it does
+                # NOT shrink the chart. To genuinely shrink it, render the
+                # FULL chart and CSS-scale the whole component down (see
+                # the `st-key-omy_idle_preview` transform in
+                # _WORKSPACE_CHROME_CSS) — everything stays visible, just
+                # proportionally smaller, so the bottom input is in view.
+                with st.container(key="omy_idle_preview"):
+                    _render_probability_heatmap([], horizon_label="")
+            else:
+                _render_probability_heatmap([], horizon_label="")
             return
 
         # A prediction exists — render the full result here at the top.
