@@ -2552,6 +2552,14 @@ _WORKSPACE_CHROME_CSS = (
     "overflow:hidden!important;}"
     '[class*="st-key-omy_idle_preview"] iframe{'
     "transform:scale(0.62)!important;transform-origin:top center!important;}"
+    # Iter #52 (founder) — distinct "input tray" so the user can tell the
+    # composer is a SEPARATE, independently-scrollable zone (not part of
+    # the output page above): subtle raised fill, full hairline border,
+    # rounded corners, and a soft top shadow that reads as "docked".
+    '[class*="st-key-omy_composer_pane"]{'
+    "background:#121317!important;border:1px solid #282a30!important;"
+    "border-radius:14px!important;padding:10px 16px 4px!important;"
+    "box-shadow:0 -5px 22px rgba(0,0,0,0.32)!important;margin-top:6px!important;}"
     "</style>"
 )
 
@@ -2792,7 +2800,14 @@ def _render_workspace_composer() -> None:
     应该停在结果、证据、回访提醒". The expander lets users tweak
     inputs and re-run when they want — just not by default.
     """
-    with st.container(height=_COMPOSER_PANE_HEIGHT, border=False):
+    # Iter #52 (founder): the input region needs a DISTINCT boundary from
+    # the output above — otherwise a user can't tell it's a separate,
+    # independently-scrollable zone. The `omy_composer_pane` key lets
+    # _WORKSPACE_CHROME_CSS give it a docked "input tray" look (top
+    # divider + subtle raised fill + rounded top).
+    with st.container(
+        height=_COMPOSER_PANE_HEIGHT, border=False, key="omy_composer_pane"
+    ):
         if st.session_state.get("current_prediction") is not None:
             with st.expander(
                 T("composer.edit_and_rerun"), expanded=False,
