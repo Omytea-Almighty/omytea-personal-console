@@ -2567,6 +2567,16 @@ _WORKSPACE_CHROME_CSS = (
     "left:18px;right:18px;top:0;height:2px;border-radius:2px;"
     "background:linear-gradient(90deg,transparent,#6b8fff66,transparent);}"
     '[class*="st-key-omy_composer_pane"]{position:relative!important;}'
+    # Float the "Advanced options" wrapper to the BOTTOM of the composer
+    # flex column (after the input form) — the composer body is a flex
+    # column, so a high `order` on this one item moves it last visually
+    # while leaving the Python execution (and the lens/video vars) intact.
+    # `order` must sit on the FLEX ITEM — the composer pane's direct child
+    # that CONTAINS the wrap (an stLayoutWrapper/stElementContainer,
+    # depending on Streamlit version), not the inner keyed wrapper. :has()
+    # targets it robustly across versions.
+    '[class*="st-key-omy_composer_pane"] > div:has([class*="st-key-omy_advanced_wrap"])'
+    "{order:99!important;margin-top:8px!important;}"
     "</style>"
 )
 
@@ -3056,7 +3066,17 @@ def _render_workspace_composer_body() -> None:
     # are hidden behind `?dev=1`. The expander still exists so
     # the lens toggle stays one click away.
     _show_research = _show_research_features()
-    with st.expander("Advanced options", expanded=_adv_open):
+    # Iter #52 (founder: 继续优化) — "Advanced options" used to sit wedged
+    # BETWEEN the example chips and the decision input, scrambling the
+    # read order. Wrap it in a keyed container and float it to the BOTTOM
+    # of the composer column via CSS `order` (see _WORKSPACE_CHROME_CSS) —
+    # this moves it visually below the input WITHOUT touching the lens /
+    # live-video / attach variable flow (the toggles still compute here,
+    # in place; only the on-screen position changes). Order now reads:
+    # chips → decision input → submit → Advanced options.
+    with st.container(key="omy_advanced_wrap"), st.expander(
+        "Advanced options", expanded=_adv_open
+    ):
         st.session_state["_composer_advanced_seen"] = True
         if _show_research:
             mod_attach, mod_live, mod_lens, _mod_spacer = st.columns(
