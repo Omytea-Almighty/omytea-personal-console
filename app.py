@@ -2557,9 +2557,16 @@ _WORKSPACE_CHROME_CSS = (
     # the output page above): subtle raised fill, full hairline border,
     # rounded corners, and a soft top shadow that reads as "docked".
     '[class*="st-key-omy_composer_pane"]{'
-    "background:#121317!important;border:1px solid #282a30!important;"
-    "border-radius:14px!important;padding:10px 16px 4px!important;"
-    "box-shadow:0 -5px 22px rgba(0,0,0,0.32)!important;margin-top:6px!important;}"
+    "background:#15171c!important;border:1px solid #3a3d46!important;"
+    "border-radius:16px!important;padding:14px 16px 6px!important;"
+    "box-shadow:0 -12px 34px rgba(0,0,0,0.5)!important;"
+    "margin-top:20px!important;}"
+    # A faint accent strip on the tray's top edge + a small label make the
+    # "this is the input zone, separate & scrollable" reading unmistakable.
+    '[class*="st-key-omy_composer_pane"]::before{content:"";position:absolute;'
+    "left:18px;right:18px;top:0;height:2px;border-radius:2px;"
+    "background:linear-gradient(90deg,transparent,#6b8fff66,transparent);}"
+    '[class*="st-key-omy_composer_pane"]{position:relative!important;}'
     "</style>"
 )
 
