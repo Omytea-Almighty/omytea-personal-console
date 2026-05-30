@@ -2677,7 +2677,21 @@ def _render_workspace_output() -> None:
     # Requirement C — own fixed-height scroll pane. The heatmap (the
     # centerpiece) stays visually stable while the user works in the
     # composer pane below.
-    with st.container(height=_OUTPUT_PANE_HEIGHT, border=False):
+    # Iter #52 (founder): on cold-start (no prediction / no live / no
+    # lens) render this region COMPACT so the input composer beneath it
+    # is visible without scrolling — the Claude-style "input always in
+    # view at the bottom" pattern. A real prediction / live / lens view
+    # keeps the full height (the heatmap is the centerpiece then).
+    _ow_lens = bool(st.session_state.get("_xuanxue_lens_on")) or bool(
+        st.session_state.get("_composer_lens_toggle")
+    )
+    _ow_compact = (
+        st.session_state.get("current_prediction") is None
+        and not _live_video_enabled()
+        and not _ow_lens
+    )
+    _ow_pane_h = 248 if _ow_compact else _OUTPUT_PANE_HEIGHT
+    with st.container(height=_ow_pane_h, border=False):
         # Acceptance #65 — live video on: the output surface becomes the
         # v10 app embedded whole. Checked before the 玄学 view toggle and
         # before the prediction/idle heatmap: an active live-video
@@ -2728,7 +2742,10 @@ def _render_workspace_output() -> None:
             _step_label(
                 T("workspace.step2.title"), T("workspace.step2.sub_idle")
             )
-            _render_probability_heatmap([], horizon_label="")
+            _render_probability_heatmap(
+                [], horizon_label="",
+                height=(196 if _ow_compact else None),
+            )
             return
 
         # A prediction exists — render the full result here at the top.
@@ -4607,6 +4624,7 @@ def _render_coherence_evolution(
 def _render_probability_heatmap(
     hypotheses: list[Any],
     horizon_label: str = "",
+    height: int | None = None,
 ) -> None:
     """Quantum probability-mass heatmap — interactive v10 component.
 
@@ -4645,8 +4663,9 @@ def _render_probability_heatmap(
     # Output-only: the default heatmap carries no camera/video input —
     # that modality lives in the composer's "Live video" toggle, so the
     # output region holds output only.
+    _hkw = {} if height is None else {"height": height}
     render_heatmap_camera_component(
-        payload, horizon_label=horizon_label, show_camera=False,
+        payload, horizon_label=horizon_label, show_camera=False, **_hkw,
     )
 
 
