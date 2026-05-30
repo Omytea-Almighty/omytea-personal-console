@@ -1248,10 +1248,40 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         # heatmap below carries the meaning, the title should just
         # name the surface. Replaced with the shortest concrete label
         # that fits next to the heatmap without instructing the user.
-        LANG_EN: "Your futures",
-        LANG_ZH: "你的未来",
-        LANG_ES: "Tus futuros",
-        LANG_FR: "Vos futurs",
+        # Iter #52 — blanked: the region is now headed by the step-②
+        # label ("② Your possible futures") on the idle preview and by
+        # the plain "Most likely: …" takeaway on the result page, so this
+        # baked-in component title was a duplicate heading. Empty string
+        # → the .sect-label div carries only its margin (no visible bar).
+        LANG_EN: "",
+        LANG_ZH: "",
+        LANG_ES: "",
+        LANG_FR: "",
+    },
+    # -----  Numbered step narrative (legible workspace logic)  -----
+    "workspace.step1.title": {
+        LANG_EN: "①  What are you deciding between?",
+        LANG_ZH: "①  你在纠结什么决定？",
+        LANG_ES: "①  ¿Entre qué estás decidiendo?",
+        LANG_FR: "①  Entre quoi hésitez-vous ?",
+    },
+    "workspace.step1.sub": {
+        LANG_EN: "Write it below in a sentence — or tap an example to try.",
+        LANG_ZH: "在下面一句话写下来，或点一个例子快速试试。",
+        LANG_ES: "Escríbelo abajo en una frase — o toca un ejemplo.",
+        LANG_FR: "Écrivez-le en une phrase ci-dessous — ou touchez un exemple.",
+    },
+    "workspace.step2.title": {
+        LANG_EN: "②  Your possible futures",
+        LANG_ZH: "②  你的多重未来",
+        LANG_ES: "②  Tus futuros posibles",
+        LANG_FR: "②  Vos futurs possibles",
+    },
+    "workspace.step2.sub_idle": {
+        LANG_EN: "Fill in ① above and hit “See my futures” — each path's odds appear here.",
+        LANG_ZH: "填好上面 ①、点「看看我的未来」，每条路有多大可能就会画在这里。",
+        LANG_ES: "Completa ① arriba y pulsa “Ver mis futuros” — aquí aparecen las probabilidades.",
+        LANG_FR: "Remplissez ① ci-dessus et cliquez “Voir mes futurs” — les probabilités s'affichent ici.",
     },
     # -----  Output-region view toggle (OMY-V415 #60 D)  -----
     "output.view.quantum": {

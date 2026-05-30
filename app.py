@@ -2623,6 +2623,29 @@ def _render_output_view_toggle() -> str:
     return "xuanxue" if choice == xuanxue_label else "quantum"
 
 
+def _step_label(title: str, sub: str = "") -> None:
+    """A numbered step heading (①②③) that gives the workspace a legible
+    top-to-bottom narrative.
+
+    Founder feedback (2026-05-29): the page reads as a flat wall of
+    panels — a first-time user (even the founder) can't tell what to do
+    first or what produced what. The fix is NOT removing content; it's
+    making the LOGIC visible: a clear "do this → then this" spine. This
+    renders a small step title + a one-line plain-language hint.
+    """
+    sub_html = (
+        f"<div style='color:#8a8f98;font-size:12px;line-height:1.45;"
+        f"margin-top:2px;'>{_esc_html(sub)}</div>"
+        if sub else ""
+    )
+    st.markdown(
+        f"<div style='margin:2px 0 9px;'>"
+        f"<div style='color:#e8eaed;font-size:14px;font-weight:600;"
+        f"letter-spacing:-0.01em;'>{_esc_html(title)}</div>{sub_html}</div>",
+        unsafe_allow_html=True,
+    )
+
+
 def _render_workspace_output() -> None:
     """Top region of the chatbox workspace — the persistent output.
 
@@ -2699,6 +2722,12 @@ def _render_workspace_output() -> None:
             # renders its own uniform grid + idle caption (i18n
             # heatmap.idle_note), and a video dropped here will drive
             # the heatmap live even before any prediction has run.
+            # Iter #52 — step-② heading frames this preview as "what
+            # you'll GET after ①", so a first-timer reads the chart as
+            # a result-to-come, not a mysterious standalone widget.
+            _step_label(
+                T("workspace.step2.title"), T("workspace.step2.sub_idle")
+            )
             _render_probability_heatmap([], horizon_label="")
             return
 
@@ -2848,13 +2877,13 @@ def _render_workspace_composer_body() -> None:
         st.session_state.get("current_prediction") is None
         and not st.session_state.get("input_decision_options", "").strip()
     ):
-        # Iter #8: "TRY" eyebrow above the chips dropped — the chips
-        # themselves are the call to action; an instruction label
-        # above them is exactly the "tell the user with text instead
-        # of design" pattern the founder rejected. A small top margin
-        # gives the chip row breathing room without a label.
-        st.markdown(
-            "<div style='height:4px;'></div>", unsafe_allow_html=True
+        # Iter #52 — step-① narrative heading (founder: the page needs
+        # a legible "what do I do first" logic). Tells a first-timer
+        # exactly where to start AND frames the chips below as examples
+        # FOR this input. (Earlier the chips floated label-less; a
+        # stumbled-in user didn't know they could type their own.)
+        _step_label(
+            T("workspace.step1.title"), T("workspace.step1.sub")
         )
         _chip_specs = (
             (
