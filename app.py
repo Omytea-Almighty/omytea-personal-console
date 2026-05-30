@@ -2877,13 +2877,12 @@ def _render_workspace_composer_body() -> None:
         st.session_state.get("current_prediction") is None
         and not st.session_state.get("input_decision_options", "").strip()
     ):
-        # Iter #52 — step-① narrative heading (founder: the page needs
-        # a legible "what do I do first" logic). Tells a first-timer
-        # exactly where to start AND frames the chips below as examples
-        # FOR this input. (Earlier the chips floated label-less; a
-        # stumbled-in user didn't know they could type their own.)
-        _step_label(
-            T("workspace.step1.title"), T("workspace.step1.sub")
+        # Iter #52 — no step number / heading here (founder: 序号没必要).
+        # The chips are self-explanatory examples and the decision
+        # field's own label below names the input; a small top margin
+        # gives the chip row breathing room without a redundant heading.
+        st.markdown(
+            "<div style='height:2px;'></div>", unsafe_allow_html=True
         )
         _chip_specs = (
             (
@@ -3278,13 +3277,16 @@ def render_new_prediction() -> None:
     #     heatmap + CTA row), composer below for re-runs. Matches the
     #     user's mental model: empty → input-first; filled → result-
     #     first.
-    _has_prediction = st.session_state.get("current_prediction") is not None
-    if _has_prediction:
-        _render_workspace_output()
-        _render_workspace_composer()
-    else:
-        _render_workspace_composer()
-        _render_workspace_output()
+    # Iter #52 (founder): input belongs at the BOTTOM — the universal
+    # chat-tool convention (Claude / ChatGPT / WeChat: content area on
+    # top, the input bar pinned below). So ALWAYS render output on top
+    # and the composer beneath, cold-start included. (This supersedes
+    # the iter #47 cold-start flip that put the composer on top to aid
+    # discovery; the output's "type a decision below" hint + the always-
+    # visible bottom composer pane solve discovery without breaking the
+    # chat mental model.)
+    _render_workspace_output()
+    _render_workspace_composer()
 
     # Iter #48 — "New prediction" visible-feedback: if the user just
     # clicked it, scroll the decision input into view + focus it so

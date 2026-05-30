@@ -1272,16 +1272,16 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_FR: "Écrivez-le en une phrase ci-dessous — ou touchez un exemple.",
     },
     "workspace.step2.title": {
-        LANG_EN: "②  Your possible futures",
-        LANG_ZH: "②  你的多重未来",
-        LANG_ES: "②  Tus futuros posibles",
-        LANG_FR: "②  Vos futurs possibles",
+        LANG_EN: "Your possible futures",
+        LANG_ZH: "你的多重未来",
+        LANG_ES: "Tus futuros posibles",
+        LANG_FR: "Vos futurs possibles",
     },
     "workspace.step2.sub_idle": {
-        LANG_EN: "Fill in ① above and hit “See my futures” — each path's odds appear here.",
-        LANG_ZH: "填好上面 ①、点「看看我的未来」，每条路有多大可能就会画在这里。",
-        LANG_ES: "Completa ① arriba y pulsa “Ver mis futuros” — aquí aparecen las probabilidades.",
-        LANG_FR: "Remplissez ① ci-dessus et cliquez “Voir mes futurs” — les probabilités s'affichent ici.",
+        LANG_EN: "Type a decision below — each path's odds appear here.",
+        LANG_ZH: "在下面写下你的决定，每条路有多大可能就会画在这里。",
+        LANG_ES: "Escribe una decisión abajo — aquí aparecen las probabilidades.",
+        LANG_FR: "Saisissez une décision ci-dessous — les probabilités s'affichent ici.",
     },
     # -----  Output-region view toggle (OMY-V415 #60 D)  -----
     "output.view.quantum": {
