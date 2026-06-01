@@ -1642,26 +1642,45 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
             "prédiction si la base de données est effacée."
         ),
     },
+    "result.save.zone_title": {
+        LANG_EN: "Save this, or come back when you know the outcome",
+        LANG_ZH: "保存，或在知道结果后回来打分",
+        LANG_ES: "Guárdalo o vuelve cuando sepas el resultado",
+        LANG_FR: "Enregistrez-le ou revenez quand vous connaîtrez le résultat",
+    },
+    "result.save.zone_sub": {
+        LANG_EN: "Keep a copy, drop a reminder in your calendar, or score it once the outcome is in.",
+        LANG_ZH: "留个副本、在日历里设个提醒，或在结果出来后给它打分。",
+        LANG_ES: "Guarda una copia, añade un recordatorio al calendario o puntúalo cuando llegue el resultado.",
+        LANG_FR: "Gardez une copie, ajoutez un rappel à votre agenda, ou évaluez-le une fois le résultat connu.",
+    },
+    "result.save.id_label": {
+        LANG_EN: "Your prediction ID — keep this to score it later (hover to copy):",
+        LANG_ZH: "你的预测 ID — 留着它以便日后打分（悬停复制）：",
+        LANG_ES: "Tu ID de predicción — guárdalo para puntuarlo después (pasa el cursor para copiar):",
+        LANG_FR: "Votre ID de prédiction — gardez-le pour l'évaluer plus tard (survolez pour copier) :",
+    },
     "result.review_anchor": {
-        # Slimmed bottom anchor that replaces the verbose iter-23
-        # st.info card now that the CTAs are at the top.
+        # Slimmed bottom anchor. Iter #53 — the calendar download moved
+        # from the top to the "save / come back later" zone below the
+        # chart, so this pointer now says "save section above".
         LANG_EN: (
             "Reminder set for {review_date} (about {horizon} out). "
-            "Calendar download is at the top of this result."
+            "The calendar download is in the save section above."
         ),
         LANG_ZH: (
             "提醒已设为 {review_date}（约 {horizon} 后）。"
-            "日历下载在结果页顶部。"
+            "日历下载在上方的保存区。"
         ),
         LANG_ES: (
             "Recordatorio para {review_date} (a unos {horizon} "
-            "vista). La descarga del calendario está al inicio del "
-            "resultado."
+            "vista). La descarga del calendario está en la sección "
+            "de guardado, más arriba."
         ),
         LANG_FR: (
             "Rappel prévu pour {review_date} (environ {horizon} "
-            "plus tard). Le téléchargement calendrier est en haut "
-            "du résultat."
+            "plus tard). Le téléchargement du calendrier est dans "
+            "la section d'enregistrement, plus haut."
         ),
     },
     # Iter #46 — restore-from-snapshot widget on Measurement

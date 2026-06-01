@@ -4805,19 +4805,38 @@ def _render_result(
             if _top_drv else ""
         )
         _mapped = T("result.lead.mapped").format(n=_eng_n)
+        # Iter #53 (founder: result page = same clear logic) — the answer
+        # now reads as a BOUNDED hero card so a non-expert instantly sees
+        # "this is my result" (the 界限分明 / distinct-boundary principle
+        # applied to output, same as the cold-start composer pane). Quiet
+        # uppercase eyebrow ("Most likely"), big path + odds, plain sub.
+        _eyebrow = T("result.lead.most_likely").rstrip(":：").strip()
         st.markdown(
-            "<div style='margin:2px 0 4px;font-size:15px;color:#f2f4f8;'>"
-            f"{_esc_html(T('result.lead.most_likely'))} "
-            f"<b>{_esc_html(_top_lab)}</b>"
-            f"<span style='color:#8b7cf0;'> · {_top_p*100:.0f}%</span></div>"
-            "<div style='margin:0 0 12px;font-size:13px;color:#9aa0aa;"
-            f"line-height:1.45;'>"
-            f"{_esc_html((_hinge + ' ' + _mapped).strip())}</div>",
+            "<div style='margin:2px 0 14px;padding:15px 18px 14px;"
+            "background:linear-gradient(135deg,rgba(107,143,255,0.10),"
+            "rgba(180,126,255,0.055));border:1px solid "
+            "rgba(139,124,240,0.30);border-radius:14px;'>"
+            "<div style='font-size:10.5px;letter-spacing:0.16em;"
+            "text-transform:uppercase;color:#8a8f98;margin-bottom:6px;'>"
+            f"{_esc_html(_eyebrow)}</div>"
+            "<div style='font-size:18px;color:#f2f4f8;font-weight:600;"
+            "line-height:1.28;'>"
+            f"{_esc_html(_top_lab)}"
+            "<span style='color:#a99cff;font-weight:700;'> · "
+            f"{_top_p*100:.0f}%</span></div>"
+            "<div style='margin:8px 0 0;font-size:13px;color:#aab0ba;"
+            "line-height:1.5;'>"
+            f"{_esc_html((_hinge + ' ' + _mapped).strip())}</div>"
+            "</div>",
             unsafe_allow_html=True,
         )
-    # The prediction ID, demoted below the answer (save it to revisit /
-    # score later; also available via the Copy-ID CTA below).
-    st.caption(f"`{prediction_id}` — your prediction ID")
+    # Iter #53 — the raw prediction-ID UUID used to print HERE, right
+    # under the answer ("`<uuid>` — your prediction ID"). For a
+    # non-technical reader a 36-char hex string is pure intimidating
+    # noise next to their answer. The ID is functional (you need it to
+    # score later) so it is NOT deleted — it now lives in the labeled
+    # "save / come back later" zone below the chart, with a plain-language
+    # caption explaining what it's for.
     with st.expander(T("result.engine.expander"), expanded=False):
         st.caption(T("result.engine.belief_state"))
         for _h in _ranked:
@@ -4893,48 +4912,67 @@ def _render_result(
         _cta_snapshot, indent=2, ensure_ascii=False, default=str,
     ).encode("utf-8")
 
-    _cta_ics_dl, _cta_copy_id, _cta_score_later, _cta_snapshot_dl = (
-        st.columns([1.3, 1.6, 1.3, 1.3])
-    )
-    with _cta_ics_dl:
-        st.download_button(
-            label=T("result.cta.add_calendar"),
-            data=_cta_ics_blob,
-            file_name=f"omytea-review-{prediction_id[:8]}.ics",
-            mime="text/calendar",
-            key=f"_top_ics_dl_{prediction_id}",
-            use_container_width=True,
-            help=T("result.cta.add_calendar.hint"),
+    # Iter #53 (founder: result page = same clear logic) — the save /
+    # revisit CTAs used to render HERE, jammed between the answer and the
+    # chart, led by a raw UUID code block. That interrupted the
+    # answer→chart read for a non-expert. They are wrapped in a closure
+    # now and emitted BELOW the chart (see the _emit_save_zone() call
+    # after the heatmap divider) under a plain "save this / come back
+    # later" label — mirroring the cold-start logic: output/answer on
+    # top, actions demoted. Restructured to 3 equal action buttons +
+    # the prediction ID on its own clearly-labeled full-width line
+    # (no longer a cryptic truncated hex column).
+    def _emit_save_zone() -> None:
+        st.markdown(
+            "<div style='margin:4px 0 1px;font-size:13px;color:#c7ccd4;"
+            "font-weight:600;'>"
+            f"{_esc_html(T('result.save.zone_title'))}</div>"
+            "<div style='margin:0 0 11px;font-size:12px;color:#8a8f98;"
+            "line-height:1.45;'>"
+            f"{_esc_html(T('result.save.zone_sub'))}</div>",
+            unsafe_allow_html=True,
         )
-    with _cta_copy_id:
-        # st.code has a built-in hover-to-copy icon — that's the
-        # affordance, no extra Copy button needed.
+        _c_ics, _c_snap, _c_score = st.columns(3)
+        with _c_ics:
+            st.download_button(
+                label=T("result.cta.add_calendar"),
+                data=_cta_ics_blob,
+                file_name=f"omytea-review-{prediction_id[:8]}.ics",
+                mime="text/calendar",
+                key=f"_top_ics_dl_{prediction_id}",
+                use_container_width=True,
+                help=T("result.cta.add_calendar.hint"),
+            )
+        with _c_snap:
+            st.download_button(
+                label=T("result.cta.save_snapshot"),
+                data=_cta_snapshot_blob,
+                file_name=f"omytea-prediction-{prediction_id[:8]}.json",
+                mime="application/json",
+                key=f"_top_snapshot_dl_{prediction_id}",
+                use_container_width=True,
+                help=T("result.cta.save_snapshot.hint"),
+            )
+        with _c_score:
+            if st.button(
+                T("result.cta.score_later"),
+                key=f"_top_score_later_{prediction_id}",
+                use_container_width=True,
+                help=T("result.cta.score_later.hint"),
+            ):
+                # Set ?score=<id> URL param + rerun → main()'s
+                # _check_score_deeplink() catches it and routes to
+                # Measurement Update with this prediction pre-loaded.
+                try:
+                    st.query_params["score"] = prediction_id
+                except Exception:
+                    pass
+                st.rerun()
+        # The prediction ID on its own labeled line — full width (no
+        # truncation), plain-language caption, st.code keeps the
+        # hover-to-copy affordance.
+        st.caption(T("result.save.id_label"))
         st.code(prediction_id, language=None)
-    with _cta_score_later:
-        if st.button(
-            T("result.cta.score_later"),
-            key=f"_top_score_later_{prediction_id}",
-            use_container_width=True,
-            help=T("result.cta.score_later.hint"),
-        ):
-            # Set ?score=<id> URL param + rerun → main()'s
-            # _check_score_deeplink() catches it and routes to
-            # Measurement Update with this prediction pre-loaded.
-            try:
-                st.query_params["score"] = prediction_id
-            except Exception:
-                pass
-            st.rerun()
-    with _cta_snapshot_dl:
-        st.download_button(
-            label=T("result.cta.save_snapshot"),
-            data=_cta_snapshot_blob,
-            file_name=f"omytea-prediction-{prediction_id[:8]}.json",
-            mime="application/json",
-            key=f"_top_snapshot_dl_{prediction_id}",
-            use_container_width=True,
-            help=T("result.cta.save_snapshot.hint"),
-        )
 
     # v4.16 P1+P4: partition by branch_type for visually distinct anchor
     # display + offer Story (default) vs Comparison-table view.
@@ -4950,6 +4988,11 @@ def _render_result(
         wishful + realistic + worst,
         horizon_label=str(user_input.get("time_horizon", "") or ""),
     )
+    # Iter #53 — save / revisit actions live here now, right under the
+    # chart: answer (hero card) → chart (visual proof) → "what you can do
+    # with this". Still high on the page = discoverable, not buried below
+    # story / drill-down / technical details.
+    _emit_save_zone()
     st.divider()
 
     # Iter #14: view-mode radio's help text was 4 sentences explaining
