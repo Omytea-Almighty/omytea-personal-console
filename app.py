@@ -4771,10 +4771,11 @@ def _render_result(
         storage.save_prediction(rec)
         prediction_id = rec.prediction_id
 
-    # Iter #14: "Prediction ID (save this to come back later) · ID"
-    # — telling the user what to do with the ID. The ID itself + a
-    # small icon are enough; instruction moves to tooltip.
-    st.caption(f"`{prediction_id}` — your prediction ID")
+    # Iter #52 (founder: result page, same clear logic) — LEAD WITH THE
+    # ANSWER. The raw prediction-ID (a UUID) used to be the very first
+    # line — techy noise before the takeaway for a non-technical reader.
+    # The plain "Most likely: …" takeaway now leads; the ID is demoted
+    # below it (and is also one click away via the "Copy ID" CTA).
 
     # Iter #51 (revised) — PLAIN result lead-in for a NON-technical user.
     # Founder: most users can't parse ρ / "correlated links" /
@@ -4814,6 +4815,9 @@ def _render_result(
             f"{_esc_html((_hinge + ' ' + _mapped).strip())}</div>",
             unsafe_allow_html=True,
         )
+    # The prediction ID, demoted below the answer (save it to revisit /
+    # score later; also available via the Copy-ID CTA below).
+    st.caption(f"`{prediction_id}` — your prediction ID")
     with st.expander(T("result.engine.expander"), expanded=False):
         st.caption(T("result.engine.belief_state"))
         for _h in _ranked:
