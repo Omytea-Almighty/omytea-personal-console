@@ -1004,7 +1004,11 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
   // The redundant rotated "outcome branch" caption that used to share
   // this gutter was removed too; the section title above already names
   // what the rows are, so the caption was duplicate ink.
-  var PADX_L = 124, PADX_R = 16, PADY_T = 12, PADY_B = 26;
+  // Iter #54 (founder: result-chart legibility) — left gutter widened
+  // 124 -> 156 so the prose future-names render in full in a friendlier
+  // sans font; a non-expert was seeing "Compounding failu…" and could
+  // not tell what each row's future was.
+  var PADX_L = 156, PADX_R = 16, PADY_T = 12, PADY_B = 26;
   var GRID_W = SVG_W - PADX_L - PADX_R;
   var GRID_H = SVG_H - PADY_T - PADY_B;
   // hard cap on a single cell so a 5-row prediction grid never draws
@@ -1160,7 +1164,15 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
     var rowLabelColor = {{}};
     for (var li = 0; li < n; li++) {{
       var lbl = (branches[li].label || ("Branch " + (li + 1))).trim();
-      if (lbl.length > 18) lbl = lbl.slice(0, 17) + "…";
+      // Iter #54 — cap raised 18 -> 30 and made WORD-AWARE so the future
+      // names read in full / break on a space, never mid-word. The wider
+      // sans gutter fits ~30 chars; the full name stays in the popover.
+      var CAP = 30;
+      if (lbl.length > CAP) {{
+        var cut = lbl.slice(0, CAP);
+        var sp = cut.lastIndexOf(" ");
+        lbl = (sp > 16 ? cut.slice(0, sp) : cut) + "…";
+      }}
       shortLabels.push(lbl);
       rowLabelAt[anchors[li]] = lbl;
       rowLabelColor[anchors[li]] =
@@ -1294,9 +1306,13 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
       var y = gy0 + r * cellH + cellH / 2 + 3.4;
       var lab = String(labelAt[r])
         .replace(/&/g, "&amp;").replace(/</g, "&lt;");
+      // Iter #54 — row labels are prose future-names, not data codes, so
+      // they render in the proportional sans font (friendlier + fits more
+      // chars than mono in the same gutter). Axis ticks below stay mono.
       axis += '<text x="' + (PADX_L - 8) + '" y="' + y.toFixed(1) +
-        '" text-anchor="end" font-family="var(--mono)" ' +
-        'font-size="9.5" fill="' + (labelColor[r] || "#b9bfc8") +
+        '" text-anchor="end" font-family="var(--sans)" ' +
+        'font-size="10" font-weight="500" fill="' +
+        (labelColor[r] || "#b9bfc8") +
         '">' + lab + "</text>";
     }}
     // cells — DENSITY-SHADED: opacity is a gamma-corrected ratio of the
