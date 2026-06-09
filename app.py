@@ -4278,7 +4278,7 @@ def _render_story_view(
 def _render_comparison_table(result: ConsoleResult) -> None:
     """v4.16 P4 — side-by-side comparison view for users who want the
     classic table-shaped overview."""
-    st.subheader("Branch comparison table")
+    st.subheader(T("result.view.comparison_title"))
     st.caption(
         "Same data as the story view, laid out for quick scanning. "
         "Useful when you need to compare two branches' "
@@ -4299,7 +4299,7 @@ def _render_decision_timeline(
     along the user's time horizon. Streamlit can render a fenced
     ```mermaid block on supported versions; older versions fall back
     to a code display."""
-    st.subheader("Decision timeline")
+    st.subheader(T("result.view.timeline_title"))
     horizon = str(user_input.get("time_horizon", "decision horizon"))
     st.caption(
         f"How each decision option fans out into branches over {horizon}. "
@@ -4334,7 +4334,7 @@ def _render_continuous_distribution(
         )
         return
 
-    st.subheader("Continuous probability density over time")
+    st.subheader(T("result.view.continuous_title"))
     st.caption(
         f"Each of {len(result.hypotheses)} branches contributes a "
         f"Gaussian kernel (σ ≈ {chart['sigma_months']:.1f} months) at "

@@ -1233,6 +1233,28 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_ES: "Distribución continua",
         LANG_FR: "Distribution continue",
     },
+    # Iter #53 — the view-RENDERER headings (shown after the iter-50 radio
+    # switches view). iter-50 localized the radio chips but these headings
+    # stayed English, so a zh user picking 对比表 landed on an English
+    # "Branch comparison table" heading. Localized to match the chips.
+    "result.view.comparison_title": {
+        LANG_EN: "Branch comparison table",
+        LANG_ZH: "分支对比表",
+        LANG_ES: "Tabla comparativa de ramas",
+        LANG_FR: "Tableau comparatif des branches",
+    },
+    "result.view.timeline_title": {
+        LANG_EN: "Decision timeline",
+        LANG_ZH: "决策时间线",
+        LANG_ES: "Cronología de la decisión",
+        LANG_FR: "Chronologie de la décision",
+    },
+    "result.view.continuous_title": {
+        LANG_EN: "Continuous probability density over time",
+        LANG_ZH: "随时间变化的连续概率密度",
+        LANG_ES: "Densidad de probabilidad continua en el tiempo",
+        LANG_FR: "Densité de probabilité continue dans le temps",
+    },
     # Iter #51 — result-page "Technical details" expander (the joint
     # off-diagonal correlation + Lindblad coherence-decay section). Was
     # hardcoded English in app.py, so zh/es/fr users opening it saw English
