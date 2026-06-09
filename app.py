@@ -3017,7 +3017,7 @@ def _render_workspace_composer_body() -> None:
                     key=f"_quick_chip_{key_suffix}",
                     use_container_width=True,
                     type="secondary",
-                    help="One-click prefill — edit anything, then Generate.",
+                    help="One-click prefill — review the fields, then “See my futures →”.",
                 ):
                     st.session_state["input_decision_options"] = opts
                     st.session_state["input_current_role"] = role
