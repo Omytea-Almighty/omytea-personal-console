@@ -5125,13 +5125,9 @@ def _render_result(
 
     # v4.16 P5: recommended evidence in ΔP semantics (percentage-point shift)
     if result.recommended_evidence:
-        st.subheader("Recommended evidence to collect")
-        st.caption(
-            "Each item shows the expected ±percentage-point shift in "
-            "the most-likely branch's probability if you collect that "
-            "evidence. Larger ΔP = more decision-relevant. (Values do "
-            "not sum to 1 — each is an independent expected shift.)"
-        )
+        # Iter #52 — localized (was hardcoded English; bug-051/052 class).
+        st.subheader(T("result.evidence.subheader"))
+        st.caption(T("result.evidence.caption"))
         for e in normalize_evidence_list(result.recommended_evidence):
             with st.container(border=True):
                 cols = st.columns([4, 1])
@@ -5141,11 +5137,13 @@ def _render_result(
                         st.caption(e["rationale"])
                     if e.get("target_branch"):
                         st.caption(
-                            f"Most affects: `{e['target_branch']}`"
+                            T("result.evidence.most_affects").format(
+                                branch=e["target_branch"]
+                            )
                         )
                 with cols[1]:
                     st.metric(
-                        "Expected ΔP",
+                        T("result.evidence.expected_dp"),
                         format_delta_p(e["expected_delta_p"]),
                     )
 

@@ -1261,6 +1261,34 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_ES: "Cómo se correlacionan los distintos futuros. Positivo = tienden a coexistir. Negativo = mutuamente excluyentes.",
         LANG_FR: "Comment les différents futurs sont corrélés. Positif = tendent à coexister. Négatif = mutuellement exclusifs.",
     },
+    # Iter #52 — result-page "Recommended evidence to collect" section. Was
+    # hardcoded English in app.py (subheader + caption + per-item "Most
+    # affects" + "Expected ΔP" metric label), so zh/es/fr users saw English.
+    # Localized here; same bug-051/052 class.
+    "result.evidence.subheader": {
+        LANG_EN: "Recommended evidence to collect",
+        LANG_ZH: "建议收集的证据",
+        LANG_ES: "Evidencia recomendada para recopilar",
+        LANG_FR: "Preuves recommandées à recueillir",
+    },
+    "result.evidence.caption": {
+        LANG_EN: "Each item shows the expected ±percentage-point shift in the most-likely branch's probability if you collect that evidence. Larger ΔP = more decision-relevant. (Values do not sum to 1 — each is an independent expected shift.)",
+        LANG_ZH: "每一项显示：若你收集该证据，最可能分支的概率预计会有多大的 ±百分点变化。ΔP 越大 ＝ 对决策越关键。（各项不求和为 1——每一项都是独立的预期变化。）",
+        LANG_ES: "Cada elemento muestra el cambio esperado en ±puntos porcentuales en la probabilidad de la rama más probable si recopilas esa evidencia. Mayor ΔP = más relevante para la decisión. (Los valores no suman 1: cada uno es un cambio esperado independiente.)",
+        LANG_FR: "Chaque élément indique la variation attendue en ±points de pourcentage de la probabilité de la branche la plus probable si vous recueillez cette preuve. ΔP plus grand = plus pertinent pour la décision. (Les valeurs ne totalisent pas 1 — chacune est une variation attendue indépendante.)",
+    },
+    "result.evidence.most_affects": {
+        LANG_EN: "Most affects: `{branch}`",
+        LANG_ZH: "影响最大：`{branch}`",
+        LANG_ES: "Más afecta a: `{branch}`",
+        LANG_FR: "Affecte le plus : `{branch}`",
+    },
+    "result.evidence.expected_dp": {
+        LANG_EN: "Expected ΔP",
+        LANG_ZH: "预期 ΔP",
+        LANG_ES: "ΔP esperado",
+        LANG_FR: "ΔP attendu",
+    },
     "result.lead.most_likely": {
         LANG_EN: "Most likely:",
         LANG_ZH: "最可能：",
