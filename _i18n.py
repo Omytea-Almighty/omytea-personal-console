@@ -1233,6 +1233,34 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_ES: "Distribución continua",
         LANG_FR: "Distribution continue",
     },
+    # Iter #51 — result-page "Technical details" expander (the joint
+    # off-diagonal correlation + Lindblad coherence-decay section). Was
+    # hardcoded English in app.py, so zh/es/fr users opening it saw English
+    # in the one place the physics machinery shows. Localized here.
+    "result.tech.expander": {
+        LANG_EN: "Technical details · joint structure & coherence decay",
+        LANG_ZH: "技术细节 · 联合结构与相干衰减",
+        LANG_ES: "Detalles técnicos · estructura conjunta y decaimiento de coherencia",
+        LANG_FR: "Détails techniques · structure conjointe et décroissance de cohérence",
+    },
+    "result.tech.caption": {
+        LANG_EN: "Advanced view. Most users can skip this — the story, probabilities, and evidence above already answer the question. Open this only if you want the underlying correlation structure and how it relaxes over time.",
+        LANG_ZH: "进阶视图。多数人可以跳过——上面的叙述、概率与证据已经回答了问题。只有当你想看底层的关联结构、以及它如何随时间松弛时，才需要展开。",
+        LANG_ES: "Vista avanzada. La mayoría puede omitirla: el relato, las probabilidades y la evidencia de arriba ya responden la pregunta. Ábrela solo si quieres la estructura de correlación subyacente y cómo se relaja con el tiempo.",
+        LANG_FR: "Vue avancée. La plupart peuvent l'ignorer : le récit, les probabilités et les preuves ci-dessus répondent déjà à la question. Ne l'ouvrez que si vous voulez la structure de corrélation sous-jacente et comment elle se relâche au fil du temps.",
+    },
+    "result.tech.joint_subheader": {
+        LANG_EN: "Joint hypothesis correlations",
+        LANG_ZH: "联合假设关联",
+        LANG_ES: "Correlaciones de hipótesis conjuntas",
+        LANG_FR: "Corrélations d'hypothèses conjointes",
+    },
+    "result.tech.joint_caption": {
+        LANG_EN: "How different futures are correlated. Positive = tend to co-occur. Negative = mutually exclusive.",
+        LANG_ZH: "不同未来之间如何关联。正值 ＝ 倾向同时发生；负值 ＝ 互斥。",
+        LANG_ES: "Cómo se correlacionan los distintos futuros. Positivo = tienden a coexistir. Negativo = mutuamente excluyentes.",
+        LANG_FR: "Comment les différents futurs sont corrélés. Positif = tendent à coexister. Négatif = mutuellement exclusifs.",
+    },
     "result.lead.most_likely": {
         LANG_EN: "Most likely:",
         LANG_ZH: "最可能：",

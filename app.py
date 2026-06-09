@@ -5089,21 +5089,18 @@ def _render_result(
     if result.joint_offdiag:
         st.divider()
         with st.expander(
-            "Technical details · joint structure & coherence decay",
+            # Iter #51 — these 4 strings were hardcoded English, so zh/es/fr
+            # users opening this section (the joint off-diagonal + Lindblad
+            # coherence machinery — the physics-engine view) saw English.
+            # Localized via result.tech.* keys; the math/labels below stay
+            # symbolic (ρ-free here, just branch ids + signed coherence).
+            T("result.tech.expander"),
             expanded=False,
         ):
-            st.caption(
-                "Advanced view. Most users can skip this — the story, "
-                "probabilities, and evidence above already answer the "
-                "question. Open this only if you want the underlying "
-                "correlation structure and how it relaxes over time."
-            )
+            st.caption(T("result.tech.caption"))
 
-            st.subheader("Joint hypothesis correlations")
-            st.caption(
-                "How different futures are correlated. Positive = "
-                "tend to co-occur. Negative = mutually exclusive."
-            )
+            st.subheader(T("result.tech.joint_subheader"))
+            st.caption(T("result.tech.joint_caption"))
             for o in result.joint_offdiag:
                 sign = "+" if o.coherence_strength > 0 else ""
                 color = "green" if o.coherence_strength > 0 else "red"
