@@ -5000,21 +5000,35 @@ def _render_result(
     # affordance instead of letting the affordance teach itself" rule.
     # The labels (Story / Comparison table / Timeline / Continuous)
     # already name what each is; users discover by clicking.
-    view_mode = st.radio(
+    # Iter #50 — every-button-works applied to locale-state: these 4 view
+    # options were hardcoded English, so ZH/ES/FR users saw English labels
+    # mid-result while the rest of the page was translated. Localize the
+    # labels but branch off a STABLE key, never the localized string (a
+    # locale switch must not break the dispatch). "(default)" dropped — the
+    # radio already pre-selects index 0, so the suffix was redundant noise.
+    _view_keys = ("story", "comparison", "timeline", "continuous")
+    _view_labels = [
+        T("result.view.story"),
+        T("result.view.comparison"),
+        T("result.view.timeline"),
+        T("result.view.continuous"),
+    ]
+    _view_choice = st.radio(
         "View",
-        options=(
-            "Story (default)", "Comparison table",
-            "Decision timeline", "Continuous distribution",
-        ),
+        options=_view_labels,
         horizontal=True,
         label_visibility="collapsed",
     )
+    try:
+        _view_key = _view_keys[_view_labels.index(_view_choice)]
+    except ValueError:
+        _view_key = "story"
 
-    if view_mode == "Comparison table":
+    if _view_key == "comparison":
         _render_comparison_table(result)
-    elif view_mode == "Decision timeline":
+    elif _view_key == "timeline":
         _render_decision_timeline(result, user_input)
-    elif view_mode == "Continuous distribution":
+    elif _view_key == "continuous":
         _render_continuous_distribution(result, user_input)
     else:
         # Iter #22 P1.4 Phase 2: thread recommended_evidence through so

@@ -1206,6 +1206,33 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         LANG_ES: "Cómo lo calculamos",
         LANG_FR: "Comment nous avons calculé cela",
     },
+    # Iter #50 — result-page view-mode options. Were hardcoded English in
+    # app.py, so ZH/ES/FR users saw English labels mid-result. Localized
+    # here; app.py branches off the stable key, not the localized label.
+    "result.view.story": {
+        LANG_EN: "Story",
+        LANG_ZH: "故事",
+        LANG_ES: "Relato",
+        LANG_FR: "Récit",
+    },
+    "result.view.comparison": {
+        LANG_EN: "Comparison table",
+        LANG_ZH: "对比表",
+        LANG_ES: "Tabla comparativa",
+        LANG_FR: "Tableau comparatif",
+    },
+    "result.view.timeline": {
+        LANG_EN: "Decision timeline",
+        LANG_ZH: "决策时间线",
+        LANG_ES: "Cronología de decisión",
+        LANG_FR: "Chronologie de décision",
+    },
+    "result.view.continuous": {
+        LANG_EN: "Continuous distribution",
+        LANG_ZH: "连续分布",
+        LANG_ES: "Distribución continua",
+        LANG_FR: "Distribution continue",
+    },
     "result.lead.most_likely": {
         LANG_EN: "Most likely:",
         LANG_ZH: "最可能：",
