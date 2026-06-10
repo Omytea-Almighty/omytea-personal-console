@@ -2926,7 +2926,7 @@ def _render_workspace_composer_body() -> None:
                 unsafe_allow_html=True,
             )
             if st.button(
-                "Got it — continue",
+                T("banner.beta_dismiss"),
                 key="_beta_banner_dismiss_btn",
                 type="primary",
                 use_container_width=False,
@@ -3075,7 +3075,7 @@ def _render_workspace_composer_body() -> None:
     # in place; only the on-screen position changes). Order now reads:
     # chips → decision input → submit → Advanced options.
     with st.container(key="omy_advanced_wrap"), st.expander(
-        "Advanced options", expanded=_adv_open
+        T("composer.advanced_options"), expanded=_adv_open
     ):
         st.session_state["_composer_advanced_seen"] = True
         if _show_research:
@@ -3264,7 +3264,7 @@ def _render_workspace_composer_body() -> None:
 
         user_id = form_data.get("user_id", "").strip()
         if not user_id:
-            st.error("Please provide a user handle.")
+            st.error(T("composer.user_handle_required"))
             return
 
         # Iter #18: if the user pinned a backend in Settings → Model
@@ -3278,7 +3278,7 @@ def _render_workspace_composer_body() -> None:
                 )
                 result = belief_program_to_console(program)
             except Exception as exc:  # noqa: BLE001 — show error to user
-                st.error(f"Compilation failed: {exc}")
+                st.error(T("composer.compilation_failed").format(exc=exc))
                 return
 
             # Persist + freeze the snapshot in session_state for re-render.
@@ -4246,31 +4246,25 @@ def _render_story_view(
     Default-None keeps every other call site compatible.
     """
     if wishful:
-        st.subheader("🌟 Best plausible case")
-        st.caption(
-            "The hoped-for future. Low probability but emotionally vivid. "
-            "Use this as the anchor for thinking about what evidence / "
-            "actions would shift its probability upward."
-        )
+        st.subheader(T("result.story.wishful_header"))
+        st.caption(T("result.story.wishful_caption"))
         for h in wishful:
             _render_story_card(h, "🌟", recommended_evidence)
 
     if realistic:
-        st.subheader("📊 Most-likely futures")
+        st.subheader(T("result.story.realistic_header"))
         st.caption(
-            f"{len(realistic)} realistic branches across decision options: "
-            f"{', '.join(decision_options)}"
+            T("result.story.realistic_caption").format(
+                n=len(realistic),
+                options=", ".join(decision_options),
+            )
         )
         for h in sorted(realistic, key=lambda x: -x.probability):
             _render_story_card(h, "📊", recommended_evidence)
 
     if worst:
-        st.subheader("⚠️ Worst plausible case")
-        st.caption(
-            "The future to actively avoid. Low probability but specific. "
-            "Use this to identify what preventive actions you should "
-            "take regardless of which decision you pick."
-        )
+        st.subheader(T("result.story.worst_header"))
+        st.caption(T("result.story.worst_caption"))
         for h in worst:
             _render_story_card(h, "⚠️", recommended_evidence)
 
@@ -4279,14 +4273,10 @@ def _render_comparison_table(result: ConsoleResult) -> None:
     """v4.16 P4 — side-by-side comparison view for users who want the
     classic table-shaped overview."""
     st.subheader(T("result.view.comparison_title"))
-    st.caption(
-        "Same data as the story view, laid out for quick scanning. "
-        "Useful when you need to compare two branches' "
-        "probability / decision / key driver side-by-side."
-    )
+    st.caption(T("result.compare.caption"))
     rows = build_branch_comparison_rows(result)
     if not rows:
-        st.info("No branches to compare.")
+        st.info(T("result.compare.empty"))
         return
     st.dataframe(rows, hide_index=True, use_container_width=True)
 
@@ -4301,10 +4291,7 @@ def _render_decision_timeline(
     to a code display."""
     st.subheader(T("result.view.timeline_title"))
     horizon = str(user_input.get("time_horizon", "decision horizon"))
-    st.caption(
-        f"How each decision option fans out into branches over {horizon}. "
-        "🌟 = best-case anchor · 📊 = realistic · ⚠️ = worst-case anchor."
-    )
+    st.caption(T("result.timeline.caption").format(horizon=horizon))
     diagram = build_decision_timeline_mermaid(
         result, time_horizon_label=horizon,
     )
@@ -4329,21 +4316,18 @@ def _render_continuous_distribution(
         result, time_horizon_months=horizon_months,
     )
     if chart is None or chart.get("n_points", 0) < 2:
-        st.info(
-            "No branches to plot a continuous distribution for."
-        )
+        st.info(T("result.continuous.empty"))
         return
 
     st.subheader(T("result.view.continuous_title"))
     st.caption(
-        f"Each of {len(result.hypotheses)} branches contributes a "
-        f"Gaussian kernel (σ ≈ {chart['sigma_months']:.1f} months) at "
-        f"a heuristic characteristic time — wishful branches centered "
-        f"around month {chart['horizon_months'] * 0.2:.1f}, realistic "
-        f"around month {chart['horizon_months'] * 0.5:.1f}, worst "
-        f"around month {chart['horizon_months'] * 0.7:.1f}. The "
-        f"curve is the probability-weighted sum. Use this when the "
-        f"discrete-branch table feels too engineering-shaped."
+        T("result.continuous.caption").format(
+            n=len(result.hypotheses),
+            sigma=chart["sigma_months"],
+            wishful_mo=chart["horizon_months"] * 0.2,
+            realistic_mo=chart["horizon_months"] * 0.5,
+            worst_mo=chart["horizon_months"] * 0.7,
+        )
     )
 
     # Build chart data: a dict keyed by "Total density" + each branch
@@ -4362,9 +4346,8 @@ def _render_continuous_distribution(
     # workaround: just print the months alongside.
     st.area_chart(chart_data)
     st.caption(
-        "x-axis = sample index 0…N along the time horizon; first "
-        "sample is t=0 and last is t={:.0f} months.".format(
-            chart["horizon_months"]
+        T("result.continuous.xaxis_caption").format(
+            last_mo=chart["horizon_months"]
         )
     )
 
@@ -4403,14 +4386,8 @@ def _render_drilldown_section(
     by (prediction_id, branch_label) so repeated clicks don't burn
     quota. Refresh button forces a re-call.
     """
-    with st.expander("🔍 Drill down on one of these futures", expanded=False):
-        st.caption(
-            "Pick a branch you care about most — typically the wishful "
-            "one if you want to plan toward it, or the worst-case if "
-            "you want to plan around it — and the system will expand "
-            "it into a 3-paragraph deeper narrative + concrete actions "
-            "this week + dependencies that gate it + sensitivity preview."
-        )
+    with st.expander(T("result.drilldown.expander"), expanded=False):
+        st.caption(T("result.drilldown.caption"))
 
         # Sort hypotheses with the same reading order the story view uses.
         type_order = {"wishful": 0, "realistic": 1, "worst": 2}
@@ -4421,7 +4398,7 @@ def _render_drilldown_section(
         labels = [h.label for h in sorted_h]
         label_to_hyp = {h.label: h for h in sorted_h}
         if not labels:
-            st.info("No branches to drill into.")
+            st.info(T("result.drilldown.empty"))
             return
 
         chosen_label = st.selectbox(
@@ -4439,13 +4416,13 @@ def _render_drilldown_section(
         col_a, col_b = st.columns([1, 1])
         with col_a:
             run = st.button(
-                "Run drill-down" if not cache_present
-                else "Show cached drill-down",
+                T("result.drilldown.run") if not cache_present
+                else T("result.drilldown.show_cached"),
                 use_container_width=True,
             )
         with col_b:
             refresh = st.button(
-                "↻ Re-run (force refresh)",
+                T("result.drilldown.rerun"),
                 disabled=not cache_present,
                 use_container_width=True,
                 help=(
@@ -4480,7 +4457,7 @@ def _render_drilldown_section(
                         backend=_resolve_user_backend(),
                     )
                 except Exception as exc:  # noqa: BLE001
-                    st.error(f"Drill-down failed: {exc}")
+                    st.error(T("result.drilldown.failed").format(exc=exc))
                     return
             rec = storage.BranchDrilldown(
                 drilldown_id=storage.new_drilldown_id(),
@@ -4534,45 +4511,52 @@ def _render_drilldown_body(
     # Deeper narrative — 3 paragraphs.
     narrative = body.get("deeper_narrative") or []
     if narrative:
-        st.subheader("Deeper narrative")
+        st.subheader(T("result.drilldown.deeper_narrative"))
         for para in narrative:
             st.write(para)
 
     # Concrete actions this week.
     actions = body.get("concrete_actions_this_week") or []
     if actions:
-        st.subheader("Concrete actions this week")
+        st.subheader(T("result.drilldown.actions"))
         for a in actions:
             with st.container(border=True):
                 st.markdown(f"**{a.get('action', '')}**")
                 effort = a.get("effort", "")
                 if effort:
-                    st.caption(f"Effort: {effort}")
+                    st.caption(
+                        T("result.drilldown.effort").format(effort=effort)
+                    )
                 if a.get("expected_effect"):
-                    st.caption(f"Expected effect: {a['expected_effect']}")
+                    st.caption(
+                        T("result.drilldown.expected_effect").format(
+                            effect=a["expected_effect"]
+                        )
+                    )
 
     # Conditional dependencies.
     deps = body.get("conditional_dependencies") or []
     if deps:
-        st.subheader("Conditional dependencies")
+        st.subheader(T("result.drilldown.dependencies"))
         for d in deps:
             with st.container(border=True):
                 st.markdown(f"**{d.get('condition', '')}**")
                 cs = d.get("current_state", "")
                 impact = d.get("impact_if_fails", "")
                 if cs:
-                    st.caption(f"Current state: {cs}")
+                    st.caption(
+                        T("result.drilldown.current_state").format(state=cs)
+                    )
                 if impact:
-                    st.caption(f"If this fails: {impact}")
+                    st.caption(
+                        T("result.drilldown.if_fails").format(impact=impact)
+                    )
 
     # Sensitivity preview.
     sens = body.get("sensitivity_preview") or []
     if sens:
-        st.subheader("Sensitivity preview")
-        st.caption(
-            "What collecting each piece of evidence would do to this "
-            "branch's probability specifically (in percentage points)."
-        )
+        st.subheader(T("result.drilldown.sensitivity"))
+        st.caption(T("result.drilldown.sensitivity_caption"))
         for s in sens:
             with st.container(border=True):
                 st.markdown(f"**{s.get('evidence_label', 'unknown')}**")
@@ -4581,18 +4565,17 @@ def _render_drilldown_body(
                 cols = st.columns(2)
                 with cols[0]:
                     st.metric(
-                        "If signal supports",
+                        T("result.drilldown.if_supports"),
                         f"+{int(round(float(up)))} pp",
                     )
                 with cols[1]:
                     st.metric(
-                        "If signal cuts against",
+                        T("result.drilldown.if_against"),
                         f"{int(round(float(down)))} pp",
                     )
 
     st.caption(
-        f"Cached at {cached.created_at:.0f} (unix). Re-run with "
-        f"the refresh button if context has changed materially."
+        T("result.drilldown.cached_at").format(ts=cached.created_at)
     )
 
 
@@ -4621,15 +4604,8 @@ def _render_coherence_evolution(
     if chart is None:
         return
 
-    st.subheader("📉 Coherence decay over time")
-    st.caption(
-        "Off-diagonal magnitudes |ρ_ab| evolve under a Lindblad "
-        "decoherence channel at γ=0.05/month (pure-decay; no phase "
-        "rotation shown). When a pair's magnitude approaches zero, "
-        "those two futures stop interfering and become independent — "
-        "you've lost the window where they're 'coupled enough to "
-        "reason about together.'"
-    )
+    st.subheader(T("result.coherence.header"))
+    st.caption(T("result.coherence.caption"))
 
     # Line chart of all pairs over ticks. Streamlit's line_chart wants
     # a dict-of-lists (column → values) and infers x-axis from index.
@@ -4638,10 +4614,11 @@ def _render_coherence_evolution(
     summary = chart["pairs_summary"]
     if summary:
         st.markdown(
-            f"**Decay summary over {chart['n_steps']} months** "
-            f"(γ={chart['decoherence_rate']:.2f}/month; analytic "
-            f"reference ≈ {chart['expected_decay_ratio']:.2f}× of "
-            f"initial)"
+            T("result.coherence.decay_summary").format(
+                n=chart["n_steps"],
+                gamma=chart["decoherence_rate"],
+                ref=chart["expected_decay_ratio"],
+            )
         )
         for row in summary:
             initial = row["initial"]
@@ -4654,29 +4631,24 @@ def _render_coherence_evolution(
                         f"`{row['pair_a']}` ↔ `{row['pair_b']}`"
                     )
                 with cols[1]:
-                    st.metric("|ρ| now", f"{initial:.2f}")
+                    st.metric(T("result.coherence.rho_now"), f"{initial:.2f}")
                 with cols[2]:
                     st.metric(
-                        f"|ρ| @ {chart['n_steps']}mo",
+                        T("result.coherence.rho_at").format(
+                            n=chart["n_steps"]
+                        ),
                         f"{final:.2f}",
                     )
                 with cols[3]:
                     st.metric(
-                        "Δ decay",
+                        T("result.coherence.decay_delta"),
                         f"−{decay_pct:.0f}%",
                     )
                 with cols[4]:
                     if row["rationale"]:
                         st.caption(row["rationale"])
 
-    st.caption(
-        "Interpretation: a strong, slowly-decaying coherence means "
-        "you can still treat those two futures as 'linked' when "
-        "planning. A coherence that has already collapsed by your "
-        "decision horizon means the two are practically independent "
-        "outcomes — preventive action against one no longer biases "
-        "the other."
-    )
+    st.caption(T("result.coherence.interpretation"))
 
     st.divider()
 
@@ -5014,7 +4986,7 @@ def _render_result(
         T("result.view.continuous"),
     ]
     _view_choice = st.radio(
-        "View",
+        T("result.view.radio_label"),
         options=_view_labels,
         horizontal=True,
         label_visibility="collapsed",
@@ -5438,7 +5410,11 @@ def render_measurement_update(
 
             predictions = storage.list_user_predictions(user_id)
             if not predictions:
-                st.warning(f"No predictions found for user `{user_id}`.")
+                st.warning(
+                    T("measurement.no_predictions_for_user").format(
+                        user_id=user_id
+                    )
+                )
                 return
 
         pred_labels = [
@@ -5457,7 +5433,7 @@ def render_measurement_update(
     _render_prediction_organizer(pred, user_id)
 
     st.divider()
-    st.subheader("Original prediction branches")
+    st.subheader(T("measurement.original_branches"))
     # Iter #42 — snake_case residue cleanup (founder round-4 audit
     # P2). The Measurement Update flow was rendering the raw
     # snake_case label keys (e.g. `accept_offer`) — that's a
@@ -5476,12 +5452,8 @@ def render_measurement_update(
         )
 
     st.divider()
-    st.subheader("What actually happened?")
-    st.caption(
-        "For each branch, indicate how much it matched reality. 1.0 = "
-        "fully materialized, 0.0 = didn't happen, intermediate values "
-        "for partial matches. The values get auto-normalized."
-    )
+    st.subheader(T("measurement.what_happened"))
+    st.caption(T("measurement.what_happened_caption"))
 
     actual_outcome: dict[str, float] = {}
     for h in pred.wavefunction_snapshot.get("hypotheses", []):
@@ -5527,14 +5499,18 @@ def render_measurement_update(
     # Iter #42 B3: `index=None` so no option pre-checked; submit
     # gate below rejects unselected.
     st.divider()
-    st.markdown("**Sean Ellis disappointment test** (PMF indicator)")
+    st.markdown(T("measurement.sean_ellis_label"))
+    # Dispatch-coupled: KEYS are the stable storage identifiers
+    # (sean_ellis_response is saved + compared as the key); only the
+    # display VALUES are localized via T(). Same discipline as the
+    # iter-50 result.view.* radio — never localize the dispatch key.
     sean_ellis_label_map = {
-        "very_disappointed": "Very disappointed",
-        "somewhat_disappointed": "Somewhat disappointed",
-        "not_disappointed": "Not disappointed",
+        "very_disappointed": T("measurement.sean_ellis_very"),
+        "somewhat_disappointed": T("measurement.sean_ellis_somewhat"),
+        "not_disappointed": T("measurement.sean_ellis_not"),
     }
     sean_ellis_response = st.radio(
-        "If you could no longer use this prediction tool, how would you feel?",
+        T("measurement.sean_ellis_question"),
         options=list(sean_ellis_label_map.keys()),
         format_func=lambda k: sean_ellis_label_map[k],
         index=None,  # no default — force explicit pick (B3 de-bias)
@@ -5552,24 +5528,23 @@ def render_measurement_update(
     # "6 weeks" that doesn't match the composer's "3 months"
     # default.
     pred_horizon = str(pred.user_input.get("time_horizon", "")).strip()
-    effort_horizon_phrase = pred_horizon or "the measurement window"
-    st.markdown(
-        f"**Effort test** (retention quality over {effort_horizon_phrase})"
+    effort_horizon_phrase = (
+        pred_horizon or T("measurement.effort_window_fallback")
     )
+    st.markdown(
+        T("measurement.effort_label").format(horizon=effort_horizon_phrase)
+    )
+    # Dispatch-coupled (same as Sean Ellis above): KEYS stay stable
+    # (effort_test_response saved/compared as key); VALUES localized.
     effort_label_map = {
-        "self_returned": (
-            "I came back to it on my own initiative "
-            "(opened it without being reminded)"
-        ),
-        "needed_reminder": (
-            "I came back only when reminded "
-            "(the operator nudged me)"
-        ),
-        "did_not_return": "I did not return to the tool",
+        "self_returned": T("measurement.effort_self_returned"),
+        "needed_reminder": T("measurement.effort_needed_reminder"),
+        "did_not_return": T("measurement.effort_did_not_return"),
     }
     effort_test_response = st.radio(
-        f"Over the past {effort_horizon_phrase}, "
-        f"did you self-return to the tool?",
+        T("measurement.effort_question").format(
+            horizon=effort_horizon_phrase
+        ),
         options=list(effort_label_map.keys()),
         format_func=lambda k: effort_label_map[k],
         index=None,  # no default — force explicit pick (B3 de-bias)
@@ -5583,7 +5558,7 @@ def render_measurement_update(
     st.divider()
     notes = st.text_area("Notes (optional)")
 
-    if st.button("Submit measurement update"):
+    if st.button(T("measurement.submit")):
         # Iter #41 P0 #4 — slider validation. Founder round-4 audit:
         # "测量提交可以产生无效数据. 每个实际结果 slider 默认 0.0;
         # 用户如果不理解直接提交, actual_outcome 总和为 0,
@@ -5643,7 +5618,7 @@ def render_measurement_update(
         )
         storage.save_measurement(upd)
 
-        st.success("Measurement saved.")
+        st.success(T("measurement.saved"))
         st.json(cal)
 
 
@@ -5689,10 +5664,7 @@ def render_calibration_history() -> None:
         ),
     )
     if not user_id:
-        st.caption(
-            "Showing aggregate calibration across **all** demo "
-            "users (no handle entered)."
-        )
+        st.caption(T("calibration.global_caption"))
     breakdown = storage.get_calibration_bias_breakdown(
         user_id=user_id if user_id else None,
     )
@@ -5704,72 +5676,56 @@ def render_calibration_history() -> None:
         # why it's empty + what they can do (the founder thesis:
         # "校准记录可视化 / 当初哪些判断错了" only renders once they've
         # closed the loop at least once).
-        st.info(
-            "No measurement updates recorded yet. After a prediction's "
-            "horizon date passes, score it on the **Measurement update** "
-            "page to populate this view — that's where your calibration "
-            "track record builds up."
-        )
+        st.info(T("calibration.empty"))
         return
 
     cols = st.columns(3)
     with cols[0]:
-        st.metric("Measurements", f"{int(aggregate.get('n_measurements', 0))}")
+        st.metric(T("calibration.metric_measurements"), f"{int(aggregate.get('n_measurements', 0))}")
     with cols[1]:
         if "mean_brier" in aggregate:
-            st.metric("Mean Brier", f"{aggregate['mean_brier']:.4f}")
+            st.metric(T("calibration.metric_mean_brier"), f"{aggregate['mean_brier']:.4f}")
     with cols[2]:
         if "mean_log_loss" in aggregate:
-            st.metric("Mean log-loss", f"{aggregate['mean_log_loss']:.4f}")
+            st.metric(T("calibration.metric_mean_logloss"), f"{aggregate['mean_log_loss']:.4f}")
 
-    st.caption(
-        "Brier score reference: 0 = perfect calibration; 1 = perfectly "
-        "wrong (uniform-prior baseline ≈ 0.5 for 5-way categorical)."
-    )
+    st.caption(T("calibration.brier_reference"))
 
     st.divider()
-    st.subheader("Owner-bias breakdown")
-    st.caption(
-        "Some predictions are flagged as project-owner self-tests. The "
-        "founder explicitly noted that owner data points may carry "
-        "bias (NPS/utility scored higher than a neutral user would). "
-        "This breakdown shows the same metrics computed with and "
-        "without owner-flagged measurements."
-    )
+    st.subheader(T("calibration.owner_bias_header"))
+    st.caption(T("calibration.owner_bias_caption"))
 
     excl = breakdown["exclude_owner"]
     own = breakdown["owner_only"]
 
     cmp_cols = st.columns(2)
     with cmp_cols[0]:
-        st.markdown("**Real users only (owner excluded)**")
+        st.markdown(T("calibration.real_users_only"))
         if excl:
-            st.metric("Measurements", f"{int(excl.get('n_measurements', 0))}")
+            st.metric(T("calibration.metric_measurements"), f"{int(excl.get('n_measurements', 0))}")
             if "mean_brier" in excl:
-                st.metric("Mean Brier", f"{excl['mean_brier']:.4f}")
+                st.metric(T("calibration.metric_mean_brier"), f"{excl['mean_brier']:.4f}")
             if "mean_log_loss" in excl:
-                st.metric("Mean log-loss", f"{excl['mean_log_loss']:.4f}")
+                st.metric(T("calibration.metric_mean_logloss"), f"{excl['mean_log_loss']:.4f}")
         else:
-            st.info("No non-owner measurements yet.")
+            st.info(T("calibration.no_non_owner"))
     with cmp_cols[1]:
-        st.markdown("**Owner self-tests only**")
+        st.markdown(T("calibration.owner_only"))
         if own:
-            st.metric("Measurements", f"{int(own.get('n_measurements', 0))}")
+            st.metric(T("calibration.metric_measurements"), f"{int(own.get('n_measurements', 0))}")
             if "mean_brier" in own:
-                st.metric("Mean Brier", f"{own['mean_brier']:.4f}")
+                st.metric(T("calibration.metric_mean_brier"), f"{own['mean_brier']:.4f}")
             if "mean_log_loss" in own:
-                st.metric("Mean log-loss", f"{own['mean_log_loss']:.4f}")
+                st.metric(T("calibration.metric_mean_logloss"), f"{own['mean_log_loss']:.4f}")
         else:
-            st.info("No owner-flagged measurements yet.")
+            st.info(T("calibration.no_owner"))
 
     # Highlight the delta when both sides have data.
     if excl and own and "mean_brier" in excl and "mean_brier" in own:
         delta = own["mean_brier"] - excl["mean_brier"]
         sign = "+" if delta >= 0 else ""
         st.caption(
-            f"Δ (owner − non-owner) Brier = {sign}{delta:.4f}. "
-            "Negative delta means owner self-test scored 'better calibrated' "
-            "than the neutral sample — interpret as ownership bias."
+            T("calibration.owner_delta").format(sign=sign, delta=delta)
         )
 
     # Iter #33 — measurement-loop part 3: Brier-over-time trend chart.
@@ -5792,13 +5748,8 @@ def render_calibration_history() -> None:
     ]
     if len(brier_points) >= 2:
         st.divider()
-        st.subheader("Calibration trend")
-        st.caption(
-            "Brier score per measurement, oldest → newest. **Down "
-            "and to the right** means you're getting more calibrated "
-            "over time. 0 is perfect; 0.5 is uniform-prior baseline; "
-            "1 is perfectly wrong."
-        )
+        st.subheader(T("calibration.trend_header"))
+        st.caption(T("calibration.trend_caption"))
         # Sort oldest → newest so the chart reads left-to-right.
         import datetime as _dt
         brier_points.sort(key=lambda p: p[0])
@@ -5813,16 +5764,18 @@ def render_calibration_history() -> None:
             early = sum(p[1] for p in brier_points[:third]) / third
             late = sum(p[1] for p in brier_points[-third:]) / third
             delta = late - early
+            # trend_word is display-only (interpolated into the caption
+            # below, never compared) so it is localized directly.
             if delta < -0.02:
-                trend_word = "improving"
+                trend_word = T("calibration.trend_improving")
             elif delta > 0.02:
-                trend_word = "regressing"
+                trend_word = T("calibration.trend_regressing")
             else:
-                trend_word = "flat"
+                trend_word = T("calibration.trend_flat")
             st.caption(
-                f"Direction over your scored history: **{trend_word}** "
-                f"(early third Brier ≈ {early:.3f} → recent third ≈ "
-                f"{late:.3f}; delta {delta:+.3f}, negative is good)."
+                T("calibration.trend_direction").format(
+                    trend=trend_word, early=early, late=late, delta=delta
+                )
             )
 
     # Iter #32 — measurement-loop part 2: per-prediction diff cards.
@@ -5836,23 +5789,14 @@ def render_calibration_history() -> None:
     # that actually happened X% in advance" — that's the calibration
     # the user is most curious about.
     st.divider()
-    st.subheader("Per-prediction track record")
-    st.caption(
-        "Your most recent scored predictions. Each card shows the "
-        "probability you assigned to the future that actually "
-        "happened — the single number you most want to see."
-    )
+    st.subheader(T("calibration.track_record_header"))
+    st.caption(T("calibration.track_record_caption"))
     records = storage.list_recent_measurements_with_predictions(
         user_id=user_id if user_id else None,
         limit=20,
     )
     if not records:
-        st.info(
-            "No per-prediction records yet. The aggregate above counts "
-            "all measurements across users; individual records show up "
-            "here only when you scored predictions under this user "
-            "handle."
-        )
+        st.info(T("calibration.track_record_empty"))
     else:
         # Format helper for the "you gave the outcome X% in advance"
         # headline number. Honest fallback ("not scored against a
@@ -5952,17 +5896,16 @@ def render_pricing_and_preorder() -> None:
         locale, currency.CURRENCY_BY_LOCALE[currency.DEFAULT_LOCALE]
     )
     if _cur.code == "USD":
-        st.caption(
-            "Prices shown in **US Dollars** — the canonical billing currency."
-        )
+        st.caption(T("pricing.currency_usd"))
     else:
         st.caption(
-            f"Prices shown in **{_cur.name_en} ({_cur.code})** — an "
-            f"approximate conversion; canonical billing is USD."
+            T("pricing.currency_other").format(
+                name=_cur.name_en, code=_cur.code
+            )
         )
 
     # --- Tier comparison cards ---
-    st.subheader("Tier comparison")
+    st.subheader(T("pricing.tier_comparison"))
     cols = st.columns(len(pricing.PRICING_TIERS))
     for idx, tier in enumerate(pricing.PRICING_TIERS):
         with cols[idx]:
@@ -5973,23 +5916,23 @@ def render_pricing_and_preorder() -> None:
                 )
                 st.caption(tier.one_line_pitch)
                 if tier.bullet_features:
-                    st.markdown("**Includes:**")
+                    st.markdown(T("pricing.includes"))
                     for feat in tier.bullet_features:
                         st.markdown(f"- {feat}")
                 if tier.target_persona:
-                    st.caption(f"*For:* {tier.target_persona}")
+                    st.caption(
+                        T("pricing.for_persona").format(
+                            persona=tier.target_persona
+                        )
+                    )
                 if not tier.available_now:
-                    st.warning("⏳ Not available for purchase yet")
+                    st.warning(T("pricing.not_available"))
 
     st.divider()
 
     # --- Pre-order interest capture ---
-    st.subheader("Express pre-order interest")
-    st.caption(
-        "Tell us which tier interests you and how much you'd actually "
-        "pay (USD). This is honest PMF research; we don't take payment "
-        "or commit you to anything."
-    )
+    st.subheader(T("pricing.preorder_header"))
+    st.caption(T("pricing.preorder_caption"))
 
     user_id = st.text_input(
         "Your handle (same one you used for predictions)",
@@ -6026,9 +5969,9 @@ def render_pricing_and_preorder() -> None:
         ),
     )
 
-    if st.button("Submit pre-order interest", type="primary"):
+    if st.button(T("pricing.preorder_submit"), type="primary"):
         if not user_id.strip():
-            st.error("Please provide your handle.")
+            st.error(T("pricing.handle_required"))
             return
         willing = float(anchor) if anchor is not None else float(custom_amount)
         rec = storage.PreorderInterest(
@@ -6042,19 +5985,16 @@ def render_pricing_and_preorder() -> None:
         )
         storage.save_preorder_interest(rec)
         st.success(
-            f"Recorded: {currency.format_price(willing, locale)} "
-            f"for {chosen_tier.display_name}. Thanks — this directly "
-            f"feeds the v4.17 billing-integration prioritization."
+            T("pricing.preorder_recorded").format(
+                amount=currency.format_price(willing, locale),
+                tier=chosen_tier.display_name,
+            )
         )
 
     st.divider()
     # --- Aggregate summary per tier ---
-    st.subheader("Current pre-order signal")
-    st.caption(
-        "Aggregate willingness-to-pay across all submissions per tier. "
-        "Helps the founder spot which tier has actual demand vs which "
-        "is theoretical."
-    )
+    st.subheader(T("pricing.signal_header"))
+    st.caption(T("pricing.signal_caption"))
     for tier in pricing.PRICING_TIERS:
         summary = storage.preorder_interest_summary(tier.tier_id)
         if not summary:
@@ -6158,19 +6098,19 @@ def render_video_query(embedded: bool = False) -> None:
         ),
     )
 
-    submit = st.button("🚀 Analyze video", type="primary")
+    submit = st.button(T("video.analyze_button"), type="primary")
 
     if not submit:
         return
 
     if uploaded is None:
-        st.error("Please upload a video file first.")
+        st.error(T("video.err_no_file"))
         return
     if not user_query.strip():
-        st.error("Please enter a question about the scene.")
+        st.error(T("video.err_no_question"))
         return
     if not user_id.strip():
-        st.error("Please provide a handle (any string).")
+        st.error(T("video.err_no_handle"))
         return
 
     # Step 1: ingest video → sampled frames + tracked entities
@@ -6187,20 +6127,18 @@ def render_video_query(embedded: bool = False) -> None:
 
     if not ingest_result.available:
         st.error(
-            f"Video ingestion failed: {ingest_result.reason}\n\n"
-            f"If this says 'opencv-python or numpy not installed', "
-            f"run: `pip install opencv-python-headless`. If it says "
-            f"'mock mode enabled', unset `OMYTEA_CONSOLE_MOCK` in "
-            f"your shell."
+            T("video.ingestion_failed").format(reason=ingest_result.reason)
         )
         return
 
     st.success(
-        f"✓ Sampled {ingest_result.sampled_count} frames · "
-        f"{len(ingest_result.tracked_entities)} entities tracked · "
-        f"detector: `{ingest_result.detector_used}` · "
-        f"video duration: {ingest_result.duration_seconds:.1f}s @ "
-        f"{ingest_result.fps:.0f}fps"
+        T("video.sampled_summary").format(
+            n_frames=ingest_result.sampled_count,
+            n_entities=len(ingest_result.tracked_entities),
+            detector=ingest_result.detector_used,
+            duration=ingest_result.duration_seconds,
+            fps=ingest_result.fps,
+        )
     )
 
     # Show a thumbnail strip of sampled frames so the user sees what
@@ -6279,7 +6217,7 @@ def render_video_query(embedded: bool = False) -> None:
                 tracked_entities_summary=entity_summaries,
             )
         except Exception as exc:  # noqa: BLE001
-            st.error(f"Scene compilation failed: {exc}")
+            st.error(T("video.scene_compilation_failed").format(exc=exc))
             return
 
     # Step 3: convert to ConsoleResult + persist + render via existing UI
@@ -6291,14 +6229,10 @@ def render_video_query(embedded: bool = False) -> None:
     fallback_reason = program.raw.get("_fallback_reason", "")
     if fallback_reason:
         st.warning(
-            f"⚠ Vision LLM fallback engaged. {fallback_reason}\n\n"
-            f"The branches below come from a deterministic stub and "
-            f"are NOT grounded in the specific video content. The "
-            f"entity-tracking + quantum-operator evolution still "
-            f"uses the real per-frame detections."
+            T("video.fallback_warning").format(reason=fallback_reason)
         )
     else:
-        st.success("✓ Scene analysis complete.")
+        st.success(T("video.scene_complete"))
 
     st.divider()
 
@@ -6327,8 +6261,7 @@ def render_video_query(embedded: bool = False) -> None:
     )
     storage.save_prediction(rec)
     st.caption(
-        f"Prediction ID (save this for later measurement-update): "
-        f"`{rec.prediction_id}`"
+        T("video.prediction_id_caption").format(pid=rec.prediction_id)
     )
 
     st.divider()
@@ -6370,24 +6303,15 @@ def _render_entity_quantum_evolution(
     """
     import video_state
 
-    st.subheader("⚛ Entity-trajectory quantum evolution")
-    st.caption(
-        "For each tracked entity, the system synthesizes three "
-        "future-position hypotheses (continue / accelerate / "
-        "decelerate). These are combined into a JointWaveFunction "
-        "across up to 3 entities, then evolved under a Lindblad "
-        "open-system operator over a short horizon. The decaying "
-        "off-diagonal magnitudes below show how correlations "
-        "between entity-trajectory futures wash out into "
-        "independent classical outcomes."
-    )
+    st.subheader(T("video.entity_quantum_header"))
+    st.caption(T("video.entity_quantum_caption"))
 
     bundles = video_state.build_entity_hypothesis_bundles(
         entity_summaries, max_entities=3,
     )
 
     if not bundles:
-        st.info("No trackable entities to evolve.")
+        st.info(T("video.no_entities_evolve"))
         return
 
     # Bundle preview table
@@ -6409,10 +6333,7 @@ def _render_entity_quantum_evolution(
 
     jwf = video_state.build_joint_wavefunction(bundles)
     if jwf is None:
-        st.info(
-            "Joint evolution unavailable in this environment — the "
-            "frame stream and entity tracking still ran above."
-        )
+        st.info(T("video.joint_unavailable"))
         return
 
     n_joint = len(jwf.hypotheses)
@@ -6420,17 +6341,14 @@ def _render_entity_quantum_evolution(
 
     cols = st.columns(3)
     with cols[0]:
-        st.metric("Joint hypotheses", n_joint)
+        st.metric(T("video.metric_joint_hyps"), n_joint)
     with cols[1]:
-        st.metric("Off-diagonal pairs", n_offdiag_pairs)
+        st.metric(T("video.metric_offdiag_pairs"), n_offdiag_pairs)
     with cols[2]:
-        st.metric("Entities evolved", len(bundles))
+        st.metric(T("video.metric_entities_evolved"), len(bundles))
 
     if n_offdiag_pairs == 0:
-        st.info(
-            "No off-diagonal coherences generated (need ≥2 entities "
-            "with informative trajectories). Skipping evolution."
-        )
+        st.info(T("video.no_offdiag"))
         return
 
     horizon_steps = st.slider(
@@ -6458,14 +6376,16 @@ def _render_entity_quantum_evolution(
 
     if evo.get("skipped"):
         st.error(
-            f"Evolution skipped: {evo.get('reason', 'unknown')}"
+            T("video.evolution_skipped").format(
+                reason=evo.get("reason", "unknown")
+            )
         )
         return
 
     # Per-pair magnitude over time → line chart
     snapshots = evo["snapshots"]
     if not snapshots:
-        st.info("No evolution snapshots to display.")
+        st.info(T("video.no_snapshots"))
         return
 
     # Build series: one line per off-diagonal pair (deduped by sorted i,j)
@@ -6496,12 +6416,9 @@ def _render_entity_quantum_evolution(
 
     st.line_chart(pair_series)
     st.caption(
-        f"Off-diagonal magnitude |⟨joint_i | ρ | joint_j⟩| over "
-        f"{horizon_steps} Lindblad ticks at γ={decoherence_rate:.2f}. "
-        f"Each line = one joint-hypothesis pair. Lines converging to "
-        f"zero = those two correlated futures have lost their "
-        f"coherence and are now effectively independent classical "
-        f"outcomes."
+        T("video.offdiag_caption").format(
+            n_ticks=horizon_steps, gamma=decoherence_rate
+        )
     )
 
 
@@ -6563,12 +6480,7 @@ def render_live_webcam(embedded: bool = False) -> None:
         # Browser-side webrtc package itself missing — this only happens
         # for local installs that opted out of streamlit-webrtc. Show a
         # short, friendly explanation, not the raw pip command.
-        st.info(
-            "The live-webcam stream stack isn't installed in this "
-            "environment. The Video query tab (above in the sidebar) "
-            "accepts uploaded video files and runs the same perception + "
-            "quantum pipeline."
-        )
+        st.info(T("webcam.stack_missing"))
         return
 
     # Check substrate-perception availability quietly. If unavailable,
@@ -6585,7 +6497,7 @@ def render_live_webcam(embedded: bool = False) -> None:
     session: webcam_stream.WebcamSession = st.session_state.webcam_session
 
     # Tunable settings
-    with st.expander("Tuning (advanced)", expanded=False):
+    with st.expander(T("webcam.tuning_expander"), expanded=False):
         col_a, col_b, col_c = st.columns(3)
         with col_a:
             new_rebuild = st.slider(
@@ -6649,13 +6561,13 @@ def render_live_webcam(embedded: bool = False) -> None:
     )
 
     # Live state panel (re-reads the snapshot every rerun)
-    st.subheader("Live state")
+    st.subheader(T("webcam.live_state"))
     refresh_col, reset_col = st.columns([1, 1])
     with refresh_col:
-        if st.button("🔄 Refresh state", use_container_width=True):
+        if st.button(T("webcam.refresh_state"), use_container_width=True):
             st.rerun()
     with reset_col:
-        if st.button("🧹 Reset session", use_container_width=True):
+        if st.button(T("webcam.reset_session"), use_container_width=True):
             session.reset()
             st.rerun()
 
@@ -6683,10 +6595,7 @@ def render_live_webcam(embedded: bool = False) -> None:
         ]
         st.dataframe(rows, hide_index=True, use_container_width=True)
     else:
-        st.caption(
-            "No entities tracked yet. Start the webcam above and move "
-            "something within the frame."
-        )
+        st.caption(T("webcam.no_entities_tracked"))
 
     # Coherence-decay chart (last rebuild's snapshots)
     if snap.coherence_snapshots:
@@ -6716,16 +6625,15 @@ def render_live_webcam(embedded: bool = False) -> None:
             st.markdown("**Off-diagonal coherence decay (last rebuild)**")
             st.line_chart(pair_series)
             st.caption(
-                f"Rebuilt at frame {snap.last_rebuild_at_frame}. "
-                f"Each line = one joint-hypothesis pair magnitude over "
-                f"Lindblad ticks. Lines decaying to 0 = correlated "
-                f"futures losing coherence."
+                T("webcam.rebuilt_caption").format(
+                    frame=snap.last_rebuild_at_frame
+                )
             )
     else:
         st.caption(
-            "No joint quantum state yet. Coherence chart will appear "
-            "after the first rebuild (every "
-            f"{session.rebuild_every_n_frames} frames by default)."
+            T("webcam.no_joint_state").format(
+                n=session.rebuild_every_n_frames
+            )
         )
 
     # ----------------------------------------------------------------
@@ -6733,7 +6641,7 @@ def render_live_webcam(embedded: bool = False) -> None:
     # ----------------------------------------------------------------
 
     st.divider()
-    st.subheader("🎯 Ask vision LLM about the current scene")
+    st.subheader(T("webcam.ask_vision_header"))
     st.write(
         "Freeze the last few webcam frames + current entity tracks "
         "and run them through the same scene-understanding pipeline "
@@ -6770,16 +6678,16 @@ def render_live_webcam(embedded: bool = False) -> None:
         ),
     )
 
-    if st.button("📸 Capture & predict", type="primary", use_container_width=True):
+    if st.button(T("webcam.capture_predict"), type="primary", use_container_width=True):
         capture = session.snapshot_for_prediction(n_frames=cap_n_frames)
         if not capture["available"]:
             st.warning(
-                f"Cannot capture yet: {capture['reason']}"
+                T("webcam.cannot_capture").format(reason=capture["reason"])
             )
         elif not cap_query.strip():
-            st.error("Please type a question first.")
+            st.error(T("webcam.err_no_question"))
         elif not cap_user_id.strip():
-            st.error("Please enter a handle (any string is fine).")
+            st.error(T("webcam.err_no_handle"))
         else:
             with st.spinner("Asking vision LLM about the current scene…"):
                 from compiler import compile_scene_query
@@ -6824,8 +6732,7 @@ def render_live_webcam(embedded: bool = False) -> None:
                 # Storage failure is not fatal — the user still sees
                 # the prediction on screen.
                 st.warning(
-                    f"Saved-prediction storage failed (prediction "
-                    f"still shown below): {exc}"
+                    T("webcam.storage_failed").format(exc=exc)
                 )
 
             # Reuse the Mode 5 / new-prediction result renderer so
@@ -6848,16 +6755,9 @@ def render_live_webcam(embedded: bool = False) -> None:
     # cases frames are processed in memory only and never persisted.
     # Show a one-line caption — no warnings, no traceback chrome.
     if substrate_full:
-        st.caption(
-            "Camera frames stream to the perception layer in memory "
-            "only; nothing about the stream is persisted."
-        )
+        st.caption(T("webcam.footer_persisted"))
     else:
-        st.caption(
-            "Frames-only preview — full perception + quantum stages "
-            "are enabled when the host has the parent Omytea package "
-            "available."
-        )
+        st.caption(T("webcam.footer_frames_only"))
 
 
 def _scroll_focus_composer() -> None:
@@ -7060,7 +6960,7 @@ def _render_score_due_banner() -> None:
     # ten would be noise). User can drill into the full list via the
     # Calibration History page once they score the first one.
     top = overdue[0]
-    decision = top.get("decision_label") or "(your prediction)"
+    decision = top.get("decision_label") or T("score.due_decision_fallback")
     # How long ago did the user predict?
     import datetime as _dt
     try:
@@ -7068,21 +6968,20 @@ def _render_score_due_banner() -> None:
     except Exception:
         days_ago = 0
     if days_ago >= 60:
-        when = f"~{days_ago // 30} months ago"
+        when = T("score.when_months_ago").format(n=days_ago // 30)
     elif days_ago >= 14:
-        when = f"~{days_ago // 7} weeks ago"
+        when = T("score.when_weeks_ago").format(n=days_ago // 7)
     else:
-        when = f"{days_ago} days ago"
+        when = T("score.when_days_ago").format(n=days_ago)
     cols = st.columns([5, 1])
     with cols[0]:
         st.info(
-            f"📅 **Time to score**: {decision} — predicted {when}. "
-            "How did this future actually play out?",
+            T("score.due_banner").format(decision=decision, when=when),
             icon=None,
         )
     with cols[1]:
         if st.button(
-            "Score now →",
+            T("score.now_button"),
             key=f"_score_due_btn_{top['prediction_id']}",
             type="primary",
             use_container_width=True,
