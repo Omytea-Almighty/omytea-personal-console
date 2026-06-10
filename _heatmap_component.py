@@ -468,7 +468,10 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
     --sans: -apple-system, "Inter", system-ui, sans-serif;
   }}
   * {{ box-sizing: border-box; }}
-  html, body {{ margin: 0; padding: 0; background: var(--canvas); }}
+  /* Iter #56 — transparent iframe body: the page's nebula glows THROUGH
+     the component instead of being blocked by an opaque dark rectangle
+     (the card carries its own surface fill, so content contrast holds). */
+  html, body {{ margin: 0; padding: 0; background: transparent; }}
   body {{
     color: var(--ink-0); font-family: var(--sans); font-size: 14px;
     line-height: 1.5; -webkit-font-smoothing: antialiased;
@@ -576,12 +579,14 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
      stretched the SVG across the full Console width and ballooned
      every cell. */
   .heat-card {{
-    background: var(--surface); border: 1px solid var(--hairline);
-    /* radius matched to the Console's other cards (12px); the shadow
-       tightened from a 40px-blur slab to a precise, quiet lift —
-       floaty soft shadows read cheap, tight ones read crafted. */
+    /* Iter #56 — the probability cloud is the product's jewel: a
+       violet-tinged hairline + a soft outer GLOW make the card read
+       as the luminous centerpiece, not one more grey panel. */
+    background: var(--surface);
+    border: 1px solid rgba(141,148,255,0.18);
     border-radius: 12px; padding: 14px 16px 10px;
-    box-shadow: 0 3px 14px rgba(0,0,0,0.22),
+    box-shadow: 0 0 44px rgba(107,143,255,0.10),
+      0 3px 14px rgba(0,0,0,0.22),
       0 1px 0 rgba(255,255,255,0.03) inset;
   }}
   /* card head — title + reading hint, v10's .heat-card .head */
@@ -1344,7 +1349,10 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
         var cmx = (GD.colMax && GD.colMax[c]) || GD.gmax;
         var effMax = 0.5 * GD.gmax + 0.5 * cmx;
         var ratio = effMax > 0 ? Math.min(1, p / effMax) : 0;
-        var op = Math.pow(ratio, 0.66).toFixed(3);
+        // Iter #56 — gamma 0.66 -> 0.56: lifts the cloud's mid-mass cells
+        // so the probability shape glows brighter against the deepened
+        // canvas (the founder couldn't SEE the previous refinements).
+        var op = Math.pow(ratio, 0.56).toFixed(3);
         var rgb = GD.rowColors[r2];
         var cx = PADX_L + c * cellW;
         var cy = gy0 + r2 * cellH;

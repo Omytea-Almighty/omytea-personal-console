@@ -1574,12 +1574,34 @@ _MOBILE_SIDEBAR_CSS = (
 # probability cloud is the single cinematic centerpiece.
 _DESIGN_SYSTEM_CSS = (
     "<style>"
-    # ---- atmosphere: a faint violet aura behind the output region so
-    # the page reads "deep space instrument", not "grey admin panel".
+    # color-scheme must MATCH the component iframes' declaration (dark):
+    # when embedder and iframe schemes differ, browsers force an OPAQUE
+    # canvas on the iframe — which blocked the nebula from glowing
+    # through the transparent component body.
+    ":root{color-scheme:dark;}"
+    # ---- atmosphere v2 (founder: 上一版"没看到变化" — the 0.10 aura was
+    # imperceptible). A REAL nebula now: indigo bloom over the output
+    # region, violet wash lower-left, a cyan breath bottom-right — the
+    # Nye Clock galaxy family, unmistakable at first glance yet still
+    # behind the content.
     ".stApp{background:"
-    "radial-gradient(1100px 480px at 72% -12%,rgba(94,106,210,0.10),transparent 62%),"
-    "radial-gradient(900px 420px at 18% 112%,rgba(180,126,255,0.05),transparent 60%),"
+    "radial-gradient(1400px 620px at 70% -16%,rgba(99,108,235,0.22),transparent 62%),"
+    "radial-gradient(1000px 520px at 8% 28%,rgba(180,126,255,0.10),transparent 58%),"
+    "radial-gradient(900px 520px at 96% 92%,rgba(68,236,255,0.06),transparent 60%),"
     "#08090a!important;}"
+    # ---- signature keyline: a 2px cyan→blue→violet gradient stripe
+    # pinned to the very top of the viewport — the product's color
+    # signature, visible on every screen.
+    ".stApp::before{content:'';position:fixed;top:0;left:0;right:0;"
+    "height:2px;z-index:9999;pointer-events:none;"
+    "background:linear-gradient(90deg,rgba(68,236,255,0),"
+    "rgba(68,236,255,0.55) 16%,#6b8fff 50%,#b47eff 84%,"
+    "rgba(180,126,255,0));}"
+    # ---- brand wordmark: gradient ink (ice → periwinkle → violet)
+    'section[data-testid="stSidebar"] h1{'
+    "background:linear-gradient(115deg,#f2f4f8 12%,#aab4ff 58%,#c9a8ff 92%);"
+    "-webkit-background-clip:text!important;background-clip:text!important;"
+    "-webkit-text-fill-color:transparent!important;}"
     # ---- typographic scale (Claude-dense)
     ".stApp h1{font-size:24px!important;font-weight:650!important;"
     "letter-spacing:-0.4px!important;}"
@@ -2706,9 +2728,13 @@ _WORKSPACE_CHROME_CSS = (
     "margin-top:20px!important;}"
     # A faint accent strip on the tray's top edge + a small label make the
     # "this is the input zone, separate & scrollable" reading unmistakable.
+    # Iter #56 — the tray's accent strip now carries the full signature
+    # gradient (cyan -> blue -> violet), matching the viewport keyline.
     '[class*="st-key-omy_composer_pane"]::before{content:"";position:absolute;'
-    "left:18px;right:18px;top:0;height:2px;border-radius:2px;"
-    "background:linear-gradient(90deg,transparent,#6b8fff66,transparent);}"
+    "left:16px;right:16px;top:0;height:2.5px;border-radius:3px;"
+    "background:linear-gradient(90deg,rgba(68,236,255,0),"
+    "rgba(68,236,255,0.45) 18%,#6b8fff 50%,rgba(180,126,255,0.85) 82%,"
+    "rgba(180,126,255,0));}"
     '[class*="st-key-omy_composer_pane"]{position:relative!important;}'
     # Float the "Advanced options" wrapper to the BOTTOM of the composer
     # flex column (after the input form) — the composer body is a flex
@@ -2921,9 +2947,31 @@ def _render_workspace_output() -> None:
             # Iter #52 — step-② heading frames this preview as "what
             # you'll GET after ①", so a first-timer reads the chart as
             # a result-to-come, not a mysterious standalone widget.
-            _step_label(
-                T("workspace.step2.title"), T("workspace.step2.sub_idle")
-            )
+            if _ow_compact:
+                # Iter #56 (founder: 上一版没看到变化) — the cold-start
+                # gets a real HERO moment: 34px gradient display type
+                # instead of a 16px label. This is the landing headline;
+                # the result page keeps its answer-first hero card.
+                st.markdown(
+                    "<div style='margin:10px 0 4px;'>"
+                    "<div style='font-size:34px;font-weight:700;"
+                    "letter-spacing:-1.1px;line-height:1.12;"
+                    "background:linear-gradient(115deg,#f2f4f8 18%,"
+                    "#aab4ff 55%,#c9a8ff 88%);"
+                    "-webkit-background-clip:text;background-clip:text;"
+                    "-webkit-text-fill-color:transparent;'>"
+                    f"{_esc_html(T('workspace.step2.title'))}</div>"
+                    "<div style='color:#9aa3b8;font-size:14px;"
+                    "line-height:1.5;margin-top:7px;'>"
+                    f"{_esc_html(T('workspace.step2.sub_idle'))}</div>"
+                    "</div>",
+                    unsafe_allow_html=True,
+                )
+            else:
+                _step_label(
+                    T("workspace.step2.title"),
+                    T("workspace.step2.sub_idle"),
+                )
             if _ow_compact:
                 # Iter #52 (founder caught it): passing a smaller height
                 # to the heatmap CLIPS it (truncates legend/axis), it does
@@ -4932,21 +4980,30 @@ def _render_result(
         # applied to output, same as the cold-start composer pane). Quiet
         # uppercase eyebrow ("Most likely"), big path + odds, plain sub.
         _eyebrow = T("result.lead.most_likely").rstrip(":：").strip()
+        # Iter #56 — hero card v2: bigger answer (22px), the probability
+        # as a gradient PILL, a stronger gradient field + a soft violet
+        # glow so the answer is unmistakably the page's jewel.
         st.markdown(
-            "<div style='margin:2px 0 14px;padding:15px 18px 14px;"
-            "background:linear-gradient(135deg,rgba(107,143,255,0.10),"
-            "rgba(180,126,255,0.055));border:1px solid "
-            "rgba(139,124,240,0.30);border-radius:14px;'>"
-            "<div style='font-size:10.5px;letter-spacing:0.16em;"
-            "text-transform:uppercase;color:#8a8f98;margin-bottom:6px;'>"
+            "<div style='margin:2px 0 16px;padding:18px 20px 16px;"
+            "background:linear-gradient(135deg,rgba(107,143,255,0.16),"
+            "rgba(180,126,255,0.08));border:1px solid "
+            "rgba(149,134,255,0.42);border-radius:16px;"
+            "box-shadow:0 0 38px rgba(107,143,255,0.12),"
+            "0 1px 0 rgba(255,255,255,0.05) inset;'>"
+            "<div style='font-size:10.5px;letter-spacing:0.18em;"
+            "text-transform:uppercase;color:#9aa0b8;margin-bottom:7px;'>"
             f"{_esc_html(_eyebrow)}</div>"
-            "<div style='font-size:18px;color:#f2f4f8;font-weight:600;"
-            "line-height:1.28;'>"
+            "<div style='font-size:22px;color:#f4f6fa;font-weight:680;"
+            "line-height:1.22;letter-spacing:-0.3px;'>"
             f"{_esc_html(_top_lab)}"
-            "<span style='color:#a99cff;font-weight:700;'> · "
+            "<span style='display:inline-block;vertical-align:3px;"
+            "margin-left:10px;padding:2px 11px;border-radius:999px;"
+            "font-size:13px;font-weight:700;letter-spacing:0;color:#fff;"
+            "background:linear-gradient(135deg,#5e6ad2,#8b7cf0);"
+            "box-shadow:0 1px 8px rgba(94,106,210,0.45);'>"
             f"{_top_p*100:.0f}%</span></div>"
-            "<div style='margin:8px 0 0;font-size:13px;color:#aab0ba;"
-            "line-height:1.5;'>"
+            "<div style='margin:9px 0 0;font-size:13px;color:#aeb4c2;"
+            "line-height:1.55;'>"
             f"{_esc_html((_hinge + ' ' + _mapped).strip())}</div>"
             "</div>",
             unsafe_allow_html=True,
