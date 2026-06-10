@@ -319,9 +319,9 @@ st.markdown(
        flat quiet row. NB: scope to [kind="primary"] — NOT
        :first-of-type, which would paint the whole nav rail. */
     section[data-testid="stSidebar"] .stButton > button[kind="primary"] {
-        background: #1b1d22 !important;
-        border: 1px solid #34343a !important;
-        border-radius: 6px !important;
+        background: rgba(255,255,255,0.045) !important;
+        border: 1px solid rgba(255,255,255,0.13) !important;
+        border-radius: 10px !important;
         color: #f7f8f8 !important;
         font-weight: 600;
         font-size: 13px;
@@ -331,13 +331,13 @@ st.markdown(
         box-shadow: none !important;
     }
     section[data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {
-        background: #22242a !important;
-        border-color: #3e3e44 !important;
+        background: rgba(255,255,255,0.08) !important;
+        border-color: rgba(255,255,255,0.2) !important;
         color: #ffffff !important;
         box-shadow: none !important;
     }
     section[data-testid="stSidebar"] .stButton > button[kind="primary"]:active {
-        background: #18191d !important;
+        background: rgba(255,255,255,0.03) !important;
         box-shadow: none !important;
     }
     /* bug-035 follow-up: force-dark the "New prediction" button. The
@@ -350,11 +350,11 @@ st.markdown(
     section[data-testid="stSidebar"] [class*="st-key-_nav_new_prediction"] button,
     section[data-testid="stSidebar"] [class*="st-key-_nav_new_prediction"] button[kind="primary"],
     section[data-testid="stSidebar"] div[class*="st-key-_nav_new_prediction"] button {
-        background: #1b1d22 !important;
-        background-color: #1b1d22 !important;
-        border: 1px solid #34343a !important;
-        border-color: #34343a !important;
-        border-radius: 6px !important;
+        background: rgba(255,255,255,0.045) !important;
+        background-color: rgba(255,255,255,0.045) !important;
+        border: 1px solid rgba(255,255,255,0.13) !important;
+        border-color: rgba(255,255,255,0.13) !important;
+        border-radius: 10px !important;
         color: #f7f8f8 !important;
         font-size: 13px !important;
         padding: 7px 11px !important;
@@ -362,9 +362,9 @@ st.markdown(
     }
     section[data-testid="stSidebar"] [class*="st-key-_nav_new_prediction"] button:hover,
     section[data-testid="stSidebar"] [class*="st-key-_nav_new_prediction"] button[kind="primary"]:hover {
-        background: #22242a !important;
-        background-color: #22242a !important;
-        border-color: #3e3e44 !important;
+        background: rgba(255,255,255,0.08) !important;
+        background-color: rgba(255,255,255,0.08) !important;
+        border-color: rgba(255,255,255,0.2) !important;
         color: #ffffff !important;
         box-shadow: none !important;
     }
@@ -435,7 +435,7 @@ st.markdown(
     .stTextArea div[data-baseweb="base-input"]:hover,
     div[data-baseweb="textarea"]:hover,
     div[data-baseweb="select"]:hover > div {
-        border-color: #34343a !important;
+        border-color: rgba(255,255,255,0.16) !important;
     }
     /* Suppress BaseWeb's own focus outline on the inner field. */
     [data-testid="stTextArea"] textarea:focus,
@@ -1565,6 +1565,139 @@ _MOBILE_SIDEBAR_CSS = (
 # (st-key-_quick_chip_). `min-width:0` on the flex child + `width:100%`
 # on the <p> are what make text-overflow:ellipsis actually fire inside
 # Streamlit's flex button.
+# Iter #55 (founder: 从头优化整个视觉效果) — ONE coherent design-system
+# layer for the whole console. Thesis: Omytea is a calibrated
+# multi-future INSTRUMENT — deep-space canvas (config.toml Linear root),
+# lavender-violet probability accents, hairline borders, Claude-grade
+# density. Three surface weights only: hairline cards, one raised tray
+# (composer), one gradient CTA. Everything else stays quiet so the
+# probability cloud is the single cinematic centerpiece.
+_DESIGN_SYSTEM_CSS = (
+    "<style>"
+    # ---- atmosphere: a faint violet aura behind the output region so
+    # the page reads "deep space instrument", not "grey admin panel".
+    ".stApp{background:"
+    "radial-gradient(1100px 480px at 72% -12%,rgba(94,106,210,0.10),transparent 62%),"
+    "radial-gradient(900px 420px at 18% 112%,rgba(180,126,255,0.05),transparent 60%),"
+    "#08090a!important;}"
+    # ---- typographic scale (Claude-dense)
+    ".stApp h1{font-size:24px!important;font-weight:650!important;"
+    "letter-spacing:-0.4px!important;}"
+    ".stApp h2{font-size:18px!important;font-weight:620!important;"
+    "letter-spacing:-0.2px!important;}"
+    ".stApp h3{font-size:15px!important;font-weight:600!important;}"
+    'section[data-testid="stSidebar"] h1{font-size:19px!important;'
+    "letter-spacing:-0.2px!important;}"
+    '[data-testid="stCaptionContainer"] p{font-size:12px!important;'
+    "color:#858c98!important;line-height:1.5!important;}"
+    # ---- buttons: ONE primary voice (lavender gradient) + ghost
+    # secondaries. Sidebar history rows keep their own quieter scoped
+    # styling (those rules are more specific and injected later).
+    '.stButton button[kind="primary"],'
+    '[data-testid="stFormSubmitButton"] button{'
+    "background:linear-gradient(135deg,#5e6ad2 0%,#7d6ce0 60%,#8b7cf0 100%)!important;"
+    "border:1px solid rgba(139,124,240,0.55)!important;color:#fff!important;"
+    "border-radius:10px!important;font-size:13.5px!important;font-weight:600!important;"
+    "box-shadow:0 1px 2px rgba(0,0,0,0.45),0 0 18px rgba(94,106,210,0.16)!important;"
+    "transition:box-shadow .15s ease,filter .15s ease!important;}"
+    '.stButton button[kind="primary"]:hover,'
+    '[data-testid="stFormSubmitButton"] button:hover{'
+    "filter:brightness(1.09)!important;"
+    "box-shadow:0 2px 14px rgba(94,106,210,0.38)!important;}"
+    '.stButton button[kind="secondary"],'
+    '[data-testid="stDownloadButton"] button{'
+    "background:rgba(255,255,255,0.02)!important;"
+    "border:1px solid rgba(255,255,255,0.11)!important;"
+    "border-radius:10px!important;color:#c9cdd6!important;"
+    "font-size:13px!important;font-weight:500!important;"
+    "box-shadow:none!important;transition:background .15s ease,"
+    "border-color .15s ease!important;}"
+    '.stButton button[kind="secondary"]:hover,'
+    '[data-testid="stDownloadButton"] button:hover{'
+    "background:rgba(255,255,255,0.05)!important;"
+    "border-color:rgba(255,255,255,0.2)!important;color:#eceef2!important;}"
+    # ---- inputs: dark wells + lavender focus ring
+    '[data-testid="stTextArea"] textarea,[data-testid="stTextInput"] input{'
+    "background:#0b0c10!important;border:1px solid rgba(255,255,255,0.09)!important;"
+    "border-radius:10px!important;font-size:14px!important;"
+    "transition:border-color .15s ease,box-shadow .15s ease!important;}"
+    '[data-testid="stTextArea"] textarea:focus,'
+    '[data-testid="stTextInput"] input:focus{'
+    "border-color:#5e6ad2!important;"
+    "box-shadow:0 0 0 3px rgba(94,106,210,0.20)!important;}"
+    '[data-testid="stTextArea"] textarea::placeholder,'
+    '[data-testid="stTextInput"] input::placeholder{color:#5d6470!important;}'
+    '[data-testid="stTextArea"] [data-baseweb="textarea"],'
+    '[data-testid="stTextInput"] [data-baseweb="input"],'
+    '[data-testid="stTextArea"] [data-baseweb="base-input"],'
+    '[data-testid="stTextInput"] [data-baseweb="base-input"]{'
+    "background:transparent!important;border:none!important;}"
+    '[data-testid="stSelectbox"] [data-baseweb="select"]>div{'
+    "background:#0b0c10!important;border-color:rgba(255,255,255,0.09)!important;"
+    "border-radius:10px!important;font-size:13.5px!important;}"
+    # ---- bordered containers + expanders: ONE hairline voice
+    '[data-testid="stVerticalBlockBorderWrapper"]{'
+    "border-color:rgba(255,255,255,0.08)!important;border-radius:12px!important;}"
+    # (DOM-verified 2026-06-08: the visible border + fill live on the
+    # [data-testid="stExpander"] WRAPPER div itself; summary carries its
+    # own fill; stExpanderDetails carries the body divider.)
+    '[data-testid="stExpander"]{'
+    "border:1px solid rgba(255,255,255,0.08)!important;"
+    "border-radius:12px!important;background:rgba(255,255,255,0.012)!important;}"
+    # the inner <details> draws its OWN default border in this Streamlit
+    # version — silence it so the wrapper hairline is the single voice
+    '[data-testid="stExpander"] details{'
+    "border-color:transparent!important;border-radius:12px!important;}"
+    '[data-testid="stExpander"] summary{font-size:13px!important;'
+    "font-weight:550!important;padding:9px 14px!important;"
+    "background:transparent!important;border-radius:12px!important;}"
+    '[data-testid="stExpander"] summary:hover{color:#eceef2!important;'
+    "background:rgba(255,255,255,0.03)!important;}"
+    '[data-testid="stExpanderDetails"]{'
+    "border-color:rgba(255,255,255,0.07)!important;}"
+    'section[data-testid="stSidebar"] [data-testid="stExpander"]{'
+    "border-color:transparent!important;background:transparent!important;}"
+    'section[data-testid="stSidebar"] [data-testid="stExpander"] summary{'
+    "background:transparent!important;padding:6px 10px!important;}"
+    'section[data-testid="stSidebar"] [data-testid="stExpander"] '
+    "summary:hover{background:rgba(255,255,255,0.045)!important;}"
+    # ---- code wells (prediction ID) quiet + small
+    '[data-testid="stCode"] pre,.stCode pre{background:#0b0c10!important;'
+    "border:1px solid rgba(255,255,255,0.08)!important;"
+    "border-radius:8px!important;font-size:12px!important;}"
+    # ---- dividers + scrollbars: faint
+    '[data-testid="stDivider"],hr{border-color:rgba(255,255,255,0.06)!important;'
+    "background:rgba(255,255,255,0.06)!important;}"
+    "::-webkit-scrollbar{width:8px;height:8px;}"
+    "::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.13);"
+    "border-radius:4px;}"
+    "::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.22);}"
+    "::-webkit-scrollbar-track{background:transparent;}"
+    # ---- segmented control / radio (View switch): dense
+    '[data-testid="stSegmentedControl"] button{font-size:12.5px!important;}'
+    '[data-testid="stRadio"] label p{font-size:13px!important;}'
+    '[data-testid="stMetricValue"]{font-size:20px!important;}'
+    # ---- suggestion chips: pills, not boxes. NB: selector includes
+    # .stButton so it OUTRANKS the generic secondary-button rule above
+    # (equal specificity would lose on radius; +1 class wins).
+    '[class*="st-key-_quick_chip_"] .stButton button,'
+    '[class*="st-key-_quick_chip_"] button{'
+    "border-radius:999px!important;background:rgba(255,255,255,0.025)!important;"
+    "border:1px solid rgba(255,255,255,0.10)!important;"
+    "padding:7px 14px!important;}"
+    '[class*="st-key-_quick_chip_"] .stButton button:hover,'
+    '[class*="st-key-_quick_chip_"] button:hover{'
+    "border-color:rgba(107,143,255,0.55)!important;"
+    "background:rgba(107,143,255,0.07)!important;}"
+    # ---- beta banner: quiet accent-tinted notice, not a heavy box
+    '[class*="st-key-omy_beta_banner"]{'
+    "background:rgba(94,106,210,0.055)!important;"
+    "border:1px solid rgba(94,106,210,0.22)!important;"
+    "border-radius:12px!important;padding:12px 14px 11px!important;}"
+    "</style>"
+)
+
+
 _TYPOGRAPHY_CSS = (
     "<style>"
     # --- History rail rows: one line, left-aligned, smaller, ellipsis
@@ -1651,6 +1784,10 @@ def render_sidebar() -> tuple[str, Any]:
     if "user_locale" not in st.session_state:
         st.session_state.user_locale = currency.detect_locale()
 
+    # Iter #55 — global design-system layer (tokens, buttons, inputs,
+    # expanders, chips, banner). Injected FIRST so the more-specific
+    # blocks below (typography / pin / mobile) win where they overlap.
+    st.markdown(_DESIGN_SYSTEM_CSS, unsafe_allow_html=True)
     # Pin the footer + account chip to the sidebar's bottom edge.
     st.markdown(_SIDEBAR_PIN_CSS, unsafe_allow_html=True)
     # Iter 42d — mobile sidebar collapse, injected as a dedicated
@@ -1737,7 +1874,8 @@ def render_sidebar() -> tuple[str, Any]:
         f"<span style='color:#8a8f98;font-size:10.5px;letter-spacing:0.13em;"
         f"text-transform:uppercase;font-weight:600;'>"
         f"{T('nav.history')}</span>"
-        f"<span style='flex:1;height:1px;background:#23252a;'></span>"
+        f"<span style='flex:1;height:1px;"
+        f"background:rgba(255,255,255,0.07);'></span>"
         f"</div>",
         unsafe_allow_html=True,
     )
@@ -2556,10 +2694,15 @@ _WORKSPACE_CHROME_CSS = (
     # composer is a SEPARATE, independently-scrollable zone (not part of
     # the output page above): subtle raised fill, full hairline border,
     # rounded corners, and a soft top shadow that reads as "docked".
+    # Iter #55 — the composer is THE one raised surface in the system:
+    # slightly lighter fill than the canvas, hairline (not grey-slab)
+    # border, larger radius, deep soft shadow.
     '[class*="st-key-omy_composer_pane"]{'
-    "background:#15171c!important;border:1px solid #3a3d46!important;"
-    "border-radius:16px!important;padding:14px 16px 6px!important;"
-    "box-shadow:0 -12px 34px rgba(0,0,0,0.5)!important;"
+    "background:#101116!important;"
+    "border:1px solid rgba(255,255,255,0.10)!important;"
+    "border-radius:18px!important;padding:14px 16px 6px!important;"
+    "box-shadow:0 -10px 44px rgba(0,0,0,0.45),"
+    "0 1px 0 rgba(255,255,255,0.03) inset!important;"
     "margin-top:20px!important;}"
     # A faint accent strip on the tray's top edge + a small label make the
     # "this is the input zone, separate & scrollable" reading unmistakable.
@@ -2668,15 +2811,19 @@ def _step_label(title: str, sub: str = "") -> None:
     making the LOGIC visible: a clear "do this → then this" spine. This
     renders a small step title + a one-line plain-language hint.
     """
+    # Iter #55 (design system) — region title with real presence: 16px
+    # weight-650 ink + a 12.5px muted sub on a 1.45 leading. This is the
+    # page-level voice; the chart's own in-card label is a quiet 11px
+    # uppercase instrument tag one tier below it.
     sub_html = (
-        f"<div style='color:#8a8f98;font-size:12px;line-height:1.45;"
-        f"margin-top:2px;'>{_esc_html(sub)}</div>"
+        f"<div style='color:#8a90a0;font-size:12.5px;line-height:1.45;"
+        f"margin-top:3px;'>{_esc_html(sub)}</div>"
         if sub else ""
     )
     st.markdown(
-        f"<div style='margin:2px 0 9px;'>"
-        f"<div style='color:#e8eaed;font-size:14px;font-weight:600;"
-        f"letter-spacing:-0.01em;'>{_esc_html(title)}</div>{sub_html}</div>",
+        f"<div style='margin:2px 0 10px;'>"
+        f"<div style='color:#eceef2;font-size:16px;font-weight:650;"
+        f"letter-spacing:-0.2px;'>{_esc_html(title)}</div>{sub_html}</div>",
         unsafe_allow_html=True,
     )
 
@@ -2908,7 +3055,9 @@ def _render_workspace_composer_body() -> None:
         st.session_state.get("current_prediction") is None
         and not st.session_state.get("_beta_banner_dismissed", False)
     ):
-        with st.container(border=True):
+        # Iter #55 — keyed container so the design-system layer can tint
+        # it as a quiet accent notice (was a heavy default-border box).
+        with st.container(key="omy_beta_banner"):
             # Iter #51 — smaller, denser banner (founder: 字体太大). Render
             # as one HTML block at 13px/12px instead of default ~16px
             # markdown; keep the **bold** safety span by converting it

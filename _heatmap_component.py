@@ -457,9 +457,12 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
 <style>
   :root {{
     color-scheme: dark;
-    --canvas: #0a0c11; --surface: #11141b; --surface-2: #181c25;
-    --hairline: #232834; --ink-0: #f0f2f5; --ink-1: #b9bfc8;
-    --ink-2: #76808d; --ink-3: #4b525d;
+    /* Iter #55 (design system) — tokens aligned to the Console's
+       Linear-grade root (config.toml #08090a / #0f1011) so the iframe
+       no longer reads as a lighter patch on the page. */
+    --canvas: #08090a; --surface: #0e0f14; --surface-2: #15171e;
+    --hairline: rgba(255,255,255,0.08); --ink-0: #f2f4f8;
+    --ink-1: #b9bfc8; --ink-2: #76808d; --ink-3: #4b525d;
     --accent: #5e6ad2; --teal: #58c5b4; --red: #ff5e6e; --amber: #d8a657;
     --mono: ui-monospace, "SF Mono", Menlo, monospace;
     --sans: -apple-system, "Inter", system-ui, sans-serif;
@@ -707,6 +710,13 @@ _COMPONENT_TEMPLATE = r"""<!doctype html>
     line-height: 1.6; margin: 8px 0 2px; display: none;
   }}
   .idle-note.show, .live-note.show {{ display: block; }}
+  /* Iter #55 — idle de-dup: cold-start used to stack THREE muted
+     explainer lines (narrative arrow + idle-note + reading caption)
+     saying the same thing. In idle, the merged idle-note carries it
+     alone; the narrative + reading lines return in live/prediction
+     modes where they say something data-derived. */
+  body[data-mode="idle"] .heat-narrative,
+  body[data-mode="idle"] .caption {{ display: none; }}
 </style>
 </head>
 <body>

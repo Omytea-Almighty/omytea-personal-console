@@ -2947,10 +2947,26 @@ TRANSLATIONS: Final[dict[str, dict[str, str]]] = {
         # crutch) to a single soft pointer. The grid's own grey
         # uniformity is the "no evidence yet" cue; users don't need to
         # read it.
-        LANG_EN: "Empty grid · waiting for input ↓",
-        LANG_ZH: "空网格 · 等待输入 ↓",
-        LANG_ES: "Cuadrícula vacía · esperando entrada ↓",
-        LANG_FR: "Grille vide · en attente d'entrée ↓",
+        # Iter #55 — the ONE idle line (narrative + reading are hidden in
+        # idle mode now): merged pointer + how-to-read in a single breath.
+        LANG_EN: (
+            "Empty grid · waiting for your decision below ↓ — each row "
+            "is one future, each column a moment toward your horizon."
+        ),
+        LANG_ZH: (
+            "空网格 · 等待你在下方写下决定 ↓ —— 每一行是一条未来，"
+            "每一列是通往时限路上的一个时刻。"
+        ),
+        LANG_ES: (
+            "Cuadrícula vacía · esperando tu decisión abajo ↓ — cada "
+            "fila es un futuro, cada columna un momento hacia tu "
+            "horizonte."
+        ),
+        LANG_FR: (
+            "Grille vide · en attente de votre décision ci-dessous ↓ — "
+            "chaque ligne est un futur, chaque colonne un moment vers "
+            "votre horizon."
+        ),
     },
     "heatmap.live_note": {
         LANG_EN: (
