@@ -4853,7 +4853,6 @@ def _render_coherence_evolution(
 def _render_probability_heatmap(
     hypotheses: list[Any],
     horizon_label: str = "",
-    height: int | None = None,
 ) -> None:
     """Quantum probability-mass heatmap — interactive v10 component.
 
@@ -4892,9 +4891,8 @@ def _render_probability_heatmap(
     # Output-only: the default heatmap carries no camera/video input —
     # that modality lives in the composer's "Live video" toggle, so the
     # output region holds output only.
-    _hkw = {} if height is None else {"height": height}
     render_heatmap_camera_component(
-        payload, horizon_label=horizon_label, show_camera=False, **_hkw,
+        payload, horizon_label=horizon_label, show_camera=False,
     )
 
 

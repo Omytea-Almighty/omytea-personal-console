@@ -77,13 +77,15 @@ def test_output_pane_is_larger_than_composer_pane() -> None:
 
 
 def test_output_region_uses_fixed_height_container() -> None:
-    """The output region opens its own fixed-height scroll container.
+    """The output region opens its own state-aware fixed-height pane.
 
     ``st.container(height=…)`` is Streamlit's fixed-height scrollable
-    box — the natural primitive for an independently-scrolling pane.
+    box. Cold start is compact so the composer stays visible; prediction,
+    live-video and lens states retain the full output-pane height.
     """
     src = ast.unparse(_func("_render_workspace_output"))
-    assert "st.container(height=_OUTPUT_PANE_HEIGHT" in src
+    assert "_ow_pane_h = 300 if _ow_compact else _OUTPUT_PANE_HEIGHT" in src
+    assert "st.container(height=_ow_pane_h" in src
 
 
 def test_composer_region_uses_fixed_height_container() -> None:
@@ -206,10 +208,10 @@ def test_xuanxue_view_lives_inside_the_output_pane() -> None:
 
     Requirement D: both views live in the same independently-scrolling
     output pane from C. The toggle + the 玄学 branch must sit inside the
-    ``st.container(height=_OUTPUT_PANE_HEIGHT)`` block.
+    state-aware ``st.container(height=_ow_pane_h)`` block.
     """
     src = ast.unparse(_func("_render_workspace_output"))
-    container_at = src.find("st.container(height=_OUTPUT_PANE_HEIGHT")
+    container_at = src.find("st.container(height=_ow_pane_h")
     toggle_at = src.find("_render_output_view_toggle()")
     xuanxue_at = src.find("_render_xuanxue_output_view()")
     assert container_at != -1

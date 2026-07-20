@@ -263,9 +263,16 @@ def test_history_rail_supports_categories_and_labels() -> None:
     assert "storage.create_category" in src
     assert "storage.rename_category" in src
     assert "storage.delete_category" in src
-    # group-by-category + filter-by-label
-    assert "storage.list_categories" in src
-    assert "storage.list_user_labels" in src
+    # group-by-category + filter-by-label go through the cache wrappers;
+    # each wrapper remains bound to the original storage API and writes
+    # invalidate the cache so the next rerun observes fresh state.
+    assert "_cached_categories" in src
+    assert "_cached_user_labels" in src
+    assert "storage.list_categories" in ast.unparse(_func("_cached_categories"))
+    assert "storage.list_user_labels" in ast.unparse(
+        _func("_cached_user_labels")
+    )
+    assert "_invalidate_history_cache" in src
     assert "_history_label_filter" in src
 
 
