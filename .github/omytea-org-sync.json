@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "policy_version": "2026-07-19.2",
+  "policy_version": "2026-07-19.3",
   "canonical_owner": "Omytea-Almighty",
   "repository": "omytea-personal-console",
   "repository_id": 1243070880,
   "expected_visibility": "public",
   "default_branch": "main",
-  "lane": "curated-public"
+  "lane": "direct-public"
 }

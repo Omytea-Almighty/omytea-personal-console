@@ -1,6 +1,9 @@
 # Omytea Personal Future Console — MVP
 
+<!-- OMYTEA_ORG_SYNC_README_START -->
 > **Organization source of truth:** [`Omytea-Almighty/omytea-personal-console`](https://github.com/Omytea-Almighty/omytea-personal-console). Humans and agents must read [`ORG-SYNC.md`](ORG-SYNC.md) before working. Reviewed commits are queued for fail-closed organization sync; automation never stages or commits dirty work and never changes visibility.
+> This repository is public: every intentional commit is a publication decision. Secret scanning is not a privacy, PII, licensing, research, or commercial-sensitivity review.
+<!-- OMYTEA_ORG_SYNC_README_END -->
 
 **🚀 Live demo: [omytea-personal-console.streamlit.app](https://omytea-personal-console.streamlit.app/?embed=true)** — open the URL, no install required. Mock mode + non-vision modes work fully in-browser. For real video/webcam prediction, follow the install steps below to run locally with Ollama. *(The `?embed=true` parameter is the canonical public URL — it suppresses Streamlit Cloud's outer chrome for a clean first-paint; the bare URL also works.)*
 
