@@ -1,5 +1,7 @@
 # Omytea Personal Future Console — MVP
 
+> **Organization source of truth:** [`Omytea-Almighty/omytea-personal-console`](https://github.com/Omytea-Almighty/omytea-personal-console). Humans and agents must read [`ORG-SYNC.md`](ORG-SYNC.md) before working. Reviewed commits are queued for fail-closed organization sync; automation never stages or commits dirty work and never changes visibility.
+
 **🚀 Live demo: [omytea-personal-console.streamlit.app](https://omytea-personal-console.streamlit.app/?embed=true)** — open the URL, no install required. Mock mode + non-vision modes work fully in-browser. For real video/webcam prediction, follow the install steps below to run locally with Ollama. *(The `?embed=true` parameter is the canonical public URL — it suppresses Streamlit Cloud's outer chrome for a clean first-paint; the bare URL also works.)*
 
 **A probability-calibrated decision-support tool for personal futures, with local video understanding.**
@@ -43,9 +45,9 @@ Camera frames stream into the substrate's detector + IoUTracker on a background 
 
 | Platform | Variant | Download |
 |---|---|---|
-| macOS arm64 | one-folder | [omytea-console-Darwin-arm64.tar.gz](https://github.com/Adonyth/omytea-personal-console/releases/latest) |
-| macOS arm64 | single binary | [omytea-console-onefile-Darwin-arm64.gz](https://github.com/Adonyth/omytea-personal-console/releases/latest) |
-| Linux x86_64 | one-folder | [omytea-console-Linux-x86_64.tar.gz](https://github.com/Adonyth/omytea-personal-console/releases/latest) |
+| macOS arm64 | one-folder | [omytea-console-Darwin-arm64.tar.gz](https://github.com/Omytea-Almighty/omytea-personal-console/releases/latest) |
+| macOS arm64 | single binary | [omytea-console-onefile-Darwin-arm64.gz](https://github.com/Omytea-Almighty/omytea-personal-console/releases/latest) |
+| Linux x86_64 | one-folder | [omytea-console-Linux-x86_64.tar.gz](https://github.com/Omytea-Almighty/omytea-personal-console/releases/latest) |
 | Docker | multi-arch image | `docker build -t omytea-console:0.3 . && docker run -p 8501:8501 omytea-console:0.3` |
 
 ```bash
@@ -80,7 +82,7 @@ The bundle still expects Ollama for the vision LLM (multi-GB models aren't worth
 ### Step 1 — Clone and bootstrap
 
 ```bash
-git clone https://github.com/Adonyth/omytea-personal-console.git
+git clone https://github.com/Omytea-Almighty/omytea-personal-console.git
 cd omytea-personal-console
 bash scripts/install.sh
 ```

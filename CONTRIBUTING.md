@@ -5,7 +5,7 @@ Thanks for considering a contribution. This is an open-source project under Apac
 ## Quick links
 
 - **Live demo**: https://omytea-personal-console.streamlit.app
-- **Public repo**: https://github.com/Adonyth/omytea-personal-console
+- **Public repo**: https://github.com/Omytea-Almighty/omytea-personal-console
 - **Privacy policy**: [PRIVACY_POLICY.md](PRIVACY_POLICY.md)
 - **Release notes**: [CHANGELOG.md](CHANGELOG.md)
 - **Architectural / strategic anchor**: see master plan in upstream Omytea repo
@@ -33,7 +33,7 @@ Things that **don't** fit, and pull requests will be politely declined:
 ## Setup
 
 ```bash
-git clone https://github.com/Adonyth/omytea-personal-console.git
+git clone https://github.com/Omytea-Almighty/omytea-personal-console.git
 cd omytea-personal-console
 bash scripts/install.sh
 ollama pull llava:7b qwen2.5:7b-instruct   # optional, for real vision LLM
