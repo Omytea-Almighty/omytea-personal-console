@@ -6,7 +6,7 @@ substrate actually invokes LindbladOperator and produces time-snapshot
 data showing coherence decay.
 
 Skipped automatically if Omytea isn't importable (e.g. CI without
-WMDB parent repo installed).
+the substrate installed).
 """
 
 from __future__ import annotations

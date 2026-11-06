@@ -1,107 +1,6 @@
 # Streamlit Cloud Deployment Guide — Omytea Personal Future Console
 
-**Hybrid distribution policy**: deploy publicly only AFTER ≥ 1-2 high-trust early testers have completed a manual round-trip and validated the prediction quality is OK.
-
-**Estimated effort**: 1-2 hours (assuming GitHub repo + Streamlit Cloud account already exist).
-
-**Estimated ongoing cost**: ~$0.30-2.50 total API spend for 10 users × 3-5 queries each, plus $0 hosting on Streamlit Cloud free tier (Community plan).
-
----
-
-## §0 Pre-deployment checklist
-
-Before deploying:
-
-- [ ] Founder has completed self-test step 1-5 (✅ done 2026-05-18, prediction_id `5fc55de0-784e-4287-beec-3b2ad28f7c36`)
-- [ ] Cofounder + 1 close friend have completed Path α manual self-test
-- [ ] Path α prediction quality is OK (founder reviews their outputs, confirms not embarrassing)
-- [ ] Founder has Anthropic API key with non-zero balance + monthly budget cap set (recommend: $20/month cap)
-- [ ] Repository is pushed to GitHub
-- [ ] Streamlit Cloud account created (free; sign in with GitHub)
-- [ ] Privacy policy reviewed + linked from app footer (`PRIVACY_POLICY.md`)
-
----
-
-## §1 Repository preparation
-
-### §1.1 Decide: separate repo or subdir?
-
-Two options:
-
-**Option A**: Keep `omytea-personal-console/` as a subdir of the WMDB monorepo. Streamlit Cloud supports subdir-as-app via the "Main file path" config.
-
-**Option B**: Spin out to a separate dedicated public repo `omytea-personal-console` for clean isolation.
-
-**Recommendation**: **Option B for public deploy.** Reasons:
-- WMDB has sensitive `legal/` artifacts + research drafts we don't want public-visible (even with .gitignore, public repos are forensically scannable)
-- Cleaner separation: deployment repo = product surface; WMDB = R&D
-- Easier for a second contributor to push frontend fixes without touching the upstream substrate repo
-- Public repo lets us accept GitHub Issues from friend testers
-
-Plan: when ready to deploy, `git subtree split` the `omytea-personal-console/` subtree into a new public repo `Adonyth/omytea-personal-console` (or similar org/repo).
-
-### §1.2 Subtree split commands (when ready)
-
-```bash
-cd /Users/chenjiaxuan/Downloads/WMDB
-
-# Create the split branch (new history rooted at the subdir)
-git subtree split --prefix=omytea-personal-console -b deploy-split
-
-# Create new GitHub repo first (UI or `gh repo create Adonyth/omytea-personal-console --public`)
-
-# Push to new repo
-git remote add console-deploy git@github.com:Adonyth/omytea-personal-console.git
-git push console-deploy deploy-split:main
-```
-
-### §1.3 Files that MUST be in the deploy repo
-
-After subtree split, verify these are present at the deploy repo root:
-
-- [ ] `streamlit_app.py` (entrypoint)
-- [ ] `app.py` (main UI logic)
-- [ ] `compiler.py`
-- [ ] `console.py`
-- [ ] `storage.py`
-- [ ] `scenarios/` directory
-- [ ] `tests/` directory
-- [ ] `requirements.txt`
-- [ ] `.streamlit/config.toml`
-- [ ] `README.md` (with "try the demo" link section)
-- [ ] `PRIVACY_POLICY.md` (linked from app footer)
-- [ ] `DEPLOYMENT_GUIDE.md` (this file)
-
-### §1.4 Files to ADD to deploy repo `.gitignore`
-
-```
-# Deployment repo — never commit these
-__pycache__/
-*.pyc
-.venv/
-venv/
-.env
-*.sqlite
-*.db
-.streamlit/secrets.toml      # NEVER commit secrets file
-distribution_kit/            # internal-only kit
-```
-
-The `distribution_kit/` directory stays in WMDB only — not in public deploy repo.
-
-### §1.5 omytea substrate dependency
-
-The console imports `from omytea.quantum import ...` etc. For deployment we need to either:
-
-**Option a**: Vendor the minimal Omytea modules into the deploy repo (`omytea_quantum/` flat package; copy `quantum.py` + `joint_belief.py` + `models.py` + minimal dependencies). Apache 2.0 license compatible. Pin to a specific Omytea commit hash.
-
-**Option b**: Publish Omytea quantum substrate to PyPI as a separate package (`pip install omytea-quantum-substrate`), then `requirements.txt` adds it.
-
-**Recommendation**: **Option a (vendor minimal)** for now — Option b is v4.16 P3 territory (the substrate-as-Apache-2.0-package release). Vendor 4 files (quantum.py, joint_belief.py, models.py, density.py), pin to commit `<TBD>`, mark in `VENDORED_FROM.md`.
-
-~~⚠️ **Until vendored**: deploy will fail import. **DEPLOYMENT IS BLOCKED on completing this step.**~~
-
-**Status (2026-05-19)**: ✅ **resolved**. `scripts/prepare_public_release.py` now vendors the omytea quantum substrate (`models.py`, `density.py`, `quantum.py`, `joint_belief.py`, `dynamics/protocol.py`, `dynamics/lindblad.py`) into `omytea/` inside the dist directory, scrubs internal plan refs, and synthesizes a slim package `__init__`. The Apache-2.0 vendored snapshot is what ships in the public-release tree.
+Notes for hosting the Python version on Streamlit Cloud. The browser version at https://omytea-console.pages.dev is hosted separately.
 
 ---
 
@@ -161,29 +60,11 @@ st.sidebar.markdown(
 
 Add a one-time "I understand + agree" gate before first prediction. Store consent in `st.session_state`. On consent, allow form access. On decline, show "no problem, come back later".
 
-This is **MUST-HAVE for public deploy** even though Path α users consent via email.
+This is **required for any public deploy**.
 
 ### §3.3 Data deletion endpoint
 
 Provide an email + form for users to request deletion. Per `PRIVACY_POLICY.md`, response within 7 days.
-
----
-
-## §4 Public README adjustments
-
-The current `omytea-personal-console/README.md` is geared toward developers. For public deploy, modify the top section to include:
-
-```markdown
-# Try Omytea
-
-**Live demo**: https://omytea-personal-console.streamlit.app (or your actual URL)
-
-Probability-calibrated decision-support for personal-future scenarios.
-Free during research beta. Not for medical / legal / financial advice.
-By participating you consent to our [Privacy Policy](PRIVACY_POLICY.md).
-```
-
-Move the developer-detail sections (Architecture, Quick start, etc.) below this.
 
 ---
 
@@ -232,19 +113,6 @@ python scripts/snapshot_predictions.py \
 
 ---
 
-## §6 First-week monitoring
-
-After deploy:
-
-- [ ] Day 1: operator team uses the public URL to test. Verify substrate works.
-- [ ] Day 1-3: invite 3 friends to Path β URL. Watch logs.
-- [ ] Day 3-7: invite remaining 5-7 friends.
-- [ ] Daily: check Anthropic API usage on console (predict.streamlit cap)
-- [ ] Daily: check SQLite dump (Option α / β / γ) for any malformed predictions
-- [ ] Each prediction: founder reviews privately to confirm output quality remains acceptable
-
----
-
 ## §7 Rollback plan
 
 If anything breaks:
@@ -254,24 +122,7 @@ If anything breaks:
 3. Diagnose locally
 4. Re-deploy when fixed
 
-**Worst case**: data extracted from snapshot/backup; manual completion of remaining users via Path α.
-
----
-
-## §8 Decision gate: deploy or not?
-
-Path γ recommendation says **deploy only after Path α validation**. Before clicking "Deploy" on Streamlit Cloud, founder should confirm:
-
-- [ ] Cofounder Path α self-test completed
-- [ ] ≥ 1 friend Path α self-test completed
-- [ ] Founder reviewed both predictions and is OK with the quality
-- [ ] Anthropic monthly budget cap is set
-- [ ] PRIVACY_POLICY.md is committed in deploy repo
-- [ ] First-use consent gate is implemented
-- [ ] SQLite persistence strategy is implemented (Option α / β / γ)
-- [ ] omytea substrate has been vendored (per §1.5)
-
-**If any unchecked**: don't deploy yet. Run Path α only.
+**Worst case**: data extracted from snapshot/backup.
 
 ---
 
@@ -281,7 +132,6 @@ Path γ recommendation says **deploy only after Path α validation**. Before cli
 - `.streamlit/config.toml` — server + theme config
 - `PRIVACY_POLICY.md` — required for public deploy
 - `requirements.txt` — Python dependencies
-- `distribution_kit/` (WMDB only, not in deploy repo) — Path α materials
 
 ---
 

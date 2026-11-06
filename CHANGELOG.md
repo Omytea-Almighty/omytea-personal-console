@@ -11,8 +11,6 @@ the public-facing version string (`_brand.BRAND_VERSION`).
 ### Planned for v0.4.3+
 - `probability_provenance` per branch (LLM estimate / evidence-count proxy / historical calibrated / user-adjusted) — keep users from misreading "soft estimate" as statistical confidence.
 - `app.py` split into `measurement_loop.py` / `result_rendering.py` / `routing.py` / `ics.py` — the monolith is now 6208 lines after the v0.4.2 arc; further additions need decomposition before they're safe.
-- H2 paper restraint: hold strong claims until real `operator.evolve()` + trained Hamiltonian + scenario-derived γ_kl + N=200 (per `PROJECT_STATE.md`).
-- Plan-drift reconciliation: WORK_PLAN_V415 still bans fortune/tarot framing but the live console ships a Traditional × Calibrated lens (founder-authorized iter 60-73). Either amend plan or tighten lens copy.
 
 ## [0.4.2] — 2026-05-26
 
@@ -216,7 +214,7 @@ nodes / 46,094 edges / 583 clusters / 300 flows.
 - `scripts/prepare_public_release.py`: substrate vendor step is now **off by default** (legacy `--vendor-omytea` flag still available for pre-v0.4 workflow). Public dist tree no longer carries an `omytea/` subdirectory.
 
 ### Why
-This closes WORK_PLAN_V415 M3. The substrate gets:
+The substrate gets:
 - Independent PyPI version + Zenodo DOI for paper citation
 - A clear cite-able identity separate from the Console product
 - Its own CI / release cadence (Trusted Publishing OIDC on tag push)
@@ -225,7 +223,7 @@ This closes WORK_PLAN_V415 M3. The substrate gets:
 ### Migration
 
 - **Users**: pull v0.4.0 source and `pip install -r requirements.txt` — pip fetches `omytea-quantum-substrate` from PyPI automatically. No code changes needed; import paths (`from omytea.quantum import ...`) are unchanged.
-- **Devs in the WMDB monorepo**: editable install of WMDB no longer shadows PyPI substrate because requirements.txt now uses the PyPI name. Use a fresh venv when switching between vendored and PyPI modes.
+- **Devs working from a substrate checkout**: an editable install no longer shadows PyPI substrate because requirements.txt now uses the PyPI name. Use a fresh venv when switching between vendored and PyPI modes.
 
 ## [0.3.4] — 2026-05-19
 
