@@ -7,9 +7,9 @@
 
 **🚀 Live demo: [omytea-personal-console.streamlit.app](https://omytea-personal-console.streamlit.app/?embed=true)** — open the URL, no install required. Mock mode + non-vision modes work fully in-browser. For real video/webcam prediction, follow the install steps below to run locally with Ollama. *(The `?embed=true` parameter is the canonical public URL — it suppresses Streamlit Cloud's outer chrome for a clean first-paint; the bare URL also works.)*
 
-**A probability-calibrated decision-support tool for personal futures, with local video understanding.**
+**A test tool for personal decisions: it lays out possible futures with estimates and keeps score as outcomes arrive.**
 
-Built on Omytea's quantum-enhanced world-model substrate. Type a decision **or** upload a short video; get multiple future scenarios with calibrated probabilities, watch the quantum-operator coherence between those scenarios decay over time, and see how new evidence shifts the predictions.
+Type a decision **or** upload a short video; get several possible futures with estimates, watch the quantum-operator coherence between those scenarios decay over time, and see how new evidence shifts the predictions.
 
 > **Not a deterministic prediction system. Not "fortune-telling." A measurement-update-aware probabilistic decision-support tool with a local-first runtime (no external API required).**
 
@@ -366,7 +366,7 @@ Apache 2.0 — companion to the broader `omytea-quantum-substrate` package.
 
 | Master plan § | This MVP instantiates |
 |---|---|
-| §1 Quantum-enhanced WM for streaming reality | Personal-future scenario = streaming reality terminal-user use case |
+| §1 World model for streaming reality | Personal-future scenario = streaming reality terminal-user use case |
 | §5 Quantum Information Core | Uses `WaveFunction` + `JointWaveFunction` + density-matrix Born projection |
 | §6 Operator algebra | `BranchingPredictor` + scenario-specific operators (career-decision physics) |
 | §7 LLM as Compiler | `compiler.py` Claude API = OmyteaCompiler-LLM minimum version |
