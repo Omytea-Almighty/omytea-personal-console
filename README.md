@@ -181,7 +181,7 @@ Your local SQLite of predictions lives at `~/.omytea-personal-console/prediction
 - A streamlit web app that:
   1. Takes a structured decision input from the user (e.g., "I have a job offer at company A. Should I accept it?")
   2. Compiles the input via a configurable LLM backend (Gemini / Groq / Anthropic / mock) into an Omytea `BeliefProgram` using the natural-language → DSL compiler in `compiler.py`
-  3. Uses Omytea's `WaveFunction` + `BranchingPredictor` to generate 3-5 future hypothesis branches with calibrated probabilities
+  3. Uses Omytea's `WaveFunction` + `BranchingPredictor` to generate 3-5 future hypothesis branches with estimated probabilities
   4. Displays joint hypothesis off-diagonal (which futures are correlated)
   5. Identifies key uncertainty drivers + suggests what evidence to collect
   6. **6 weeks later**: user comes back, reports actual outcome → system updates calibration histogram
@@ -350,7 +350,7 @@ After 6 weeks, when the user reports actual outcome on joint events, we compute 
 
 These rules govern all UI copy and external communication. Violations should be caught in PR review.
 
-✅ **Use**: "probability scenarios", "decision support", "evidence-driven futures", "calibrated forecasts", "measurement update", "hypothesis branches"
+✅ **Use**: "probability scenarios", "decision support", "evidence-driven futures", "measurement update", "hypothesis branches"
 
 ❌ **Don't use**: "fortune", "oracle", "tarot", "horoscope", "predict your future", "destiny", "what will happen to you", 算命, 命理, 占卜, 玄学
 
